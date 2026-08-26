@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#10254d" />
+    <meta name="description" content="Controle financeiro pessoal instalável, seguro e offline." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Meu Controle" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Meu Controle Financeiro</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-lockup">
+          <img src="icon.svg" alt="" width="42" height="42" />
+          <div>
+            <p class="eyebrow">MINHAS FINANÇAS</p>
+            <h1 id="screen-title">Visão geral</h1>
+          </div>
+        </div>
+        <button class="icon-button install-button is-hidden" id="install-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>
+        </button>
+      </header>
+
+      <div class="month-toolbar" id="month-toolbar">
+        <button class="icon-button" type="button" data-month-step="-1" aria-label="Mês anterior">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <button class="month-label" type="button" id="month-label" data-action="choose-month">Agosto de 2026</button>
+        <button class="icon-button" type="button" data-month-step="1" aria-label="Próximo mês">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </div>
+
+      <main id="app-content" tabindex="-1">
+        <section class="screen is-active" id="screen-dashboard" data-screen="dashboard" aria-labelledby="screen-title">
+          <div id="dashboard-content"></div>
+        </section>
+        <section class="screen" id="screen-transactions" data-screen="transactions" aria-labelledby="screen-title">
+          <div id="transactions-content"></div>
+        </section>
+        <section class="screen" id="screen-cards" data-screen="cards" aria-labelledby="screen-title">
+          <div id="cards-content"></div>
+        </section>
+        <section class="screen" id="screen-planning" data-screen="planning" aria-labelledby="screen-title">
+          <div id="planning-content"></div>
+        </section>
+      </main>
+
+      <button class="fab" id="fab" type="button" data-action="quick-add" aria-label="Adicionar novo item">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <button class="nav-item is-active" type="button" data-nav="dashboard">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-9Z" /></svg>
+          <span>Início</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="transactions">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 7h13m0 0-4-4m4 4-4 4M17 17H4m0 0 4 4m-4-4 4-4" /></svg>
+          <span>Lançamentos</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="cards">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></svg>
+          <span>Cartões</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="planning">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 3V1m0 22v-2M3 12H1m22 0h-2" /></svg>
+          <span>Planejar</span>
+        </button>
+      </nav>
+    </div>
+
+    <dialog class="app-dialog" id="app-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow" id="dialog-eyebrow">NOVO ITEM</p>
+          <h2 id="dialog-title">Adicionar</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Fechar">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div id="dialog-content"></div>
+    </dialog>
+
+    <input type="file" id="import-file" accept="application/json,.json" hidden />
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript">Ative o JavaScript para usar o controle financeiro.</div>
+    </noscript>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
