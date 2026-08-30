@@ -105,7 +105,7 @@ export function uid(prefix = "item") {
 
 export function createEmptyState() {
   return {
-    version: 1,
+    version: 2,
     settings: { selectedMonth: currentMonthKey(), firstRun: true },
     transactions: [],
     cards: [],
@@ -122,6 +122,7 @@ export function normalizeState(input) {
   return {
     ...blank,
     ...input,
+    version: 2,
     settings: { ...blank.settings, ...(input.settings || {}) },
     transactions: Array.isArray(input.transactions) ? input.transactions : [],
     cards: Array.isArray(input.cards) ? input.cards : [],

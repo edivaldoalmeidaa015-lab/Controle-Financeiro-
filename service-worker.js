@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-controle-financeiro-v1";
+const CACHE_NAME = "meu-controle-financeiro-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./app.js",
   "./finance-core.js",
+  "./import-core.js",
   "./icon.svg",
   "./icon-192.png",
   "./icon-512.png"

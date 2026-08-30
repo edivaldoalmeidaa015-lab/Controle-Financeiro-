@@ -22,6 +22,11 @@ import {
   upcomingItems,
   uid
 } from "./finance-core.js";
+import {
+  parseStatement,
+  removeImportedDuplicates,
+  supportedBankLabel
+} from "./import-core.js";
 
 const STORAGE_KEY = "meu-controle-financeiro:v1";
 const SCREEN_TITLES = {
@@ -76,6 +81,7 @@ const dom = {
 let state = loadState();
 let deferredInstallPrompt = null;
 let toastTimer = null;
+let pendingStatementImport = null;
 const ui = {
   screen: "dashboard",
   month: state.settings.selectedMonth || currentMonthKey(),
@@ -314,7 +320,7 @@ function monthActivities(month) {
       id: item.id,
       kind: "transaction",
       title: item.description,
-      meta: `${item.category} • ${dateLabel(item.date)}`,
+      meta: `${item.category}${item.source ? ` • ${item.source}` : ""} • ${dateLabel(item.date)}`,
       date: item.date,
       amount: Number(item.amount) || 0,
       direction: item.type === "income" ? "income" : "expense",
@@ -393,11 +399,19 @@ function renderTransactions() {
       .map(item => ({ ...item, kind: "bill", sortDate: item.dueDate })));
   }
   rows = rows
-    .filter(item => !query || `${item.description} ${item.category}`.toLocaleLowerCase("pt-BR").includes(query))
+    .filter(item => !query || `${item.description} ${item.category} ${item.source || ""}`.toLocaleLowerCase("pt-BR").includes(query))
     .sort((a, b) => b.sortDate.localeCompare(a.sortDate));
 
   dom.transactions.innerHTML = `
     <div class="stack">
+      <section class="statement-import-card">
+        <div class="statement-import-icon">${icon("upload")}</div>
+        <div class="statement-import-copy">
+          <h3>Importar extrato bancário</h3>
+          <p>Adicione vários gastos de uma vez, sem digitar: Inter, Mercado Pago, Santander e Caju.</p>
+        </div>
+        <button class="button button-primary" type="button" data-action="show-statement-import">Importar extrato</button>
+      </section>
       <div class="search-box">
         ${icon("search")}
         <input id="transaction-search" type="search" value="${escapeHTML(ui.search)}" placeholder="Buscar lançamento" autocomplete="off" />
@@ -437,7 +451,7 @@ function manageableRow(item) {
       <div class="row-icon ${direction === "income" ? "tone-income" : isTransaction ? "tone-expense" : "tone-bill"}">${icon(isTransaction ? (direction === "income" ? "arrowDown" : "arrowUp") : "receipt")}</div>
       <div class="row-main">
         <div class="row-title">${escapeHTML(item.description)}</div>
-        <p class="row-meta">${escapeHTML(item.category)} • ${isTransaction ? dateLabel(date) : `vence ${dateLabel(date)}`}</p>
+        <p class="row-meta">${escapeHTML(item.category)}${isTransaction && item.source ? ` • ${escapeHTML(item.source)}` : ""} • ${isTransaction ? dateLabel(date) : `vence ${dateLabel(date)}`}</p>
       </div>
       <div class="row-value">
         <strong class="amount-${direction}">${direction === "income" ? "+" : "−"} ${money(item.amount)}</strong>
@@ -918,6 +932,146 @@ function showMonthForm() {
     </form>`);
 }
 
+function showStatementImport() {
+  pendingStatementImport = null;
+  openDialog("Importar extrato", "SEM DIGITAR OS GASTOS", `
+    <form data-form="statement-import">
+      <p class="confirm-copy">Baixe o extrato no aplicativo ou site da instituição e escolha o arquivo aqui. Ele será lido somente neste aparelho.</p>
+      <div class="field-grid">
+        <div class="field field-full">
+          <label for="statement-bank">Instituição</label>
+          <select id="statement-bank" name="bank" required>
+            <option value="inter">Inter — prefira OFX</option>
+            <option value="mercado_pago">Mercado Pago — use CSV</option>
+            <option value="santander">Santander — OFX ou CSV</option>
+            <option value="caju">Caju Alimentação — CSV, quando disponível</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label for="statement-file">Arquivo do extrato</label>
+          <input id="statement-file" name="statement" type="file" accept=".ofx,.csv,text/csv,application/x-ofx" required />
+          <span class="field-help">Formatos aceitos: OFX e CSV. PDF e imagem ainda não são aceitos.</span>
+        </div>
+      </div>
+      <div class="import-security-note">
+        ${icon("shield")}
+        <span>O aplicativo não pede senha bancária, não acessa sua conta e não envia o extrato para servidores.</span>
+      </div>
+      <div class="import-format-list">
+        <div><strong>Inter</strong><span>OFX</span></div>
+        <div><strong>Mercado Pago</strong><span>CSV</span></div>
+        <div><strong>Santander</strong><span>OFX/CSV</span></div>
+        <div><strong>Caju Alimentação</strong><span>CSV*</span></div>
+      </div>
+      <p class="field-help">*No cartão Caju do colaborador, a opção de exportar pode não aparecer. Nesse caso, o histórico continuará precisando de outra forma de captura.</p>
+      ${formActions("Ler e conferir")}
+    </form>`);
+}
+
+async function readStatementFile(file) {
+  const buffer = await file.arrayBuffer();
+  let content = new TextDecoder("utf-8").decode(buffer);
+  if (content.includes("\uFFFD")) content = new TextDecoder("windows-1252").decode(buffer);
+  return content;
+}
+
+async function prepareStatementImport(form) {
+  const submit = form.querySelector('button[type="submit"]');
+  const formData = new FormData(form);
+  const bank = String(formData.get("bank") || "");
+  const file = formData.get("statement");
+  if (!(file instanceof File) || !file.size) {
+    showToast("Escolha o arquivo do extrato.", true);
+    return;
+  }
+
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = "Lendo extrato…";
+  }
+
+  try {
+    const parsed = parseStatement({
+      text: await readStatementFile(file),
+      fileName: file.name,
+      bank
+    });
+    const { unique, duplicates } = removeImportedDuplicates(parsed.transactions, state.transactions);
+    pendingStatementImport = {
+      bank,
+      bankLabel: parsed.bankLabel,
+      fileName: file.name,
+      format: parsed.format,
+      entries: unique,
+      duplicates,
+      ignored: parsed.ignored
+    };
+    showStatementImportPreview();
+  } catch (error) {
+    showToast(error?.message || "Não foi possível ler esse extrato.", true);
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = "Ler e conferir";
+    }
+  }
+}
+
+function showStatementImportPreview() {
+  const pending = pendingStatementImport;
+  if (!pending) return;
+  const income = pending.entries.filter(item => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
+  const expenses = pending.entries.filter(item => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+  const issueCount = pending.duplicates.length + pending.ignored;
+  const preview = pending.entries.slice(0, 8);
+
+  openDialog("Conferir importação", `${pending.bankLabel.toLocaleUpperCase("pt-BR")} • ${pending.format}`, `
+    <div class="import-summary-grid">
+      <div><span>Novos</span><strong>${pending.entries.length}</strong></div>
+      <div><span>Receitas</span><strong class="amount-income">${money(income)}</strong></div>
+      <div><span>Despesas</span><strong class="amount-expense">${money(expenses)}</strong></div>
+    </div>
+    ${issueCount ? `<p class="import-warning">${pending.duplicates.length} duplicado(s) não serão repetidos${pending.ignored ? ` e ${pending.ignored} linha(s) não puderam ser lidas` : ""}.</p>` : ""}
+    ${preview.length ? `
+      <div class="import-preview-list">
+        ${preview.map(item => `
+          <div class="import-preview-row">
+            <div>
+              <strong>${escapeHTML(item.description)}</strong>
+              <span>${escapeHTML(item.category)} • ${dateLabel(item.date)}</span>
+            </div>
+            <strong class="amount-${item.type}">${item.type === "income" ? "+" : "−"} ${money(item.amount)}</strong>
+          </div>`).join("")}
+      </div>
+      ${pending.entries.length > preview.length ? `<p class="field-help">Mais ${pending.entries.length - preview.length} lançamento(s) também serão importados.</p>` : ""}
+      <div class="form-actions">
+        <button class="button button-secondary" type="button" data-action="show-statement-import">Voltar</button>
+        <button class="button button-primary" type="button" data-action="confirm-statement-import">Importar ${pending.entries.length}</button>
+      </div>` : `
+      <div class="empty-state import-empty-state">
+        <h3>Nenhum lançamento novo</h3>
+        <p>Os registros desse arquivo já foram importados ou não puderam ser reconhecidos.</p>
+        <button class="button button-secondary" type="button" data-action="show-statement-import">Escolher outro arquivo</button>
+      </div>`}
+  `);
+}
+
+function confirmStatementImport() {
+  const pending = pendingStatementImport;
+  if (!pending?.entries.length) return;
+  const imported = pending.entries.map(item => ({ ...item, id: uid("tx") }));
+  if (state.settings.demo) {
+    state = createEmptyState();
+    state.settings.firstRun = false;
+  }
+  state.transactions.unshift(...imported);
+  state.settings.demo = false;
+  ui.month = imported.map(item => monthKey(item.date)).sort().at(-1) || ui.month;
+  pendingStatementImport = null;
+  closeDialog();
+  commit(`${imported.length} lançamento(s) importado(s) de ${supportedBankLabel(pending.bank)}.`);
+  setScreen("transactions");
+}
+
 function showQuickAdd() {
   openDialog("O que deseja adicionar?", "NOVO REGISTRO", `
     <div class="quick-grid">
@@ -971,6 +1125,11 @@ function handleFormSubmit(form) {
   const type = form.dataset.form;
   const id = form.dataset.id || "";
   const data = Object.fromEntries(new FormData(form));
+
+  if (type === "statement-import") {
+    void prepareStatementImport(form);
+    return;
+  }
 
   if (type === "transaction") {
     upsert("transactions", {
@@ -1222,6 +1381,8 @@ document.addEventListener("click", async event => {
     "toggle-installment": () => toggleInstallment(id, target.dataset.number),
     "go-transactions": () => setScreen("transactions"),
     "go-planning": () => setScreen("planning"),
+    "show-statement-import": showStatementImport,
+    "confirm-statement-import": confirmStatementImport,
     "export-data": exportData,
     "import-data": () => dom.importFile.click(),
     "load-demo": () => hasAnyData() ? showResetConfirm(true) : loadDemo(),
