@@ -35,11 +35,12 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 
 | Página | Conteúdo |
 |---|---|
-| Visão geral | KPIs, abertas × fechadas, destaques automáticos, mapa de turbinas, top 10, mix por tipo, status, sistemas |
-| Turbinas | Mapa de calor 5 parques × 20 posições (métrica selecionável), parque × tipo, ranking das 100 turbinas |
-| Backlog | Idade, faixas de envelhecimento, motivos de espera, tempo por etapa do fluxo, OMs mais antigas |
-| Mão de obra | Hh apontado por categoria, wrench time, horas por tipo de apontamento, equipe técnica |
-| Custos | Material × mão de obra, por tipo, parque, sistema e turbina; custos atípicos (≥ R$ 10 mi) excluídos por padrão |
+| Visão geral | 4 indicadores, abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, peças mais trocadas |
+| Turbinas | Mapa 5 parques × 20 posições (métrica selecionável) e ranking das 100 turbinas |
+| Peças | Peças trocadas identificadas no texto do serviço executado: ranking, turbinas e OMs com a frase de origem |
+| Backlog | Envelhecimento, motivos de espera e OMs mais antigas |
+| Mão de obra | Hh por mês por categoria e equipe técnica (wrench time) |
+| Custos | Custo por mês e por tipo de serviço e OMs de maior custo; custos atípicos (≥ R$ 10 mi) excluídos por padrão |
 | Ordens | Tabela com busca, ordenação, paginação e exportação CSV |
 
 **Filtros** (valem para todas as páginas): período, parque, turbina, tipo de
