@@ -18,7 +18,7 @@
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
     'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
     'custoMat', 'custoTot', 'espera', 'cancel', 'resp', 'reprog', 'ckItens', 'ckResp', 'durH',
-    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos'];
+    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel'];
   var CAMPOS_AP = ['ordem', 'pessoa', 'tipoAp', 'dia', 'horas'];
 
   function Dic(inicial) {
@@ -49,10 +49,12 @@
     return Math.round(n * f) / f;
   }
 
-  function texto(v, limite) {
+  /** Texto completo: normaliza espaços em cada linha e mantém as quebras de linha. */
+  function texto(v) {
     if (v === null || v === undefined) return '';
-    var s = String(v).replace(/\s+/g, ' ').trim();
-    return s.length <= limite ? s : s.slice(0, limite - 1) + '…';
+    return String(v).replace(/\r\n?/g, '\n').split('\n')
+      .map(function (l) { return l.replace(/[ \t\u00a0]+/g, ' ').trim(); })
+      .join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   function linhas(wb, XLSX, aba, obrigatoria) {
@@ -133,7 +135,8 @@
         reprog: r.Reprogramada === 'Sim' ? 1 : 0, ckItens: num(r.Checklist_Itens, 0), ckResp: num(r.Checklist_Respondidos, 0),
         durH: num(r.Duracao_Servico_h), ateInicioH: num(r.Tempo_Ate_Inicio_h, 1),
         eAbertas: num(e[0], 1), eProg: num(e[1], 1), eEspera: num(e[2], 1), eApont: num(e[3], 1),
-        desc: texto(r.Descricao, 280), exec: texto(r.Servico_Executado, 360),
+        desc: texto(r.Descricao), exec: texto(r.Servico_Executado),
+        obsEspera: texto(r.Obs_Motivo_Espera), obsCancel: texto(r.Obs_Cancelamento),
         atipico: custo !== null && custo >= LIMITE_CUSTO_ATIPICO ? 1 : 0, tecnicos: num(r.Qtd_Tecnicos, 0)
       };
       CAMPOS.forEach(function (c) { col[c].push(v[c]); });

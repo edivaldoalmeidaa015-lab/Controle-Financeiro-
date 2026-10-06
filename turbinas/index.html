@@ -355,7 +355,7 @@ svg text { font-family: inherit; }
 .mini-kpis .k-val { font-size: 20px; font-weight: 650; margin-top: 2px; }
 .modal {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -48%); opacity: 0; z-index: 75;
-  width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto;
+  width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); overflow: auto; overscroll-behavior: contain;
   background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-pop); transition: opacity .16s, transform .16s;
 }
 .modal.on { opacity: 1; transform: translate(-50%, -50%); }
@@ -1758,7 +1758,9 @@ function abrirOM(i) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
-      O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null));
+      O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
+      O.obsEspera && O.obsEspera[i] ? [h('h4', null, 'Observação da espera'), h('p', null, O.obsEspera[i])] : null,
+      O.obsCancel && O.obsCancel[i] ? [h('h4', null, 'Observação do cancelamento'), h('p', null, O.obsCancel[i])] : null));
   abrirCamada(painel);
 }
 
