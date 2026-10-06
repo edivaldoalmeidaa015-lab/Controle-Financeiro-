@@ -35,7 +35,7 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 
 | Página | Conteúdo |
 |---|---|
-| Visão geral | 4 indicadores, abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, peças mais trocadas |
+| Visão geral | 4 indicadores, abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, falhas mais frequentes (códigos do SCADA citados na descrição, ex.: 120_Pitch controller communications fault), peças mais trocadas |
 | Turbinas | Mapa 5 parques × 20 posições (métrica selecionável) e ranking das 100 turbinas |
 | Peças | Peças trocadas identificadas no texto do serviço executado: ranking, turbinas e OMs com a frase de origem |
 | Backlog | Envelhecimento, motivos de espera e OMs mais antigas |
@@ -44,7 +44,7 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 | Ordens | Tabela com busca, ordenação, paginação e exportação CSV |
 
 **Filtros** (valem para todas as páginas): período, parque, turbina, tipo de
-serviço, sistema, status e máquina parada. Clicar numa barra ou num parque
+serviço, sistema, falha, componente trocado, status e máquina parada. Clicar numa barra ou num parque
 também filtra (cross-filter). Clique numa turbina para abrir o detalhe e numa
 OM para ver a ficha completa. O estado fica na URL, então o link pode ser
 compartilhado já filtrado. Todo gráfico tem o botão de **visão em tabela**.

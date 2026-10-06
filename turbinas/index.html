@@ -125,10 +125,10 @@ button { cursor: pointer; }
   backdrop-filter: blur(8px);
   padding: 8px 24px 10px; border-bottom: 1px solid var(--border);
 }
-.filtros .linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.filtros .linha { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
 .slicer {
   display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
-  min-width: 128px; max-width: 220px; padding: 5px 30px 6px 11px; position: relative;
+  min-width: 104px; max-width: 176px; padding: 5px 28px 6px 10px; position: relative;
   border: 1px solid var(--border); background: var(--surface); border-radius: 8px; text-align: left;
   box-shadow: var(--shadow);
 }
@@ -136,7 +136,7 @@ button { cursor: pointer; }
 .slicer .rot { font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .slicer .val { font-size: 13px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .slicer::after {
-  content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; margin-top: -5px;
+  content: ""; position: absolute; right: 11px; top: 50%; width: 7px; height: 7px; margin-top: -5px;
   border-right: 1.6px solid var(--muted); border-bottom: 1.6px solid var(--muted); transform: rotate(45deg);
 }
 .slicer.ativo { border-color: var(--accent); background: var(--accent-wash); }
@@ -310,6 +310,7 @@ svg text { font-family: inherit; }
 .tab td.txt .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tab td.forte { font-weight: 600; }
 .tab td.quebra { white-space: normal; min-width: 150px; }
+.tab td.larga { white-space: normal; min-width: 230px; }
 .db { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .db .tr { width: 56px; height: 8px; display: flex; justify-content: flex-start; }
 .db .tr i { height: 100%; border-radius: 0 3px 3px 0; background: var(--s1); opacity: .85; }
@@ -550,12 +551,12 @@ var origemMs = 0;
 var diaMin = 0, diaMax = 0;
 var IDX = { tipo: {}, grupo: {}, status: {}, faixa: {}, entrega: {}, categoria: [] };
 
-var DIMS = ['parque', 'wtg', 'tipo', 'sistema', 'peca', 'status', 'parada'];
-var ROTULO_DIM = { parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente' };
+var DIMS = ['parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status', 'parada'];
+var ROTULO_DIM = { parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente', falha: 'Falha' };
 var estado = {
   pagina: 'visao',
   per: { chave: 'tudo', ini: 0, fim: 0 },
-  f: { parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
+  f: { parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), falha: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
   pecasTab: { ordem: 'abertura', desc: true, pag: 0 },
   atipicos: false,
   metricaMapa: 'oms',
@@ -573,6 +574,7 @@ function valorDim(dim, i) {
     case 'status': return O.status[i];
     case 'parada': return O.parada[i];
     case 'peca': return O.pecas[i];
+    case 'falha': return O.falhas[i];
   }
 }
 function itensDim(dim) {
@@ -584,13 +586,14 @@ function itensDim(dim) {
     case 'status': return M.dic.status;
     case 'parada': return ['Não', 'Sim'];
     case 'peca': return M.componentes;
+    case 'falha': return M.falhas;
   }
 }
 /** A OM i atende ao filtro da dimensão d? ("peca" é multivalorada: basta uma peça selecionada) */
 function atendeDim(d, i) {
   var s = estado.f[d];
   if (!s.size) return true;
-  if (d === 'peca') return O.pecas[i].some(function (k) { return s.has(k); });
+  if (d === 'peca' || d === 'falha') return valorDim(d, i).some(function (k) { return s.has(k); });
   return s.has(valorDim(d, i));
 }
 function passaDims(i, ignorar) {
@@ -1067,8 +1070,9 @@ function paginaVisao(pg) {
   pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, AP, hhTot, hhProd); } }));
 
   // as turbinas e as peças que mais pedem atenção
-  pg.append(cartaoTopTurbinas('s6', 10, true));
-  pg.append(cartaoPecas('s6', 10));
+  pg.append(cartaoTopTurbinas('s4', 10, true));
+  pg.append(cartaoFalhas('s4', 10));
+  pg.append(cartaoPecas('s4', 10));
 }
 
 function destaques(el, B, bkl, AP, hhTot, hhProd) {
@@ -1116,7 +1120,8 @@ var METRICAS_MAPA = {
   parada: { rot: 'OMs com máquina parada', valor: function (i) { return O.parada[i]; }, fmt: fInt },
   hh: { rot: 'Hh apontado', valor: function (i) { return O.hhApont[i] || 0; }, fmt: fH },
   custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } },
-  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecas[i].length; }, fmt: fInt }
+  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecas[i].length; }, fmt: fInt },
+  falhas: { rot: 'OMs com código de falha', valor: function (i) { return O.falhas[i].length ? 1 : 0; }, fmt: fInt }
 };
 function seletorMetrica() {
   var sel = h('select', { class: 'mini', 'aria-label': 'Métrica do mapa', onchange: function (ev) { estado.metricaMapa = ev.target.value; salvarHash(); renderPagina(); } },
@@ -1309,11 +1314,29 @@ function linhaOM(i) {
     parqueTxt: O.wtg[i] >= 0 ? M.parques[parqueDoWtg[O.wtg[i]]] : '–', tipoTxt: M.dic.tipo[O.tipo[i]] || '–', sistemaTxt: M.dic.sistema[O.sistema[i]] || '–',
     status: O.status[i], statusTxt: M.dic.status[O.status[i]], esperaTxt: O.espera[i] >= 0 ? M.dic.espera[O.espera[i]] : '–', abertura: O.dAb[i], fechamento: O.dFe[i],
     idade: O.idadeBkl[i], lead: O.leadH[i] === null ? null : O.leadH[i] / 24, parada: O.parada[i] ? 'Sim' : 'Não', hh: O.hhApont[i], custo: O.custoTot[i], desc: O.desc[i],
-    pecasTxt: O.pecas[i].map(function (k) { return M.componentes[k]; }).join(', '), nPecas: O.pecas[i].length, custoMat: O.custoMat[i]
+    pecasTxt: O.pecas[i].map(function (k) { return M.componentes[k]; }).join(', '), falhasTxt: O.falhas[i].map(function (k) { return M.falhas[k]; }).join(' / '), nPecas: O.pecas[i].length, custoMat: O.custoMat[i]
   };
 }
 
 /* ---------- Componentes substituídos ---------- */
+/** Ranking das falhas (códigos do SCADA citados na descrição); ignora o próprio filtro de falha, que vira destaque. */
+function cartaoFalhas(span, top) {
+  var Bf = base('falha'), rank = new Map(), comFalha = 0;
+  Bf.forEach(function (i) { if (O.falhas[i].length) comFalha++; O.falhas[i].forEach(function (k) { rank.set(k, (rank.get(k) || 0) + 1); }); });
+  var itens = Array.from(rank.entries()).map(function (e) { return { k: e[0], rot: M.falhas[e[0]], v: e[1] }; }).sort(function (a, c) { return c.v - a.v; });
+  var visiveis = itens.slice(0, top);
+  estado.f.falha.forEach(function (k) { if (!visiveis.some(function (d) { return d.k === k; })) { var d = itens.filter(function (x) { return x.k === k; })[0]; if (d) visiveis.push(d); } });
+  return cartao({
+    id: 'falhas-rank', span: span, titulo: 'Falhas mais frequentes',
+    sub: fInt(comFalha) + ' de ' + fInt(Bf.length) + ' OMs citam código de falha · clique para filtrar',
+    desenhar: function (el) {
+      if (!visiveis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhum código de falha nas OMs dos filtros atuais.')); return; }
+      barrasH(el, visiveis.map(function (d) { return { k: d.k, rot: d.rot, v: d.v, cor: 'var(--s2)' }; }), { onClick: function (k) { alternarFiltro('falha', k); }, ativo: estado.f.falha, larguraRotulo: '62%', unidade: 'OMs' });
+    },
+    dados: { cols: [{ k: 'rot', rot: 'Falha' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itens }
+  });
+}
+
 /** Ranking das peças mais trocadas (ignora o próprio filtro de componente, que vira destaque). */
 function cartaoPecas(span, top) {
   var Bc = base('peca'), rank = new Map(), totOMs = 0;
@@ -1510,7 +1533,7 @@ function paginaOrdens(pg) {
   var q = estado.ordens.busca.trim().toLowerCase();
   var linhas = B.map(linhaOM);
   if (q) linhas = linhas.filter(function (r) {
-    return (r.omTxt + ' ' + r.om + ' ' + r.wtgTxt + ' ' + r.sistemaTxt + ' ' + r.tipoTxt + ' ' + r.statusTxt + ' ' + r.pecasTxt + ' ' + r.desc).toLowerCase().indexOf(q) >= 0;
+    return (r.omTxt + ' ' + r.om + ' ' + r.wtgTxt + ' ' + r.sistemaTxt + ' ' + r.tipoTxt + ' ' + r.statusTxt + ' ' + r.falhasTxt + ' ' + r.pecasTxt + ' ' + r.desc).toLowerCase().indexOf(q) >= 0;
   });
   var busca = h('input', { type: 'search', class: 'campo', placeholder: 'Buscar OM, turbina, sistema ou descrição…', value: estado.ordens.busca, 'aria-label': 'Buscar ordens' });
   var timer;
@@ -1529,6 +1552,7 @@ function paginaOrdens(pg) {
     tabela(corpo, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte', ord: function (r) { return r.om; } }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'parqueTxt', rot: 'Parque' },
         { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); }, ord: function (r) { return r.statusTxt; } },
+        { k: 'falhasTxt', rot: 'Falha', classe: 'larga', fmt: function (v) { return v || '–'; } },
         { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'quebra', fmt: function (v) { return v || '–'; } },
         { k: 'parada', rot: 'Máq. parada' }, { k: 'lead', rot: 'Lead time', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
         { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } }, { k: 'hh', rot: 'Hh', num: true, fmt: function (v) { return v === null ? '–' : fH(v); } },
@@ -1542,12 +1566,12 @@ function paginaOrdens(pg) {
 }
 
 function exportarCSV(linhas) {
-  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Lead time (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Peças trocadas (identificadas no texto)', 'Descrição'];
+  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Lead time (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Falha (código na descrição)', 'Peças trocadas (identificadas no texto)', 'Descrição'];
   var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var num = function (v) { return v === null || v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','); };
   var txt = [cab.join(';')].concat(linhas.map(function (r) {
     return [r.omTxt, fData(r.abertura), r.fechamento === null ? '' : fData(r.fechamento), r.wtgTxt, r.parqueTxt, r.tipoTxt, r.sistemaTxt, r.statusTxt, r.parada,
-      num(r.lead), num(r.idade), num(r.hh), num(r.custo), r.pecasTxt, r.desc].map(esc).join(';');
+      num(r.lead), num(r.idade), num(r.hh), num(r.custo), r.falhasTxt, r.pecasTxt, r.desc].map(esc).join(';');
   })).join('\r\n');
   var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
   var a = h('a', { href: URL.createObjectURL(blob), download: 'ordens-turbinas.csv' });
@@ -1609,11 +1633,13 @@ function abrirTurbina(w) {
   var bodyT = h('div', { class: 'card-b' }); cardT.append(bodyT);
   var cardS = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Sistemas'))));
   var bodyS = h('div', { class: 'card-b' }); cardS.append(bodyS);
+  var cardF = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Falhas'), h('p', null, 'Códigos citados na descrição das OMs'))));
+  var bodyF = h('div', { class: 'card-b' }); cardF.append(bodyF);
   var cardP = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Peças trocadas'), h('p', null, 'Identificadas no texto do serviço executado'))));
   var bodyP = h('div', { class: 'card-b' }); cardP.append(bodyP);
   var cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), h('p', null, 'Mais recentes primeiro · clique para abrir'))));
   var bodyL = h('div', { class: 'card-b' }); cardL.append(bodyL);
-  corpo.append(cardT, cardP, cardS, cardL);
+  corpo.append(cardT, cardF, cardP, cardS, cardL);
   abrirCamada(painel);
 
   requestAnimationFrame(function () {
@@ -1624,6 +1650,11 @@ function abrirTurbina(w) {
     else bodyT.append(h('div', { class: 'vazio' }, 'Nenhuma OM no período.'));
     var porS = Array.from(agrupar(ix, function (i) { return O.sistema[i]; }).entries()).map(function (e) { return { k: e[0], rot: M.dic.sistema[e[0]] || '–', v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
     barrasH(bodyS, porS, { larguraRotulo: '52%', unidade: 'OMs' });
+    var porF = new Map();
+    ix.forEach(function (i) { O.falhas[i].forEach(function (k) { porF.set(k, (porF.get(k) || 0) + 1); }); });
+    var itF = Array.from(porF.entries()).map(function (e) { return { k: e[0], rot: M.falhas[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
+    if (itF.length) barrasH(bodyF, itF, { larguraRotulo: '64%', unidade: 'OMs', cor: 'var(--s2)' });
+    else bodyF.append(h('div', { class: 'vazio' }, 'Nenhum código de falha nas OMs do período.'));
     var porP = new Map();
     ix.forEach(function (i) { O.pecas[i].forEach(function (k) { porP.set(k, (porP.get(k) || 0) + 1); }); });
     var itP = Array.from(porP.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; });
@@ -1664,6 +1695,7 @@ function abrirOM(i) {
       campo('Responsável', O.resp[i] >= 0 ? M.dic.pessoa[O.resp[i]] : '–'), campo('Motivo de cancelamento', O.cancel[i] >= 0 ? M.dic.cancel[O.cancel[i]] : '–'),
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
+      O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
       O.pecas[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecas[i].map(function (k) { return h('span', { class: 'pill' }, M.componentes[k]); })),
         h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas automaticamente no texto do serviço executado.')] : null,
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
@@ -1706,7 +1738,7 @@ function popDim(dim, el) {
   var itens = itensDim(dim);
   var cont = new Map();
   base(dim).forEach(function (i) {
-    var ks = dim === 'peca' ? O.pecas[i] : [valorDim(dim, i)];
+    var ks = dim === 'peca' || dim === 'falha' ? valorDim(dim, i) : [valorDim(dim, i)];
     ks.forEach(function (k) { cont.set(k, (cont.get(k) || 0) + 1); });
   });
   var busca = null, lista = h('div', { class: 'lista', role: 'listbox', 'aria-multiselectable': 'true' });
@@ -1719,7 +1751,7 @@ function popDim(dim, el) {
     h('span', { style: 'color:var(--muted)' }, 'OMs no contexto')));
   el.append(lista);
   var ordem = itens.map(function (_, k) { return k; });
-  if (dim === 'sistema' || dim === 'peca') ordem.sort(function (a, b) { return (cont.get(b) || 0) - (cont.get(a) || 0) || itens[a].localeCompare(itens[b]); });
+  if (dim === 'sistema' || dim === 'peca' || dim === 'falha') ordem.sort(function (a, b) { return (cont.get(b) || 0) - (cont.get(a) || 0) || itens[a].localeCompare(itens[b]); });
   function preencher() {
     var q = busca ? busca.value.trim().toLowerCase() : '';
     lista.textContent = '';
@@ -1800,13 +1832,13 @@ function renderFiltros(cont) {
     h('span', { class: 'rot' }, 'Período'), h('span', { class: 'val' }, textoPeriodo()));
   bPer.addEventListener('click', function () { abrirPop(bPer, popPeriodo, 'periodo'); });
   linha.append(bPer);
-  ['parque', 'wtg', 'tipo', 'sistema', 'peca', 'status'].forEach(function (dim) {
+  ['parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status'].forEach(function (dim) {
     var b = h('button', { type: 'button', class: 'slicer' + (estado.f[dim].size ? ' ativo' : ''), 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
       h('span', { class: 'rot' }, ROTULO_DIM[dim]), h('span', { class: 'val' }, textoDim(dim)));
     b.addEventListener('click', function () { abrirPop(b, function (el) { popDim(dim, el); }, dim); });
     linha.append(b);
   });
-  var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Máquina parada' }, h('span', { class: 'rot' }, 'Máq. parada'));
+  var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Máquina parada' }, h('span', { class: 'rot' }, 'Parada'));
   [['Todas', null], ['Sim', 1], ['Não', 0]].forEach(function (o) {
     var ativo = o[1] === null ? !estado.f.parada.size : estado.f.parada.size === 1 && estado.f.parada.has(o[1]);
     seg.append(h('button', { type: 'button', 'aria-pressed': String(ativo), onclick: function () { estado.f.parada.clear(); if (o[1] !== null) estado.f.parada.add(o[1]); atualizar(); } }, o[0]));
@@ -1968,6 +2000,10 @@ function logo() {
    ===================================================================== */
 function iniciar(modelo) {
   M = modelo; O = M.ordens; A = M.apont; N = O.om.length;
+  if (!O.falhas || !M.falhas) { // base salva por uma versão anterior do painel
+    var fx = window.ModeloTurbinas && ModeloTurbinas.extrairFalhas ? ModeloTurbinas.extrairFalhas(O.desc) : { rotulos: [], falhas: O.desc.map(function () { return []; }) };
+    M.falhas = fx.rotulos; O.falhas = fx.falhas;
+  }
   if (!O.pecas || !M.componentes) { // base salva por uma versão anterior do painel
     var ext = window.ModeloTurbinas && ModeloTurbinas.componentesTrocados;
     M.componentes = ext ? ModeloTurbinas.COMPONENTES.map(function (c) { return c[0]; }) : [];

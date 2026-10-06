@@ -18,7 +18,7 @@
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
     'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
     'custoMat', 'custoTot', 'espera', 'cancel', 'resp', 'reprog', 'ckItens', 'ckResp', 'durH',
-    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasTrecho'];
+    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasTrecho', 'falhas'];
   var CAMPOS_AP = ['ordem', 'pessoa', 'tipoAp', 'dia', 'horas'];
 
   /*
@@ -79,6 +79,64 @@
 
   // palavras que iniciam outra ação na frase
   var ACAO = /^(feit[oa]s?|realizad[oa]s?|realizamos|efetuad[oa]s?|executad[oa]s?|inspecao|inspecionad\w*|verificad\w*|verificacao|testes?|testad\w*|limpeza|limpo|ajustad\w*|ajuste|reaperto|reapertad\w*|medicao|medid\w*|apos|seguida|liberad\w*|identificad\w*|constatad\w*|analise|retirad\w*|instalacao)$/;
+
+  /*
+   * Falhas da turbina citadas na descrição, no padrão do SCADA: "120_Pitch controller
+   * communications fault", "WTG apresenta falha 157_Secondary rotor brake...".
+   * O código é a chave; o nome exibido é a variação mais frequente na base.
+   * "NNN - Nome" (com hífen) só vale para códigos já vistos com "_", porque o hífen
+   * também aparece em nomes de plano preventivo ("WTG-CYCLE-ANNUAL-1X-2026 - Anual").
+   */
+  var RE_FALHA = /(?<![\w\/.])(\d{1,3})\s?_\s?([A-Za-z](?:(?!\d{1,3}\s?_)[^\n])*)/g;
+  var RE_FALHA_HIFEN = /(?<![\w\/.])(\d{1,3})\s?-\s?([A-Za-z](?:(?!\d{1,3}\s?[-_])[^\n])*)/g;
+  var FIM_NOME_FALHA = /\s+(e|associad\w*|com|foi|foram|realizad\w*|sincroniza\w*|apresenta\w*|porem|porém|na|no|em|que|apos|após|devido|onde|sendo|toolbox|tooblbox|via|logo|mesmo|mesma|durante|ao|pois|conforme)\b.*$/i;
+
+  function nomeFalha(bruto) {
+    var n = bruto.split(/[,;(]|\.(?=\s|[A-Za-z]|$)|\s-\s|\s\/\s/)[0];
+    n = n.replace(/(\d)(realizad|foi|e\s)\w*.*$/i, '$1')
+      .replace(/(Foi|Realizad\w*|Provavelmente|Sincroniza\w*|Logo|Ap[oó]s|Devido|Durante|Sendo|Onde|Porem|Porém)\b.*$/, '')
+      .replace(FIM_NOME_FALHA, '').replace(/\s+(ou|e|de|da|do)$/i, '').replace(/[\s)\]]+$/, '').replace(/\s+/g, ' ').trim();
+    if (n.length > 60) n = n.slice(0, 60).replace(/\s+\S*$/, '');
+    return n;
+  }
+
+  /** Para cada descrição, os códigos de falha citados; mais o rótulo de cada código. */
+  function extrairFalhas(descricoes) {
+    var brutas = descricoes.map(function (t) {
+      var r = [];
+      if (!t) return r;
+      String(t).replace(/\n(?=[a-z])/g, ' ').replace(RE_FALHA, function (_, cod, nome) { var n = nomeFalha(nome); if (n.length >= 3) r.push([+cod, n]); return _; });
+      return r;
+    });
+    var conhecidos = {};
+    brutas.forEach(function (r) { r.forEach(function (f) { conhecidos[f[0]] = true; }); });
+    descricoes.forEach(function (t, i) {
+      if (!t) return;
+      String(t).replace(/\n(?=[a-z])/g, ' ').replace(RE_FALHA_HIFEN, function (_, cod, nome) {
+        var n = nomeFalha(nome);
+        if (conhecidos[+cod] && n.length >= 3 && !brutas[i].some(function (f) { return f[0] === +cod; })) brutas[i].push([+cod, n]);
+        return _;
+      });
+    });
+    // nome canônico por código: a variação mais frequente
+    var variantes = {};
+    brutas.forEach(function (r) { r.forEach(function (f) {
+      var v = variantes[f[0]] || (variantes[f[0]] = {}), k = f[1].toLowerCase();
+      v[k] = v[k] || { n: 0, texto: f[1] }; v[k].n++;
+    }); });
+    var codigos = Object.keys(variantes).map(Number).sort(function (a, b) { return a - b; });
+    var rotulos = codigos.map(function (c) {
+      var melhor = Object.keys(variantes[c]).map(function (k) { return variantes[c][k]; }).sort(function (a, b) { return b.n - a.n; })[0].texto;
+      return c + ' · ' + melhor.charAt(0).toUpperCase() + melhor.slice(1);
+    });
+    var pos = {}; codigos.forEach(function (c, k) { pos[c] = k; });
+    return {
+      rotulos: rotulos,
+      falhas: brutas.map(function (r) {
+        var ids = []; r.forEach(function (f) { var k = pos[f[0]]; if (ids.indexOf(k) < 0) ids.push(k); }); return ids;
+      })
+    };
+  }
 
   function semAcento(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
@@ -280,13 +338,16 @@
         eAbertas: num(e[0], 1), eProg: num(e[1], 1), eEspera: num(e[2], 1), eApont: num(e[3], 1),
         desc: texto(r.Descricao), exec: texto(r.Servico_Executado),
         obsEspera: texto(r.Obs_Motivo_Espera), obsCancel: texto(r.Obs_Cancelamento),
-        pecas: null, pecasTrecho: null,
+        pecas: null, pecasTrecho: null, falhas: null,
         atipico: custo !== null && custo >= LIMITE_CUSTO_ATIPICO ? 1 : 0, tecnicos: num(r.Qtd_Tecnicos, 0)
       };
       var comp = componentesTrocados(v.exec);
       v.pecas = comp.ids; v.pecasTrecho = comp.trechos;
       CAMPOS.forEach(function (c) { col[c].push(v[c]); });
     });
+
+    var fal = extrairFalhas(col.desc);
+    col.falhas = fal.falhas;
 
     var ap = {};
     CAMPOS_AP.forEach(function (c) { ap[c] = []; });
@@ -316,11 +377,12 @@
       dic: dic,
       categoriaAp: categoriaAp,
       componentes: COMPONENTES.map(function (c) { return c[0]; }),
+      falhas: fal.rotulos,
       etapas: ETAPAS,
       ordens: col,
       apont: ap
     };
   }
 
-  return { montar: montar, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });
