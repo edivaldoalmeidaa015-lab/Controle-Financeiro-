@@ -316,6 +316,7 @@ svg text { font-family: inherit; }
 .seta { width: 8px; height: 8px; display: inline-block; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 550; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
 .pill i { width: 7px; height: 7px; border-radius: 50%; }
+.pecas { display: flex; flex-wrap: wrap; gap: 6px; }
 .pag { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 18px 0; font-size: 12.5px; color: var(--ink-2); }
 .barra-tab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .barra-tab .campo { max-width: 340px; }
@@ -505,7 +506,8 @@ var ICONES = {
   imprimir: '<path d="M7 9V3.5h10V9M7 17H4.5V9h15v8H17"/><path d="M7 14h10v6.5H7z"/>',
   ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-  tendencia: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>'
+  tendencia: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  componentes: '<path d="M14.7 6.3a4 4 0 0 0-5.3 5.3l-6 6a1.8 1.8 0 0 0 2.6 2.6l6-6a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.3-.3-.3-2.3z"/>'
 };
 function icone(nome, extra) {
   var s = document.createElementNS(SVGNS, 'svg');
@@ -548,12 +550,13 @@ var origemMs = 0;
 var diaMin = 0, diaMax = 0;
 var IDX = { tipo: {}, grupo: {}, status: {}, faixa: {}, entrega: {}, categoria: [] };
 
-var DIMS = ['parque', 'wtg', 'tipo', 'sistema', 'status', 'parada'];
-var ROTULO_DIM = { parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada' };
+var DIMS = ['parque', 'wtg', 'tipo', 'sistema', 'peca', 'status', 'parada'];
+var ROTULO_DIM = { parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente' };
 var estado = {
   pagina: 'visao',
   per: { chave: 'tudo', ini: 0, fim: 0 },
-  f: { parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), status: new Set(), parada: new Set() },
+  f: { parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
+  pecasTab: { ordem: 'abertura', desc: true, pag: 0 },
   atipicos: false,
   metricaMapa: 'oms',
   tabelaVisivel: {},
@@ -569,6 +572,7 @@ function valorDim(dim, i) {
     case 'sistema': return O.sistema[i];
     case 'status': return O.status[i];
     case 'parada': return O.parada[i];
+    case 'peca': return O.pecas[i];
   }
 }
 function itensDim(dim) {
@@ -579,15 +583,18 @@ function itensDim(dim) {
     case 'sistema': return M.dic.sistema;
     case 'status': return M.dic.status;
     case 'parada': return ['Não', 'Sim'];
+    case 'peca': return M.componentes;
   }
 }
+/** A OM i atende ao filtro da dimensão d? ("peca" é multivalorada: basta uma peça selecionada) */
+function atendeDim(d, i) {
+  var s = estado.f[d];
+  if (!s.size) return true;
+  if (d === 'peca') return O.pecas[i].some(function (k) { return s.has(k); });
+  return s.has(valorDim(d, i));
+}
 function passaDims(i, ignorar) {
-  for (var k = 0; k < DIMS.length; k++) {
-    var d = DIMS[k];
-    if (d === ignorar) continue;
-    var s = estado.f[d];
-    if (s.size && !s.has(valorDim(d, i))) return false;
-  }
+  for (var k = 0; k < DIMS.length; k++) if (DIMS[k] !== ignorar && !atendeDim(DIMS[k], i)) return false;
   return true;
 }
 function noPeriodo(dia) { return dia !== null && dia >= estado.per.ini && dia <= estado.per.fim; }
@@ -1199,29 +1206,31 @@ var METRICAS_MAPA = {
   bkl: { rot: 'OMs em backlog', valor: function (i) { return O.grupo[i] === IDX.grupo.Backlog ? 1 : 0; }, fmt: fInt },
   parada: { rot: 'OMs com máquina parada', valor: function (i) { return O.parada[i]; }, fmt: fInt },
   hh: { rot: 'Hh apontado', valor: function (i) { return O.hhApont[i] || 0; }, fmt: fH },
-  custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } }
+  custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } },
+  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecas[i].length; }, fmt: fInt }
 };
 function seletorMetrica() {
   var sel = h('select', { class: 'mini', 'aria-label': 'Métrica do mapa', onchange: function (ev) { estado.metricaMapa = ev.target.value; salvarHash(); renderPagina(); } },
     Object.keys(METRICAS_MAPA).map(function (k) { return h('option', { value: k, selected: k === estado.metricaMapa ? true : null }, METRICAS_MAPA[k].rot); }));
   return sel;
 }
-function valoresPorWtg(ignorarWtg) {
+function valoresPorWtg(ignorarWtg, metrica) {
   var B = ignorarWtg ? base('wtg') : base();
-  var met = METRICAS_MAPA[estado.metricaMapa];
+  var met = METRICAS_MAPA[metrica || estado.metricaMapa];
   var v = new Float64Array(M.dic.wtg.length);
   B.forEach(function (i) { if (O.wtg[i] >= 0) v[O.wtg[i]] += met.valor(i); });
   return v;
 }
-function cartaoMapa(span) {
-  var met = METRICAS_MAPA[estado.metricaMapa];
-  var v = valoresPorWtg(true);
+/** metricaFixa: usa sempre essa métrica (sem o seletor), como na página Componentes. */
+function cartaoMapa(span, metricaFixa) {
+  var chave = metricaFixa || estado.metricaMapa, met = METRICAS_MAPA[chave];
+  var v = valoresPorWtg(true, chave);
   var maxPos = 0;
   M.ativos.forEach(function (a) { maxPos = Math.max(maxPos, a.pos); });
   var linhasTab = M.ativos.map(function (a) { return { wtg: M.dic.wtg[a.wtg], parque: M.parques[a.parque], pos: a.pos, v: v[a.wtg] }; });
   return cartao({
-    id: 'mapa', span: span, titulo: 'Mapa de turbinas', sub: met.rot + ' por aerogerador · clique numa turbina para ver o detalhe',
-    ferramentas: [seletorMetrica()],
+    id: metricaFixa ? 'mapa-' + metricaFixa : 'mapa', span: span, titulo: metricaFixa ? 'Mapa de ' + met.rot.toLowerCase() : 'Mapa de turbinas', sub: met.rot + ' por aerogerador · clique numa turbina para ver o detalhe',
+    ferramentas: metricaFixa ? [] : [seletorMetrica()],
     desenhar: function (el) {
       var max = 0; for (var k = 0; k < v.length; k++) max = Math.max(max, v[k]);
       var largura = el.clientWidth, compacto = largura < 560 && maxPos > 10;
@@ -1256,7 +1265,7 @@ function cartaoMapa(span) {
               style: 'background:' + (c ? c.cor : 'var(--empty)') + ';color:' + (c && c.tintaClara ? '#fff' : c ? (temaEscuro() && c.k >= 6 ? '#0b0b0b' : 'var(--ink)') : 'var(--muted)'),
               'aria-label': M.dic.wtg[a.wtg] + ': ' + met.fmt(val),
               onclick: function () { abrirTurbina(a.wtg); }
-            }, mostrarNum && val > 0 && estado.metricaMapa !== 'custo' && estado.metricaMapa !== 'hh' ? fInt(val) : '');
+            }, mostrarNum && val > 0 && chave !== 'custo' && chave !== 'hh' ? fInt(val) : '');
             tipEm(b, function () { return [M.dic.wtg[a.wtg] + ' · ' + M.parques[a.parque], [{ cor: c ? c.cor : 'var(--empty)', valor: met.fmt(val), rotulo: met.rot }], 'Clique para ver o detalhe da turbina']; });
             alvo.append(b);
           })(a);
@@ -1464,8 +1473,100 @@ function linhaOM(i) {
     i: i, om: O.om[i], omTxt: 'OM ' + String(O.om[i]).padStart(5, '0'), wtgTxt: O.wtg[i] >= 0 ? M.dic.wtg[O.wtg[i]] : '–',
     parqueTxt: O.wtg[i] >= 0 ? M.parques[parqueDoWtg[O.wtg[i]]] : '–', tipoTxt: M.dic.tipo[O.tipo[i]] || '–', sistemaTxt: M.dic.sistema[O.sistema[i]] || '–',
     status: O.status[i], statusTxt: M.dic.status[O.status[i]], esperaTxt: O.espera[i] >= 0 ? M.dic.espera[O.espera[i]] : '–', abertura: O.dAb[i], fechamento: O.dFe[i],
-    idade: O.idadeBkl[i], lead: O.leadH[i] === null ? null : O.leadH[i] / 24, parada: O.parada[i] ? 'Sim' : 'Não', hh: O.hhApont[i], custo: O.custoTot[i], desc: O.desc[i]
+    idade: O.idadeBkl[i], lead: O.leadH[i] === null ? null : O.leadH[i] / 24, parada: O.parada[i] ? 'Sim' : 'Não', hh: O.hhApont[i], custo: O.custoTot[i], desc: O.desc[i],
+    pecasTxt: O.pecas[i].map(function (k) { return M.componentes[k]; }).join(', '), nPecas: O.pecas[i].length, custoMat: O.custoMat[i]
   };
+}
+
+/* ---------- Componentes substituídos ---------- */
+function paginaComponentes(pg) {
+  var B = base(), b = baldes();
+  var comTexto = contar(B, function (i) { return !!O.exec[i]; });
+  var comPeca = B.filter(function (i) { return O.pecas[i].length; });
+  var trocas = 0, porComp = new Map(), wtgs = new Set(), mes = new Array(b.length).fill(0);
+  comPeca.forEach(function (i) {
+    trocas += O.pecas[i].length;
+    O.pecas[i].forEach(function (k) { porComp.set(k, (porComp.get(k) || 0) + 1); });
+    if (O.wtg[i] >= 0) wtgs.add(O.wtg[i]);
+    var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += O.pecas[i].length;
+  });
+  var top = Array.from(porComp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
+  var corr = contar(comPeca, function (i) { return O.tipo[i] === IDX.tipo['Corretiva']; });
+  var custoMat = soma(comPeca, O.custoMat, custoValido);
+
+  pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Componentes substituídos'),
+    h('p', null, 'Peças identificadas automaticamente no texto do “Serviço executado” (frases como “realizado a substituição da placa AEPA”). Confira a frase de origem na tabela abaixo.')));
+
+  pg.append(h('div', { class: 'kpis' },
+    kpi({ rot: 'OMs com peça trocada', valor: fInt(comPeca.length), valorTexto: fInt(comPeca.length), sub: comTexto ? fPct(comPeca.length / comTexto) + ' das OMs com serviço executado' : '' }),
+    kpi({ rot: 'Peças trocadas', valor: fInt(trocas), valorTexto: fInt(trocas), sub: 'trocas identificadas', spark: mes, corSpark: 'var(--s3)' }),
+    kpi({ rot: 'Mais trocado', valor: top ? M.componentes[top[0]] : '–', valorTexto: top ? M.componentes[top[0]] : '–', sub: top ? fInt(top[1]) + ' vezes' : 'nenhuma troca identificada' }),
+    kpi({ rot: 'Turbinas com troca', valor: fInt(wtgs.size), unid: '/ ' + frotaFiltrada(), valorTexto: fInt(wtgs.size), sub: 'no período e filtros' }),
+    kpi({ rot: 'Em corretivas', valor: comPeca.length ? nf1.format(corr / comPeca.length * 100) : '–', unid: comPeca.length ? '%' : '', valorTexto: fPct(corr / comPeca.length), sub: fInt(corr) + ' de ' + fInt(comPeca.length) + ' OMs' }),
+    kpi({ rot: 'Material nessas OMs', valor: fMoeda(custoMat), valorTexto: fMoeda(custoMat), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })
+  ));
+
+  // ranking (ignora o próprio filtro de componente, que vira destaque)
+  var Bc = base('peca'), rank = new Map(), totOMs = 0;
+  Bc.forEach(function (i) { if (O.pecas[i].length) totOMs++; O.pecas[i].forEach(function (k) { rank.set(k, (rank.get(k) || 0) + 1); }); });
+  var itens = Array.from(rank.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1], extra: fPct(e[1] / Math.max(1, totOMs)) }; })
+    .sort(function (a, c) { return c.v - a.v; });
+  var visiveis = itens.slice(0, 12);
+  estado.f.peca.forEach(function (k) { if (!visiveis.some(function (d) { return d.k === k; })) { var d = itens.filter(function (x) { return x.k === k; })[0]; if (d) visiveis.push(d); } });
+  pg.append(cartao({
+    id: 'pecas-rank', span: 's5', titulo: 'Componentes mais trocados', sub: 'Top 12 de ' + itens.length + ' · % das OMs com troca · clique para filtrar',
+    desenhar: function (el) { barrasH(el, visiveis.map(function (d) { return { k: d.k, rot: d.rot, v: d.v, extra: d.extra, cor: 'var(--s3)' }; }), { onClick: function (k) { alternarFiltro('peca', k); }, ativo: estado.f.peca, larguraRotulo: '46%', unidade: 'vezes' }); },
+    dados: { cols: [{ k: 'rot', rot: 'Componente' }, { k: 'v', rot: 'Trocas', num: true, fmt: fInt }, { k: 'extra', rot: '% das OMs', num: true }], linhas: itens }
+  }));
+
+  pg.append(cartao({
+    id: 'pecas-mes', span: 's7', titulo: 'Peças trocadas por ' + b.tipo, sub: 'Pela data de abertura da OM',
+    desenhar: function (el) { serieTempo(el, { baldes: b, modo: 'colunas', titulo: 'Peças trocadas por ' + b.tipo, legenda: false, series: [{ nome: 'Peças trocadas', cor: 'var(--s3)', valores: mes }] }); },
+    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'v', rot: 'Peças trocadas', num: true, fmt: fInt }], linhas: b.map(function (x, k) { return { p: x.longo, v: mes[k] }; }) }
+  }));
+
+  pg.append(cartaoMapa('s8', 'pecas'));
+
+  var porW = new Map();
+  comPeca.forEach(function (i) {
+    if (O.wtg[i] < 0) return;
+    var r = porW.get(O.wtg[i]) || { k: O.wtg[i], v: 0, comp: new Map() };
+    r.v += O.pecas[i].length;
+    O.pecas[i].forEach(function (k) { r.comp.set(k, (r.comp.get(k) || 0) + 1); });
+    porW.set(O.wtg[i], r);
+  });
+  var itW = Array.from(porW.values()).sort(function (a, c) { return c.v - a.v; }).map(function (r) {
+    var principal = Array.from(r.comp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
+    return { k: r.k, rot: M.dic.wtg[r.k], v: r.v, extra: M.componentes[principal[0]], cor: 'var(--s3)' };
+  });
+  pg.append(cartao({
+    id: 'pecas-wtg', span: 's4', titulo: 'Turbinas com mais trocas', sub: 'Top 10 · ao lado, a peça mais trocada · clique para ver a turbina',
+    desenhar: function (el) { barrasH(el, itW.slice(0, 10), { onClick: function (k) { abrirTurbina(k); }, larguraRotulo: '26%', unidade: 'peças trocadas' }); },
+    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'Peças trocadas', num: true, fmt: fInt }, { k: 'extra', rot: 'Mais trocada' }], linhas: itW }
+  }));
+
+  var linhas = comPeca.map(function (i) {
+    var r = linhaOM(i);
+    r.trecho = O.pecasTrecho[i].filter(function (t, j, a) { return a.indexOf(t) === j; }).join(' … ');
+    return r;
+  });
+  var corpo = h('div');
+  pg.append(h('section', { class: 'card s12' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'OMs com peça trocada'), h('p', null, fInt(linhas.length) + ' OMs · a frase de onde a peça foi identificada · clique para ver a OM')),
+      h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: function () { exportarCSV(linhas); } }, icone('baixar'), 'Exportar CSV'))),
+    corpo));
+  aposRender.push(function () {
+    tabela(corpo, {
+      cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte', ord: function (r) { return r.om; } }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' },
+        { k: 'tipoTxt', rot: 'Tipo' }, { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'forte quebra' },
+        { k: 'trecho', rot: 'Trecho do serviço executado', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v); } },
+        { k: 'custoMat', rot: 'Material', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }],
+      linhas: linhas, ordem: { k: estado.pecasTab.ordem, desc: estado.pecasTab.desc }, porPagina: 25, pagina: estado.pecasTab.pag,
+      onOrdenar: function (k, desc) { estado.pecasTab = { ordem: k, desc: desc, pag: 0 }; renderPagina(); },
+      onPagina: function (p) { estado.pecasTab.pag = p; renderPagina(); corpo.scrollIntoView({ block: 'start' }); },
+      onLinha: function (r) { abrirOM(r.i); }
+    });
+  });
 }
 
 /* ---------- Mão de obra ---------- */
@@ -1624,7 +1725,7 @@ function paginaOrdens(pg) {
   var q = estado.ordens.busca.trim().toLowerCase();
   var linhas = B.map(linhaOM);
   if (q) linhas = linhas.filter(function (r) {
-    return (r.omTxt + ' ' + r.om + ' ' + r.wtgTxt + ' ' + r.sistemaTxt + ' ' + r.tipoTxt + ' ' + r.statusTxt + ' ' + r.desc).toLowerCase().indexOf(q) >= 0;
+    return (r.omTxt + ' ' + r.om + ' ' + r.wtgTxt + ' ' + r.sistemaTxt + ' ' + r.tipoTxt + ' ' + r.statusTxt + ' ' + r.pecasTxt + ' ' + r.desc).toLowerCase().indexOf(q) >= 0;
   });
   var busca = h('input', { type: 'search', class: 'campo', placeholder: 'Buscar OM, turbina, sistema ou descrição…', value: estado.ordens.busca, 'aria-label': 'Buscar ordens' });
   var timer;
@@ -1643,6 +1744,7 @@ function paginaOrdens(pg) {
     tabela(corpo, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte', ord: function (r) { return r.om; } }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'parqueTxt', rot: 'Parque' },
         { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); }, ord: function (r) { return r.statusTxt; } },
+        { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'quebra', fmt: function (v) { return v || '–'; } },
         { k: 'parada', rot: 'Máq. parada' }, { k: 'lead', rot: 'Lead time', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
         { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } }, { k: 'hh', rot: 'Hh', num: true, fmt: function (v) { return v === null ? '–' : fH(v); } },
         { k: 'custo', rot: 'Custo', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }, { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } }],
@@ -1655,12 +1757,12 @@ function paginaOrdens(pg) {
 }
 
 function exportarCSV(linhas) {
-  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Lead time (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Descrição'];
+  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Lead time (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Peças trocadas (identificadas no texto)', 'Descrição'];
   var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var num = function (v) { return v === null || v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','); };
   var txt = [cab.join(';')].concat(linhas.map(function (r) {
     return [r.omTxt, fData(r.abertura), r.fechamento === null ? '' : fData(r.fechamento), r.wtgTxt, r.parqueTxt, r.tipoTxt, r.sistemaTxt, r.statusTxt, r.parada,
-      num(r.lead), num(r.idade), num(r.hh), num(r.custo), r.desc].map(esc).join(';');
+      num(r.lead), num(r.idade), num(r.hh), num(r.custo), r.pecasTxt, r.desc].map(esc).join(';');
   })).join('\r\n');
   var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
   var a = h('a', { href: URL.createObjectURL(blob), download: 'ordens-turbinas.csv' });
@@ -1722,9 +1824,11 @@ function abrirTurbina(w) {
   var bodyT = h('div', { class: 'card-b' }); cardT.append(bodyT);
   var cardS = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Sistemas'))));
   var bodyS = h('div', { class: 'card-b' }); cardS.append(bodyS);
+  var cardP = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Peças trocadas'), h('p', null, 'Identificadas no texto do serviço executado'))));
+  var bodyP = h('div', { class: 'card-b' }); cardP.append(bodyP);
   var cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), h('p', null, 'Mais recentes primeiro · clique para abrir'))));
   var bodyL = h('div', { class: 'card-b' }); cardL.append(bodyL);
-  corpo.append(cardT, cardS, cardL);
+  corpo.append(cardT, cardP, cardS, cardL);
   abrirCamada(painel);
 
   requestAnimationFrame(function () {
@@ -1735,6 +1839,11 @@ function abrirTurbina(w) {
     else bodyT.append(h('div', { class: 'vazio' }, 'Nenhuma OM no período.'));
     var porS = Array.from(agrupar(ix, function (i) { return O.sistema[i]; }).entries()).map(function (e) { return { k: e[0], rot: M.dic.sistema[e[0]] || '–', v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
     barrasH(bodyS, porS, { larguraRotulo: '52%', unidade: 'OMs' });
+    var porP = new Map();
+    ix.forEach(function (i) { O.pecas[i].forEach(function (k) { porP.set(k, (porP.get(k) || 0) + 1); }); });
+    var itP = Array.from(porP.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; });
+    if (itP.length) barrasH(bodyP, itP, { larguraRotulo: '52%', unidade: 'vezes', cor: 'var(--s3)' });
+    else bodyP.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada no período.'));
     tabela(bodyL, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }],
       linhas: ix.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r) { abrirOM(r.i); }
@@ -1745,8 +1854,7 @@ function passaDimsSemLocal(i) {
   for (var k = 0; k < DIMS.length; k++) {
     var d = DIMS[k];
     if (d === 'wtg' || d === 'parque') continue;
-    var s = estado.f[d];
-    if (s.size && !s.has(valorDim(d, i))) return false;
+    if (!atendeDim(d, i)) return false;
   }
   return true;
 }
@@ -1771,6 +1879,8 @@ function abrirOM(i) {
       campo('Responsável', O.resp[i] >= 0 ? M.dic.pessoa[O.resp[i]] : '–'), campo('Motivo de cancelamento', O.cancel[i] >= 0 ? M.dic.cancel[O.cancel[i]] : '–'),
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
+      O.pecas[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecas[i].map(function (k) { return h('span', { class: 'pill' }, M.componentes[k]); })),
+        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas automaticamente no texto do serviço executado.')] : null,
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
       O.obsEspera && O.obsEspera[i] ? [h('h4', null, 'Observação da espera'), h('p', null, O.obsEspera[i])] : null,
@@ -1810,7 +1920,10 @@ function textoDim(dim) {
 function popDim(dim, el) {
   var itens = itensDim(dim);
   var cont = new Map();
-  base(dim).forEach(function (i) { var k = valorDim(dim, i); cont.set(k, (cont.get(k) || 0) + 1); });
+  base(dim).forEach(function (i) {
+    var ks = dim === 'peca' ? O.pecas[i] : [valorDim(dim, i)];
+    ks.forEach(function (k) { cont.set(k, (cont.get(k) || 0) + 1); });
+  });
   var busca = null, lista = h('div', { class: 'lista', role: 'listbox', 'aria-multiselectable': 'true' });
   if (itens.length > 8) {
     busca = h('input', { type: 'search', placeholder: 'Buscar ' + ROTULO_DIM[dim].toLowerCase() + '…', 'aria-label': 'Buscar' });
@@ -1821,7 +1934,7 @@ function popDim(dim, el) {
     h('span', { style: 'color:var(--muted)' }, 'OMs no contexto')));
   el.append(lista);
   var ordem = itens.map(function (_, k) { return k; });
-  if (dim === 'sistema') ordem.sort(function (a, b) { return (cont.get(b) || 0) - (cont.get(a) || 0) || itens[a].localeCompare(itens[b]); });
+  if (dim === 'sistema' || dim === 'peca') ordem.sort(function (a, b) { return (cont.get(b) || 0) - (cont.get(a) || 0) || itens[a].localeCompare(itens[b]); });
   function preencher() {
     var q = busca ? busca.value.trim().toLowerCase() : '';
     lista.textContent = '';
@@ -1902,7 +2015,7 @@ function renderFiltros(cont) {
     h('span', { class: 'rot' }, 'Período'), h('span', { class: 'val' }, textoPeriodo()));
   bPer.addEventListener('click', function () { abrirPop(bPer, popPeriodo, 'periodo'); });
   linha.append(bPer);
-  ['parque', 'wtg', 'tipo', 'sistema', 'status'].forEach(function (dim) {
+  ['parque', 'wtg', 'tipo', 'sistema', 'peca', 'status'].forEach(function (dim) {
     var b = h('button', { type: 'button', class: 'slicer' + (estado.f[dim].size ? ' ativo' : ''), 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
       h('span', { class: 'rot' }, ROTULO_DIM[dim]), h('span', { class: 'val' }, textoDim(dim)));
     b.addEventListener('click', function () { abrirPop(b, function (el) { popDim(dim, el); }, dim); });
@@ -1973,6 +2086,7 @@ function lerHash() {
 var PAGINAS = {
   visao: { rot: 'Visão geral', icone: 'visao', fn: paginaVisao },
   turbinas: { rot: 'Turbinas', icone: 'turbinas', fn: paginaTurbinas },
+  componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
   backlog: { rot: 'Backlog', icone: 'backlog', fn: paginaBacklog },
   hh: { rot: 'Mão de obra', icone: 'hh', fn: paginaHH },
   custos: { rot: 'Custos', icone: 'custos', fn: paginaCustos },
@@ -2069,6 +2183,12 @@ function logo() {
    ===================================================================== */
 function iniciar(modelo) {
   M = modelo; O = M.ordens; A = M.apont; N = O.om.length;
+  if (!O.pecas || !M.componentes) { // base salva por uma versão anterior do painel
+    var ext = window.ModeloTurbinas && ModeloTurbinas.componentesTrocados;
+    M.componentes = ext ? ModeloTurbinas.COMPONENTES.map(function (c) { return c[0]; }) : [];
+    O.pecas = []; O.pecasTrecho = [];
+    for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], trechos: [] }; O.pecas.push(r.ids); O.pecasTrecho.push(r.trechos); }
+  }
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
   parqueDoWtg = []; posDoWtg = [];
   M.ativos.forEach(function (a) { parqueDoWtg[a.wtg] = a.parque; posDoWtg[a.wtg] = a.pos; });
