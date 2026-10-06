@@ -306,6 +306,7 @@
     Object.keys(d).forEach(function (k) { dic[k] = d[k].itens; });
     return {
       versao: 1,
+      gerado: new Date().toISOString(),
       origem: new Date(Date.UTC(anoBase, 0, 1)).toISOString().slice(0, 10),
       ultimoDia: Math.floor(maxSerial) - origem,
       parques: parques,

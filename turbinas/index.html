@@ -2036,11 +2036,14 @@ function telaCarga(msgErro) {
 
 (function () {
   aplicarTemaSalvo();
+  // Usa a base mais recente entre a embutida no arquivo e a última carregada neste navegador
+  // (pelo botão "Trocar base"); assim uma planilha nova não é perdida ao reabrir o painel.
   var embutido = document.getElementById('dados-embutidos').textContent.trim();
-  if (embutido) { iniciar(JSON.parse(embutido)); return; }
-  var salvo = null;
-  try { salvo = localStorage.getItem(CHAVE_BASE); } catch (e) { /* sem armazenamento */ }
-  if (salvo) { try { iniciar(JSON.parse(salvo)); return; } catch (e) { /* base salva inválida */ } }
+  var modeloEmbutido = embutido ? JSON.parse(embutido) : null;
+  var modeloSalvo = null;
+  try { var salvo = localStorage.getItem(CHAVE_BASE); if (salvo) modeloSalvo = JSON.parse(salvo); } catch (e) { /* sem armazenamento ou base salva inválida */ }
+  if (modeloSalvo && (!modeloEmbutido || (modeloSalvo.gerado || '') > (modeloEmbutido.gerado || ''))) { iniciar(modeloSalvo); return; }
+  if (modeloEmbutido) { iniciar(modeloEmbutido); return; }
   telaCarga();
 })();
 </script>
