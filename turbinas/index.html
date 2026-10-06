@@ -31,6 +31,7 @@
   --rail: #14233a;
   --rail-ink: #c9d6e8;
   --rail-active: #ffffff;
+  --titulo-marca: #014e77;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -43,6 +44,7 @@
     --accent: #3987e5; --accent-ink: #86b6ef; --accent-wash: rgba(57, 135, 229, .16);
     --shadow: none; --shadow-pop: 0 12px 32px rgba(0, 0, 0, .5);
     --rail: #111a26; --rail-ink: #9fb0c6;
+    --titulo-marca: #5cc4e0;
   }
 }
 :root[data-theme="dark"] {
@@ -55,6 +57,7 @@
   --accent: #3987e5; --accent-ink: #86b6ef; --accent-wash: rgba(57, 135, 229, .16);
   --shadow: none; --shadow-pop: 0 12px 32px rgba(0, 0, 0, .5);
   --rail: #111a26; --rail-ink: #9fb0c6;
+  --titulo-marca: #5cc4e0;
 }
 
 * { box-sizing: border-box; }
@@ -82,6 +85,7 @@ button { cursor: pointer; }
 .rail .marca svg, .rail .marca img { width: 34px; height: 34px; display: block; }
 .topo .marca-topo { width: 42px; height: 42px; flex-shrink: 0; display: block; }
 .topo .titulo { flex: 1 1 0; min-width: 0; }
+.topo.com-marca h1 { color: var(--titulo-marca); }
 .nav-btn {
   border: 0; background: transparent; color: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -1988,7 +1992,7 @@ function montarApp() {
     h('button', { type: 'button', class: 'nav-btn', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'), 'Tema')));
 
   var nTurb = M.ativos.length, modelo = M.ativos[0] && M.ativos[0].modelo;
-  var topo = h('header', { class: 'topo' },
+  var topo = h('header', { class: 'topo' + (LOGO_URL ? ' com-marca' : '') },
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · Complexo Asa Branca'),
