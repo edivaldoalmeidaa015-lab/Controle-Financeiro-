@@ -16,7 +16,7 @@
   var ETAPAS = ['Abertas', 'Programadas', 'Em espera', 'Apontamentos concluídos'];
 
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
-    'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
+    'dCa', 'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
     'custoMat', 'custoTot', 'espera', 'cancel', 'resp', 'reprog', 'ckItens', 'ckResp', 'durH',
     'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasItens', 'pecasTrecho', 'falhas'];
   var CAMPOS_AP = ['ordem', 'pessoa', 'tipoAp', 'dia', 'horas'];
@@ -436,7 +436,7 @@
       var v = {
         om: omNum, status: d.status.id(r.Status), grupo: d.grupo.id(r.Grupo_Status), tipo: d.tipo.id(r.Tipo_Servico),
         natureza: d.natureza.id(r.Natureza_Servico), wtg: d.wtg.id(r.WTG), sistema: d.sistema.id(r.Sistema),
-        parada: r.Maquina_Parada === 'Sim' ? 1 : 0, dAb: dia(r.Data_Abertura), dFe: dia(r.Data_Fechamento),
+        parada: r.Maquina_Parada === 'Sim' ? 1 : 0, dAb: dia(r.Data_Abertura), dFe: dia(r.Data_Fechamento), dCa: dia(r.Data_Cancelamento),
         leadH: num(r.Lead_Time_h), idadeBkl: num(r.Idade_Backlog_dias, 1), faixa: d.faixa.id(r.Faixa_Idade_Backlog),
         entrega: d.entrega.id(r.Entrega_No_Prazo), hhPrev: num(r.Hh_Previsto), hhReal: num(r.Hh_Real),
         hhApont: num(r.Hh_Apontado), hhProd: num(r.Hh_Produtivo), custoMO: num(r.Custo_MO),

@@ -268,6 +268,7 @@ svg text { font-family: inherit; }
 .grade { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
 .base { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
 .rot-dir { font-size: 12px; font-weight: 600; fill: var(--ink-2); }
+.rot-ponto { font-size: 12px; font-weight: 700; fill: var(--ink); stroke: var(--surface); stroke-width: 3px; paint-order: stroke; font-variant-numeric: tabular-nums; }
 .grafico svg { display: block; overflow: visible; }
 .grafico:focus-visible { outline-offset: 4px; }
 
@@ -795,15 +796,22 @@ function fEixo(v, tipo) {
  * Série temporal em SVG: linhas (com crosshair) ou colunas empilhadas.
  * c: {baldes, series:[{nome, cor, valores}], modo:'linha'|'colunas', fmt, eixo, altura}
  */
+function colunaArredondada(x0, y1, larg, alto) {
+  var r = Math.min(4, alto, larg / 2);
+  return 'M' + x0 + ',' + (y1 + alto) + 'V' + (y1 + r) + 'Q' + x0 + ',' + y1 + ' ' + (x0 + r) + ',' + y1 + 'H' + (x0 + larg - r) + 'Q' + (x0 + larg) + ',' + y1 + ' ' + (x0 + larg) + ',' + (y1 + r) + 'V' + (y1 + alto) + 'Z';
+}
 function serieTempo(el, c) {
   var W = Math.max(280, Math.floor(el.clientWidth)), H = c.altura || 250;
-  var linha = c.modo === 'linha';
+  var linha = c.modo === 'linha', agrupado = c.modo === 'agrupado';
+  var sobre = c.linhasSobre || []; // linhas desenhadas por cima das colunas, na mesma escala
   var n = c.baldes.length;
   var mostraRotDir = linha && W > 420 && c.series.length <= 4;
-  var m = { t: 14, r: mostraRotDir ? 78 : 14, b: 28, l: 46 };
+  var m = { t: sobre.length ? 22 : 14, r: mostraRotDir ? 78 : sobre.length ? 22 : 14, b: 28, l: 46 };
   var pw = W - m.l - m.r, ph = H - m.t - m.b;
   var totais = c.baldes.map(function (_, i) { return c.series.reduce(function (a, s) { return a + (s.valores[i] || 0); }, 0); });
-  var maxV = linha ? Math.max.apply(null, c.series.map(function (s) { return Math.max.apply(null, s.valores.concat([0])); })) : Math.max.apply(null, totais.concat([0]));
+  var maxSerie = function (s) { return Math.max.apply(null, s.valores.concat([0])); };
+  var maxV = linha || agrupado ? Math.max.apply(null, c.series.map(maxSerie)) : Math.max.apply(null, totais.concat([0]));
+  sobre.forEach(function (s) { maxV = Math.max(maxV, maxSerie(s)); });
   var passo = passoBonito(maxV || 1, 4);
   if (!c.fmt && !c.eixo) passo = Math.max(1, Math.ceil(passo)); // contagens: só inteiros
   var topo = Math.max(passo, Math.ceil((maxV || 1) / passo) * passo);
@@ -844,6 +852,15 @@ function serieTempo(el, c) {
       svg.append(sv('line', { x1: W - m.r + 8, x2: W - m.r + 18, y1: r.y, y2: r.y, stroke: r.cor, 'stroke-width': 2, 'stroke-linecap': 'round' }));
       svg.append(sv('text', { x: W - m.r + 22, y: r.y + 4, class: 'rot-dir' }, r.nome));
     });
+  } else if (agrupado) {
+    var k = c.series.length, grupo = Math.min(60, banda * .74), lc = (grupo - 2 * (k - 1)) / k;
+    c.baldes.forEach(function (b, i) {
+      c.series.forEach(function (s, si) {
+        var v = s.valores[i] || 0; if (v <= 0) return;
+        var x0 = x(i) - grupo / 2 + si * (lc + 2), y1 = y(v), alto = y(0) - y1;
+        svg.append(sv('path', { d: colunaArredondada(x0, y1, lc, alto), fill: s.cor, opacity: b.parcial ? .5 : 1 }));
+      });
+    });
   } else {
     var larg = Math.min(40, banda * .62);
     c.baldes.forEach(function (_, i) {
@@ -867,6 +884,22 @@ function serieTempo(el, c) {
     }
   }
 
+  // linhas sobrepostas (ex.: backlog no fim do mês), com rótulo só no pico e no último ponto
+  sobre.forEach(function (s) {
+    var d = s.valores.map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v || 0).toFixed(1); }).join('');
+    svg.append(sv('path', { d: d, fill: 'none', stroke: 'var(--surface)', 'stroke-width': 5, 'stroke-linejoin': 'round', opacity: .9 }));
+    svg.append(sv('path', { d: d, fill: 'none', stroke: s.cor, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    var iMax = 0; s.valores.forEach(function (v, i) { if (v > s.valores[iMax]) iMax = i; });
+    s.valores.forEach(function (v, i) {
+      var vazio = c.baldes[i].parcial;
+      svg.append(sv('circle', { cx: x(i), cy: y(v || 0), r: 4, fill: vazio ? 'var(--surface)' : s.cor, stroke: vazio ? s.cor : 'var(--surface)', 'stroke-width': 2 }));
+      if (s.rotular && (i === iMax || i === n - 1)) {
+        var ancora = i === n - 1 && n > 1 ? 'end' : 'middle';
+        svg.append(sv('text', { x: x(i) + (ancora === 'end' ? 8 : 0), y: y(v || 0) - 10, 'text-anchor': ancora, class: 'rot-ponto' }, (c.fmt || fInt)(v || 0)));
+      }
+    });
+  });
+
   var capa = sv('rect', { x: m.l, y: m.t, width: pw, height: ph, fill: 'transparent' });
   svg.append(capa);
   var atual = -1;
@@ -876,7 +909,9 @@ function serieTempo(el, c) {
     if (linha) { mira.setAttribute('x1', x(i)); mira.setAttribute('x2', x(i)); mira.setAttribute('opacity', 1); }
     else { faixa.setAttribute('x', x(i) - banda / 2); faixa.setAttribute('width', banda); faixa.setAttribute('opacity', 1); }
     var ls = c.series.map(function (s) { return { cor: s.cor, valor: (c.fmt || fInt)(s.valores[i] || 0), rotulo: s.nome }; });
-    if (!linha && c.series.length > 1) ls.push({ valor: (c.fmt || fInt)(totais[i]), rotulo: 'Total' });
+    if (!linha && !agrupado && c.series.length > 1) ls.push({ valor: (c.fmt || fInt)(totais[i]), rotulo: 'Total' });
+    if (c.tipExtra) ls = ls.concat(c.tipExtra(i));
+    sobre.forEach(function (s) { ls.push({ cor: s.cor, valor: (c.fmt || fInt)(s.valores[i] || 0), rotulo: s.nome }); });
     var r = svg.getBoundingClientRect();
     mostrarTip(cx !== undefined ? cx : r.left + x(i) * r.width / W, cy !== undefined ? cy : r.top + m.t + 10, b.longo, ls, b.parcial ? 'Período parcial (dados até ' + fData(diaMax) + ')' : null);
   }
@@ -895,7 +930,11 @@ function serieTempo(el, c) {
   });
   caixa.addEventListener('blur', limpar);
   caixa.append(svg);
-  if (c.legenda !== false && (!mostraRotDir || c.series.length > 1)) el.append(legenda(c.series, linha));
+  if (c.legenda !== false && (!mostraRotDir || c.series.length > 1)) {
+    var leg = legenda(c.series, linha);
+    sobre.forEach(function (s) { leg.append(h('span', null, h('i', { class: 'linha', style: 'background:' + s.cor + ';height:3px' }), s.nome)); });
+    el.append(leg);
+  }
   el.append(caixa);
   if (c.baldes.some(function (b) { return b.parcial; })) el.append(h('div', { class: 'nota' }, '* ' + (c.baldes.tipo === 'mês' ? 'Mês' : 'Semana') + ' parcial — dados até ' + fData(diaMax) + '.'));
 }
@@ -1056,15 +1095,31 @@ function paginaVisao(pg) {
 
   // tendência abertas x fechadas
   var abertas = serieContagem(B, O.dAb, b), fechadas = serieContagem(fech, O.dFe, b);
+  // backlog no fim de cada mês: estoque de OMs abertas e ainda não fechadas nem canceladas
+  // (inclui OMs abertas antes do período filtrado; os demais filtros valem)
+  var estoque = [];
+  for (var i0 = 0; i0 < N; i0++) if (passaDims(i0)) estoque.push(i0);
+  var temCancel = !!O.dCa;
+  var backlogFim = b.map(function (x) {
+    return contar(estoque, function (i) {
+      return O.dAb[i] !== null && O.dAb[i] <= x.fim && !(O.dFe[i] !== null && O.dFe[i] <= x.fim) &&
+        !(temCancel ? O.dCa[i] !== null && O.dCa[i] <= x.fim : O.grupo[i] === IDX.grupo.Cancelada);
+    });
+  });
+  var totAb = abertas.reduce(function (a, v) { return a + v; }, 0), totFe = fechadas.reduce(function (a, v) { return a + v; }, 0);
+  var saldo = function (v) { return (v > 0 ? '+' : '') + fInt(v); };
   pg.append(cartao({
-    id: 'tendencia', span: 's8', titulo: 'OMs abertas × fechadas por ' + b.tipo,
-    sub: 'Abertas pela data de abertura; fechadas pela data de fechamento',
+    id: 'tendencia', span: 's8', titulo: 'OMs abertas × fechadas e backlog',
+    sub: fInt(totAb) + ' abertas e ' + fInt(totFe) + ' fechadas no período · backlog no fim: ' + fInt(backlogFim[b.length - 1] || 0) + ' OMs',
     desenhar: function (el) {
-      serieTempo(el, { baldes: b, modo: 'linha', titulo: 'OMs abertas e fechadas por ' + b.tipo,
-        series: [{ nome: 'Abertas', cor: 'var(--s1)', valores: abertas }, { nome: 'Fechadas', cor: 'var(--s2)', valores: fechadas }] });
+      serieTempo(el, { baldes: b, modo: 'agrupado', titulo: 'OMs abertas, fechadas e backlog por ' + b.tipo, altura: 270,
+        series: [{ nome: 'Abertas', cor: 'var(--s1)', valores: abertas }, { nome: 'Fechadas', cor: 'var(--s2)', valores: fechadas }],
+        linhasSobre: [{ nome: 'Backlog no fim do ' + b.tipo, cor: 'var(--ink-2)', valores: backlogFim, rotular: true }],
+        tipExtra: function (i) { return [{ valor: saldo(abertas[i] - fechadas[i]), rotulo: 'Saldo (abertas − fechadas)' }]; } });
     },
-    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'a', rot: 'Abertas', num: true, fmt: fInt }, { k: 'f', rot: 'Fechadas', num: true, fmt: fInt }, { k: 's', rot: 'Saldo', num: true, fmt: function (v) { return (v > 0 ? '+' : '') + fInt(v); } }],
-      linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], s: abertas[i] - fechadas[i] }; }) }
+    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'a', rot: 'Abertas', num: true, fmt: fInt }, { k: 'f', rot: 'Fechadas', num: true, fmt: fInt },
+        { k: 's', rot: 'Saldo', num: true, fmt: saldo }, { k: 'bk', rot: 'Backlog no fim', num: true, fmt: fInt }],
+      linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], s: abertas[i] - fechadas[i], bk: backlogFim[i] }; }) }
   }));
 
   pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, AP, hhTot, hhProd); } }));
