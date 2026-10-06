@@ -1120,7 +1120,7 @@ var METRICAS_MAPA = {
   parada: { rot: 'OMs com máquina parada', valor: function (i) { return O.parada[i]; }, fmt: fInt },
   hh: { rot: 'Hh apontado', valor: function (i) { return O.hhApont[i] || 0; }, fmt: fH },
   custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } },
-  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecas[i].length; }, fmt: fInt },
+  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecasItens[i].length; }, fmt: fInt },
   falhas: { rot: 'OMs com código de falha', valor: function (i) { return O.falhas[i].length ? 1 : 0; }, fmt: fInt }
 };
 function seletorMetrica() {
@@ -1226,7 +1226,7 @@ function paginaTurbinas(pg) {
     r.oms++;
     if (O.tipo[i] === IDX.tipo['Corretiva']) r.corr++;
     if (O.grupo[i] === IDX.grupo.Backlog) { r.bkl++; if (O.idadeBkl[i] !== null) { r.idadeS += O.idadeBkl[i]; r.idadeN++; } }
-    r.pecas += O.pecas[i].length;
+    r.pecas += O.pecasItens[i].length;
     r.hh += O.hhApont[i] || 0;
     if (custoValido(i)) r.custo += O.custoTot[i] || 0;
   });
@@ -1314,7 +1314,7 @@ function linhaOM(i) {
     parqueTxt: O.wtg[i] >= 0 ? M.parques[parqueDoWtg[O.wtg[i]]] : '–', tipoTxt: M.dic.tipo[O.tipo[i]] || '–', sistemaTxt: M.dic.sistema[O.sistema[i]] || '–',
     status: O.status[i], statusTxt: M.dic.status[O.status[i]], esperaTxt: O.espera[i] >= 0 ? M.dic.espera[O.espera[i]] : '–', abertura: O.dAb[i], fechamento: O.dFe[i],
     idade: O.idadeBkl[i], lead: O.leadH[i] === null ? null : O.leadH[i] / 24, parada: O.parada[i] ? 'Sim' : 'Não', hh: O.hhApont[i], custo: O.custoTot[i], desc: O.desc[i],
-    pecasTxt: O.pecas[i].map(function (k) { return M.componentes[k]; }).join(', '), falhasTxt: O.falhas[i].map(function (k) { return M.falhas[k]; }).join(' / '), nPecas: O.pecas[i].length, custoMat: O.custoMat[i]
+    pecasTxt: O.pecasItens[i].map(function (it) { return it[1]; }).join(', '), falhasTxt: O.falhas[i].map(function (k) { return M.falhas[k]; }).join(' / '), nPecas: O.pecasItens[i].length, custoMat: O.custoMat[i]
   };
 }
 
@@ -1346,7 +1346,7 @@ function cartaoPecas(span, top) {
   var visiveis = itens.slice(0, top);
   estado.f.peca.forEach(function (k) { if (!visiveis.some(function (d) { return d.k === k; })) { var d = itens.filter(function (x) { return x.k === k; })[0]; if (d) visiveis.push(d); } });
   return cartao({
-    id: 'pecas-rank', span: span, titulo: 'Peças mais trocadas', sub: 'Top ' + top + ' de ' + itens.length + ' · % das OMs com troca · clique para filtrar',
+    id: 'pecas-rank', span: span, titulo: 'Peças mais trocadas', sub: 'Por tipo de peça · top ' + top + ' de ' + itens.length + ' · clique para filtrar',
     desenhar: function (el) {
       if (!visiveis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada nos filtros atuais.')); return; }
       barrasH(el, visiveis.map(function (d) { return { k: d.k, rot: d.rot, v: d.v, extra: d.extra, cor: 'var(--s3)' }; }), { onClick: function (k) { alternarFiltro('peca', k); }, ativo: estado.f.peca, larguraRotulo: '46%', unidade: 'vezes' });
@@ -1361,9 +1361,9 @@ function paginaComponentes(pg) {
   var comPeca = B.filter(function (i) { return O.pecas[i].length; });
   var trocas = 0, porComp = new Map(), mes = new Array(b.length).fill(0);
   comPeca.forEach(function (i) {
-    trocas += O.pecas[i].length;
+    trocas += O.pecasItens[i].length;
     O.pecas[i].forEach(function (k) { porComp.set(k, (porComp.get(k) || 0) + 1); });
-    var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += O.pecas[i].length;
+    var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += O.pecasItens[i].length;
   });
   var top = Array.from(porComp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
   var custoMat = soma(comPeca, O.custoMat, custoValido);
@@ -1384,7 +1384,7 @@ function paginaComponentes(pg) {
   comPeca.forEach(function (i) {
     if (O.wtg[i] < 0) return;
     var r = porW.get(O.wtg[i]) || { k: O.wtg[i], v: 0, comp: new Map() };
-    r.v += O.pecas[i].length;
+    r.v += O.pecasItens[i].length;
     O.pecas[i].forEach(function (k) { r.comp.set(k, (r.comp.get(k) || 0) + 1); });
     porW.set(O.wtg[i], r);
   });
@@ -1696,7 +1696,7 @@ function abrirOM(i) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
-      O.pecas[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecas[i].map(function (k) { return h('span', { class: 'pill' }, M.componentes[k]); })),
+      O.pecasItens[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecasItens[i].map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] }, h('i', { style: 'background:var(--s3)' }), it[1]); })),
         h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas automaticamente no texto do serviço executado.')] : null,
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
@@ -2004,11 +2004,11 @@ function iniciar(modelo) {
     var fx = window.ModeloTurbinas && ModeloTurbinas.extrairFalhas ? ModeloTurbinas.extrairFalhas(O.desc) : { rotulos: [], falhas: O.desc.map(function () { return []; }) };
     M.falhas = fx.rotulos; O.falhas = fx.falhas;
   }
-  if (!O.pecas || !M.componentes) { // base salva por uma versão anterior do painel
+  if (!O.pecas || !M.componentes || !O.pecasItens) { // base salva por uma versão anterior do painel
     var ext = window.ModeloTurbinas && ModeloTurbinas.componentesTrocados;
     M.componentes = ext ? ModeloTurbinas.COMPONENTES.map(function (c) { return c[0]; }) : [];
-    O.pecas = []; O.pecasTrecho = [];
-    for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], trechos: [] }; O.pecas.push(r.ids); O.pecasTrecho.push(r.trechos); }
+    O.pecas = []; O.pecasItens = []; O.pecasTrecho = [];
+    for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], itens: [], trechos: [] }; O.pecas.push(r.ids); O.pecasItens.push(r.itens); O.pecasTrecho.push(r.trechos); }
   }
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
   parqueDoWtg = []; posDoWtg = [];

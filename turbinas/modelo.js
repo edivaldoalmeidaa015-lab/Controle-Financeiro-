@@ -18,40 +18,42 @@
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
     'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
     'custoMat', 'custoTot', 'espera', 'cancel', 'resp', 'reprog', 'ckItens', 'ckResp', 'durH',
-    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasTrecho', 'falhas'];
+    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasItens', 'pecasTrecho', 'falhas'];
   var CAMPOS_AP = ['ordem', 'pessoa', 'tipoAp', 'dia', 'horas'];
 
   /*
-   * Componentes substituídos, identificados no texto do "Serviço executado".
-   * Regra: para cada verbo de troca já realizada ("substituição", "trocado", "foi
-   * substituído"...), o componente é a primeira peça que vem logo depois do verbo
-   * ("substituição DA PLACA aepa"), mais as ligadas por "e"/"," ("os rolamentos e o
-   * encoder"). Se o verbo não tem objeto ("o encoder estava danificado, realizado a
-   * substituição" / "o mesmo foi substituído"), vale a última peça citada antes dele.
-   * Frases de recomendação ou pendência ("programar substituição", "aguardando troca",
-   * "não foi necessário substituir") são ignoradas.
-   * Cada regra: [nome, expressão sobre UMA palavra sem acento, expressão opcional p/ 2 palavras].
+   * Peças substituídas, identificadas no texto do "Serviço executado".
+   * Para cada verbo de troca já realizada ("substituição", "trocado", "foi substituído"...):
+   *  - a peça é o que vem logo depois do verbo ("substituição DO SLIP DE COMUNICAÇÃO"),
+   *    mais as ligadas por "e"/"," ("dos rolamentos, encoder e K21");
+   *  - se o verbo não tem objeto ("realizado a substituição", "o mesmo foi substituído",
+   *    "substituição do componente"), vale a peça citada antes dele;
+   *  - o que não está no dicionário entra como "Outras peças", com o nome como escrito.
+   * Recomendações e pendências ("programar substituição", "não foi realizada a troca")
+   * são ignoradas. Cada troca guarda a categoria e o nome da peça como foi escrito.
+   * Regra de categoria: [nome, expressão sobre UMA palavra sem acento, expressão opcional p/ 2-3 palavras].
    */
   var COMPONENTES = [
-    ['Placa eletrônica', /^(placas?|aepa|aead|aeps|aepb|aeaa|aebi|weca|weta|wetb|wetc|weda|card|cartao|clp|usca)$/],
-    ['Encoder', /^encoders?$|^encode$/],
+    ['Placa eletrônica', /^(placas?|ae[a-z]{2}|we[a-z]{2}|card|cartao|clp|usca)$/],
+    ['Encoder', /^enco[l]?ders?$|^encode$/],
     ['Motor', /^motor(es)?$|^motoredutor/],
     ['Sensor', /^sensor(es)?$|^sendor(es)?$|^pt100$|^termostato$|^pressostato$|^acelerometros?$|^transdutor(es)?$/],
     ['Anemômetro / biruta', /^anemometros?$|^biruta$/, /^(wind vane|wind sensor|sensor wind|sensor de vento)$/],
-    ['Fusível', /^fus[iy]ve(l|is)$/, /^porta fus/],
-    ['Disjuntor', /^disjuntor(es)?$|^breaker$/],
-    ['Contatora / relé', /^contator(a|as|es)?$|^contactor(a|as|es)?$|^reles?$|^relay$/],
+    ['Fusível', /^fus[iy]ve(l|is)$|^porta-fus/, /^porta fus/],
+    ['Disjuntor', /^disjuntor(es)?$|^breaker$|^q\d{1,2}$/],
+    ['Contatora / relé', /^contator(a|as|es)?$|^contactor(a|as|es)?$|^reles?$|^relay$|^k\d{1,3}$/],
     ['UPS / nobreak', /^ups$|^nobreak$/],
     ['Bateria', /^baterias?$/],
     ['Carregador / fonte', /^carregador(es)?$|^fontes?$/],
     ['Cabo / conector', /^cabos?$|^rj45$|^conector(es)?$|^chicote$/],
-    ['Escovas / slip ring', /^escovas?$|^slipring$/, /^(slip ring|slip de)/],
+    ['Slip ring', /^slip$|^slipring$|^slip-ring$/],
+    ['Escovas', /^escovas?$/],
     ['Rolamento', /^rolamentos?$/],
     ['Filtro', /^filtros?$|^dessecante$|^cartucho$/, /^(elemento filtrante|elementos filtrantes)/],
     ['Óleo / graxa', /^oleo$|^graxa$|^lubrificante$/],
     ['Parafusos / fixação', /^parafusos?$|^porcas?$|^studs?$|^arruelas?$|^prisioneiros?$/],
     ['Bobina', /^bobinas?$/],
-    ['Acumulador', /^ac+umulador(es)?$/],
+    ['Acumulador', /^ac+umulador(es)?$|^acumulado$/],
     ['Mangueira', /^mangueiras?$/],
     ['Freio (pastilhas / disco)', /^pastilhas?$|^lonas?$|^pucks?$|^brake$/, /^(brake pad|disco de freio|disco do freio)/],
     ['Ventilador', /^ventilador(es)?$|^fan$|^cooler$|^exaustor(es)?$/],
@@ -63,19 +65,28 @@
     ['Acoplamento', /^acoplamentos?$|^laminas?$/],
     ['Vedação / O-ring', /^o-?rings?$|^retentor(es)?$|^vedacao$|^juntas?$/],
     ['Válvula', /^valvulas?$|^solenoide$/],
-    ['Chave / botoeira', /^chaves?$|^botoeira$|^botao$|^fim$/, /^fim de curso/],
+    ['Chave / botoeira', /^chaves?$|^botoeira$|^botao$|^seletora$|^fim$/, /^fim de curso/],
     ['Conversor / IGBT', /^igbts?$|^conversor(es)?$|^inversor(es)?$/, /^power conver/],
     ['Switch / rede', /^switch$|^hirschmann$|^hrisman$|^hirchmann$/],
     ['Gancho / talha', /^gu?a?n?cho$|^gacho$|^guacho$|^guincho$|^talhas?$/],
     ['Linha de vida', /^$/, /^linha de vida/],
     ['Escada', /^escadas?$/],
-    ['Redutora / gearbox', /^redutor(a|as|es)?$/]
+    ['Redutora / gearbox', /^redutor(a|as|es)?$/],
+    ['Outras peças', /^$/]
   ];
+  var OUTRAS = COMPONENTES.length - 1;
   // verbos de troca JÁ REALIZADA (exclui infinitivo "substituir"/"trocar", que costuma ser recomendação)
-  var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|reposicao|repost[oa]s?)$/;
-  var PENDENTE = /\bnao\b.{0,35}\b(necessari|necessidade)|\bsem (necessidade|necessari)|\bnao (foi|foram|sera|houve)\b.{0,25}(substitu|troca)|aguardando|programar|programad|recomend|sugerid|sugere|solicitad|solicitar|pendente|necessita|necessario (a |realizar |fazer )?(a )?(substitu|troca)|sera (necessari\w* )?(substitu|troca)|devera|deve ser|precisa|importante/;
+  var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|reposicao|repost[oa]s?|substitui-l[oa]s?|troca-l[oa]s?)$/;
+  var PENDENTE = /\bnao\b.{0,35}\b(necessari|necessidade)|\bsem (necessidade|necessari)|\bnao (foi|foram|sera|houve)\b.{0,25}(substitu|troca)|aguardando|programar|programad|recomend|sugerid|sugere|solicitad|solicitar|pendente|necessita|(?<!foi |foram |sendo |fez-se |se fez )necessari\w* (a |realizar |fazer )?(a )?(substitu|troca)|sera (necessari\w* )?(substitu|troca)|devera|deve ser|precisa|importante/;
   // palavras que podem ficar entre o verbo e a peça
-  var LIGA = /^(componentes?|pecas?|itens?|item|de|do|da|dos|das|o|a|os|as|um|uma|uns|umas|no|na|nos|nas|em|e|novo|nova|novos|novas|dois|duas|tres|quatro|seis|oito|ambos|ambas|todos|todas|completa|completo|conjunto|kit|jogo|mesmo|mesma|02|\d+|x|\d+x|pc|pcs|unidades?)$/;
+  var LIGA = /^(doas|de|do|da|dos|das|o|a|os|as|um|uma|uns|umas|no|na|nos|nas|em|e|novo|nova|novos|novas|dois|duas|tres|quatro|seis|oito|ambos|ambas|todos|todas|completa|completo|conjunto|kit|jogo|cinco|sete|nove|dez|doze|quinze|vinte|trinta|quarenta|cinquenta|cem|02|\d+|\d+o|x|\d+x|pc|pcs|unidades?|corretiva|preventiva|imediata|integral|total|parcial)$/;
+  // o verbo aponta para algo já citado ("substituição do componente", "do mesmo")
+  var GENERICO = /^(componentes?|pecas?|itens?|item|d?[ao]?mesm\w*|memos|equipamento|quais|qual|estes|estas|esses|essas|este|esta|esse|essa)$/;
+  // palavras que não são peça: depois do verbo, indicam que não há objeto
+  var NAO_PECA = /^(falhas?|turbinas?|wtg|maquina|aerogerador|atividades?|por|pela|pelo|para|como|junto|com|que|sendo|onde|devido|ou|reparo|liberad\w*|sanad\w*|necessari\w*|recente|seguida|porem|entanto|ainda|tambem|apos|mais|nao|foi|foram|e|em|esta|estava|sera|se|seu|sua|ja|todo|tudo|dia|hoje|ontem|axis|blade|pitch|hub|nacele|nacelle|yaw|gerador|gearbox|gbx|painel|top|box|circuito|sistema|preventivamente|corretivamente|imediat\w*|sanando|entao|acre?s+c?entad\w*|assim|sucessiv\w*|referid\w*|download|perda|segunda|terceira|primeira|nova|novamente)$/;
+  // qualificadores que fazem parte do nome da peça ("slip DE COMUNICAÇÃO")
+  var QUALIF = /^(comunicacao|potencia|aterramento|fase|linha|ventilacao|oleo|refrigeracao|alimentacao|freio|terra|controle|emergencia|sinal|protecao|seguranca|fixacao|acesso|vida|sustentacao|temperatura|pressao|vento|rede|dados|velocidade|rotacao|posicao|nivel|tensao|corrente|ancoragem|fan|ventilador|bomba|motor|gerador|yaw|pitch|freio|gearbox|gbx|conversor|acoplamento|hidraulica|hidraulico|central|vida|lubrificacao|manual)$/;
+  var SIGLA = /^(ae[a-z]{2}|we[a-z]{2}|ups|igbt|clp|dps|rj45|dta|pt100|cbm|usca|gbx|mcc|plc|io|led|dc|ac)$|^[a-z]\d{1,4}$/;
 
   // palavras que iniciam outra ação na frase
   var ACAO = /^(feit[oa]s?|realizad[oa]s?|realizamos|efetuad[oa]s?|executad[oa]s?|inspecao|inspecionad\w*|verificad\w*|verificacao|testes?|testad\w*|limpeza|limpo|ajustad\w*|ajuste|reaperto|reapertad\w*|medicao|medid\w*|apos|seguida|liberad\w*|identificad\w*|constatad\w*|analise|retirad\w*|instalacao)$/;
@@ -140,86 +151,184 @@
 
   function semAcento(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
+  /** Categoria da peça que começa na posição k (ou -1). Testa também 2-3 palavras ("slip ring"). */
   function componenteEm(toks, k) {
     var w = toks[k];
     if (!w || w === '|') return -1;
-    var par = toks[k + 1] && toks[k + 1] !== '|' ? w + ' ' + toks[k + 1] + (toks[k + 2] && toks[k + 2] !== '|' ? ' ' + toks[k + 2] : '') : w;
-    for (var c = 0; c < COMPONENTES.length; c++) {
+    var par = w;
+    for (var x = 1; x <= 2 && toks[k + x] && toks[k + x] !== '|'; x++) par += ' ' + toks[k + x];
+    for (var c = 0; c < OUTRAS; c++) {
       if (COMPONENTES[c][2] && COMPONENTES[c][2].test(par)) return c;
       if (COMPONENTES[c][1].test(w)) return c;
     }
     return -1;
   }
+  function ehSubstantivo(w) { return !!w && w !== '|' && /^[a-z][a-z\-]{2,}$/.test(w) && !NAO_PECA.test(w) && !ACAO.test(w) && !GENERICO.test(w) && !LIGA.test(w) && !VERBO.test(w); }
 
   /**
-   * Peça citada antes do verbo. Prefere a que vem com artigo ("que O CARREGADOR da axis
-   * 2 bateria 4 estava com defeito") — o resto costuma ser só a localização.
+   * Nome da peça a partir da posição k: a palavra principal (ou 2 palavras, "slip ring"),
+   * siglas logo depois ("placa AEPA", "contator K21") e qualificadores com "de/do/da"
+   * ("slip de comunicação", "porta-fusível do Top Box", "bobinas do Q1").
+   * Devolve [fim exclusivo, texto].
    */
-  function sujeitoAntes(toks, v, antes) {
-    var todos = (antes || []).concat(['|'], toks), fim = (antes || []).length + 1 + v;
-    var perto = -1;
-    for (var b = fim - 1; b >= Math.max(0, fim - 24); b--) {
-      var c = componenteEm(todos, b);
-      if (c < 0) continue;
-      if (perto < 0) perto = c;
-      if (/^(o|a|os|as|um|uma|que|no|na)$/.test(todos[b - 1] || '')) return c;
+  function nomePeca(toks, orig, k) {
+    var fim = k + 1, c = componenteEm(toks, k);
+    if (c >= 0 && COMPONENTES[c][2] && !COMPONENTES[c][1].test(toks[k])) {
+      for (var n = 3; n >= 2; n--) if (COMPONENTES[c][2].test(toks.slice(k, k + n).join(' ')) && !COMPONENTES[c][2].test(toks.slice(k, k + n - 1).join(' '))) { fim = k + n; break; }
     }
-    return perto;
+    while (fim < toks.length && fim - k < 5) {
+      var t = toks[fim], t2 = toks[fim + 1];
+      if (SIGLA.test(t) && !/^(io|dc|ac)$/.test(t)) { fim++; continue; }
+      if (/^(de|do|da|dos|das)$/.test(t) && t2 && (QUALIF.test(t2) || SIGLA.test(t2))) { fim += 2; continue; }
+      if (/^(de|do|da)$/.test(t) && t2 === 'top' && toks[fim + 2] === 'box') { fim += 3; continue; }
+      if (c < 0 && fim === k + 1 && ehSubstantivo(t) && !QUALIF.test(t) && !/(ad|id)[oa]s?$|ntes?$/.test(t)) { fim++; continue; }
+      break;
+    }
+    var txt = orig.slice(k, fim).map(function (o, x) {
+      var n = toks[k + x];
+      if (SIGLA.test(n) && n !== 'io') return o.toUpperCase();
+      if (n === 'top' || n === 'box') return o.charAt(0).toUpperCase() + o.slice(1).toLowerCase();
+      return o.toLowerCase();
+    }).join(' ');
+    return [fim, txt.charAt(0).toUpperCase() + txt.slice(1)];
   }
 
-  /** Devolve {ids: [índices de COMPONENTES], trechos: [frase de onde saiu cada um]} */
+  /** Peça citada antes do verbo (prefere a que vem com artigo: "que O CARREGADOR da axis 2 bateria 4"). */
+  function pecaAntes(toks, orig, v) {
+    var perto = -1;
+    for (var b = v - 1; b >= Math.max(0, v - 24); b--) {
+      if (componenteEm(toks, b) < 0) continue;
+      if (perto < 0) perto = b;
+      if (/^(o|a|os|as|um|uma|que|no|na)$/.test(toks[b - 1] || '')) return cabeca(b);
+    }
+    return perto < 0 ? -1 : cabeca(perto);
+    // "motor DO FAN": a peça é a primeira da expressão
+    function cabeca(b) { while (/^(do|da|de|dos|das)$/.test(toks[b - 1] || '') && componenteEm(toks, b - 2) >= 0) b -= 2; return b; }
+  }
+
+  /**
+   * Peça fora do dicionário citada antes do verbo como defeituosa:
+   * "o BLOCO de lubrificação estava danificado, foi realizado a substituição".
+   */
+  var DEFEITO = /^(danificad\w*|avariad\w*|queimad\w*|defeit\w*|quebrad\w*|rompid\w*|travad\w*|desgastad\w*|oxidad\w*|curto|falha|mal|trincad\w*|vazamento|vazando|inoperante|aberto|aberta)$/;
+  function defeituosaAntes(toks, v, base) {
+    for (var b = v - 1; b > Math.max(base, v - 30); b--) {
+      if (!/^(o|a|os|as|um|uma)$/.test(toks[b - 1] || '') || !ehSubstantivo(toks[b])) continue;
+      for (var d = b + 1; d < Math.min(v, b + 9); d++) if (DEFEITO.test(toks[d])) return b;
+    }
+    return -1;
+  }
+
+  /**
+   * Devolve {ids: categorias distintas, itens: [[categoria, nome]], trechos: frase de cada item}.
+   */
   function componentesTrocados(texto) {
-    var ids = [], trechos = [];
-    if (!texto) return { ids: ids, trechos: trechos };
-    var frases = String(texto).split(/\n(?=\s*[\[\-•*])|\n\s*\n|(?<=[.;!?])\s+|(?<=[a-z]\.)(?=[A-Z])/);
-    var anteriores = [];
+    var ids = [], itens = [], trechos = [];
+    if (!texto) return { ids: ids, itens: itens, trechos: trechos };
+    var frases = String(texto).split(/\n(?=\s*[\[\-•*A-ZÀ-Ú])|\n\s*\n|(?<=[.;!?])\s+|(?<=[a-z]\.)(?=[A-Z\d])/);
+    var antesT = [], antesO = [];
     frases.forEach(function (frase) {
-      var n = semAcento(frase);
-      // pontuação, hífen de lista e "porém/mas" viram o marcador "|" (fim de oração)
-      var toks = n.replace(/(^|\s)-+/g, ' | ').replace(/[,;:()\[\]]/g, ' | ')
-        .replace(/\b(porem|mas|entretanto|contudo|todavia)\b/g, ' | ').replace(/[^a-z0-9|\- ]/g, ' ').split(/\s+/).filter(Boolean);
-      var antes = anteriores; anteriores = toks;
-      // a oração (entre marcadores "|") que contém a posição v
+      // tokens originais (para o nome) e normalizados (para as regras), alinhados
+      var bruto = frase.replace(/(^|\s)-+/g, ' | ').replace(/[,;:()\[\]]/g, ' | ')
+        .replace(/\b(porém|porem|mas|entretanto|contudo|todavia)\b/gi, ' | ').split(/\s+/);
+      var orig = [], toks = [];
+      bruto.forEach(function (o) {
+        var n = o === '|' ? '|' : semAcento(o).replace(/[^a-z0-9\-]/g, '').replace(/^-+|-+$/g, '');
+        if (!n) return;
+        var grudado = /^(os|as|o|a|do|da|no|na)([a-z].{3,})$/.exec(n);
+        if (grudado && componenteEm([n], 0) < 0 && componenteEm([grudado[2]], 0) >= 0) {
+          toks.push(grudado[1]); orig.push(o.slice(0, grudado[1].length));
+          n = grudado[2]; o = o.slice(grudado[1].length);
+        }
+        toks.push(n); orig.push(o.replace(/^[^\wÀ-ú]+|[^\wÀ-ú]+$/g, ''));
+      });
+      // a frase anterior entra como contexto para "o mesmo foi substituído"
+      var T = antesT.concat(['|'], toks), Or = antesO.concat(['|'], orig), base = antesT.length + 1;
+      antesT = toks; antesO = orig;
+      var trecho = frase.replace(/^\s*\[[^\]]{0,80}\]\s*/, '').trim().replace(/\s+/g, ' ').slice(0, 260);
+      function anota(pos) {
+        if (pos < 0) return -1;
+        var c = componenteEm(T, pos), r = nomePeca(T, Or, pos);
+        if (c < 0) c = OUTRAS;
+        // mesma peça citada de novo ("Hirschmann" / "Hirschmann do Top Box"): fica o nome mais completo
+        var novo = r[1].toLowerCase(), igual = -1;
+        itens.forEach(function (it, x) { var vel = it[1].toLowerCase(); if (it[0] === c && (vel.indexOf(novo) === 0 || novo.indexOf(vel) === 0)) igual = x; });
+        if (igual >= 0) { if (r[1].length > itens[igual][1].length) itens[igual][1] = r[1]; }
+        else {
+          itens.push([c, r[1]]); trechos.push(trecho);
+          if (ids.indexOf(c) < 0) ids.push(c);
+        }
+        return r[0];
+      }
+      // trecho da oração até logo depois do verbo: "programar substituição", "não foi realizada a substituição"
+      // (o que vem bem depois — "e será programado verificar o vazamento" — não anula a troca feita)
       function oracao(v) {
         var a = v, b = v;
-        while (a > 0 && toks[a - 1] !== '|') a--;
-        while (b < toks.length - 1 && toks[b + 1] !== '|') b++;
-        return toks.slice(Math.max(0, a - 3), b + 1).join(' ');
+        while (a > base && T[a - 1] !== '|') a--;
+        while (b < T.length - 1 && T[b + 1] !== '|' && b < v + 3) b++;
+        return T.slice(Math.max(base, a - 3), b + 1).join(' ');
       }
-      function anota(c) { if (c >= 0 && ids.indexOf(c) < 0) { ids.push(c); trechos.push(frase.replace(/^\s*\[[^\]]{0,80}\]\s*/, '').trim().replace(/\s+/g, ' ').slice(0, 260)); } }
-      toks.forEach(function (w, v) {
-        if (!VERBO.test(w) || PENDENTE.test(oracao(v))) return;
+      for (var v = base; v < T.length; v++) {
+        if (!VERBO.test(T[v]) || PENDENTE.test(oracao(v))) continue;
+        var passiva = /^(substituid|trocad|repost)/.test(T[v]) && /^(foi|foram|sendo|sao|estao|sera)$/.test(T[v - 1] || '');
         // 1) objeto depois do verbo
-        var k = v + 1, achou = -1, pulos = 0;
-        while (k < toks.length && toks[k] !== '|' && pulos < 5) {
-          var c = componenteEm(toks, k);
-          if (c >= 0) { achou = c; break; }
-          if (LIGA.test(toks[k])) { k++; continue; }
-          pulos++; k++;
+        var k = v + 1;
+        while (k < T.length && T[k] !== '|' && LIGA.test(T[k])) k++;
+        var junto = T[k] === 'junto' && T[k + 1] === 'com';
+        if (junto) { k += 2; while (k < T.length && LIGA.test(T[k])) k++; }
+        var objeto = -1;
+        if (componenteEm(T, k) >= 0) objeto = k;
+        else if (ehSubstantivo(T[k]) && !passiva) {
+          // "acrílico DA BOMBA", "case DO FILTRO": a categoria vem da peça logo adiante
+          objeto = k;
         }
-        // voz passiva ("os rolamentos ... foram substituídos"): o sujeito vem antes do verbo
-        if (/^(substituid|trocad|repost)/.test(w) && /^(foi|foram|sendo|sao|estao|sera)$/.test(toks[v - 1] || '')) anota(sujeitoAntes(toks, v, antes));
-        if (achou >= 0) {
-          anota(achou);
-          // 2) peças encadeadas: "os rolamentos e o encoder", "placa aepa, weca e weta".
-          //    Para numa nova ação ("e feito uma inspeção no sensor") ou após 5 palavras sem peça.
-          for (var j = k + 1, desde = 0; j < toks.length && desde <= 5; j++, desde++) {
-            if (ACAO.test(toks[j])) break;
-            if (toks[j] === 'e' || toks[j] === '|') {
-              var t = j + 1;
-              while (t < toks.length && LIGA.test(toks[t]) && toks[t] !== 'e') t++;
-              var c2 = componenteEm(toks, t);
-              if (c2 >= 0) { anota(c2); k = t; j = t; desde = 0; continue; }
-              if (toks[j] === '|') break;
+        if (objeto >= 0) {
+          var fimNome = anota(objeto);
+          if (componenteEm(T, objeto) < 0) {
+            // peça desconhecida: se logo adiante vem uma peça conhecida ("acrílico da bomba"), usa a categoria dela
+            for (var a2 = fimNome; a2 < Math.min(T.length, fimNome + 3) && T[a2] !== '|'; a2++) {
+              if (!/^(de|do|da|dos|das)$/.test(T[a2])) continue;
+              var c2 = componenteEm(T, a2 + 1);
+              if (c2 >= 0) {
+                var ult = itens[itens.length - 1];
+                if (ult && ult[0] === OUTRAS) {
+                  ult[0] = c2; ult[1] += ' ' + T.slice(a2, a2 + 2).map(function (t, x) { return x ? Or[a2 + x].toLowerCase() : t; }).join(' ');
+                  if (ids.indexOf(c2) < 0) ids.push(c2);
+                  var aindaOutras = itens.some(function (it) { return it[0] === OUTRAS; });
+                  if (!aindaOutras && ids.indexOf(OUTRAS) >= 0) ids.splice(ids.indexOf(OUTRAS), 1);
+                }
+                break;
+              }
             }
           }
-          return;
+          // 2) peças encadeadas: "dos rolamentos, encoder e K21"
+          var j = fimNome, desde = 0;
+          while (j < T.length && desde <= 4) {
+            if (ACAO.test(T[j]) || VERBO.test(T[j])) break;
+            if (T[j] === 'e' || T[j] === '|') {
+              var t = j + 1;
+              while (t < T.length && LIGA.test(T[t]) && T[t] !== 'e') t++;
+              if (componenteEm(T, t) >= 0) { j = anota(t); desde = 0; continue; }
+              if (T[j] === '|' && !/^(e)$/.test(T[t] || '')) break;
+            }
+            j++; desde++;
+          }
+          if (!passiva || (componenteEm(T, objeto) >= 0 && !junto)) continue;
         }
-        // 3) verbo sem objeto ("realizado a substituição", "substituição do componente"): peça citada antes
-        anota(sujeitoAntes(toks, v, antes));
-      });
+        // 3) sem objeto (ou voz passiva): a peça citada antes do verbo
+        if (objeto < 0 && !(passiva || T[k] === '|' || k >= T.length || GENERICO.test(T[k]) || NAO_PECA.test(T[k]) || ACAO.test(T[k]))) continue;
+        if (passiva) {
+          // "o suporte foi substituído": o sujeito vem logo antes de "foi" (depois do artigo)
+          var s0 = v - 2;
+          while (s0 > base && T[s0] !== '|' && !/^(o|a|os|as|um|uma|que)$/.test(T[s0 - 1]) && v - s0 < 6) s0--;
+          if (componenteEm(T, s0) >= 0 || ehSubstantivo(T[s0])) { anota(s0); continue; }
+        }
+        var antes = pecaAntes(T, Or, v);
+        if (antes < 0) antes = defeituosaAntes(T, v, base);
+        anota(antes);
+      }
     });
-    return { ids: ids, trechos: trechos };
+    return { ids: ids, itens: itens, trechos: trechos };
   }
 
   function Dic(inicial) {
@@ -338,11 +447,11 @@
         eAbertas: num(e[0], 1), eProg: num(e[1], 1), eEspera: num(e[2], 1), eApont: num(e[3], 1),
         desc: texto(r.Descricao), exec: texto(r.Servico_Executado),
         obsEspera: texto(r.Obs_Motivo_Espera), obsCancel: texto(r.Obs_Cancelamento),
-        pecas: null, pecasTrecho: null, falhas: null,
+        pecas: null, pecasItens: null, pecasTrecho: null, falhas: null,
         atipico: custo !== null && custo >= LIMITE_CUSTO_ATIPICO ? 1 : 0, tecnicos: num(r.Qtd_Tecnicos, 0)
       };
       var comp = componentesTrocados(v.exec);
-      v.pecas = comp.ids; v.pecasTrecho = comp.trechos;
+      v.pecas = comp.ids; v.pecasItens = comp.itens; v.pecasTrecho = comp.trechos;
       CAMPOS.forEach(function (c) { col[c].push(v[c]); });
     });
 
