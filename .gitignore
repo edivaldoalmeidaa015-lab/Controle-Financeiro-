@@ -1,3 +1,7 @@
 .DS_Store
 node_modules/
 *.log
+
+# Dados da operação (não publicar)
+turbinas/*.xlsx
+turbinas/*-com-dados.html
