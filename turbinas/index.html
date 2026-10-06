@@ -79,7 +79,9 @@ button { cursor: pointer; }
   display: flex; flex-direction: column; align-items: stretch; padding: 12px 8px; gap: 4px;
 }
 .rail .marca { display: grid; place-items: center; height: 44px; margin-bottom: 10px; }
-.rail .marca svg { width: 34px; height: 34px; }
+.rail .marca svg, .rail .marca img { width: 34px; height: 34px; display: block; }
+.topo .marca-topo { width: 42px; height: 42px; flex-shrink: 0; display: block; }
+.topo .titulo { flex: 1 1 0; min-width: 0; }
 .nav-btn {
   border: 0; background: transparent; color: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -376,7 +378,7 @@ svg text { font-family: inherit; }
 .drop h1 { font-size: 22px; margin: 14px 0 6px; }
 .drop p { color: var(--ink-2); margin: 0 0 20px; }
 .drop .erro { color: var(--critical-ink); font-weight: 600; margin-top: 14px; }
-.drop svg.logo { width: 56px; height: 56px; }
+.drop .logo { width: 56px; height: 56px; display: inline-block; }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1280px) {
@@ -398,6 +400,10 @@ svg text { font-family: inherit; }
   .main { padding-bottom: 68px; }
   .topo { padding: 12px 16px 8px; flex-wrap: wrap; }
   .topo .acoes .txt { display: none; }
+  .topo { gap: 12px; align-items: flex-start; }
+  .topo h1 { font-size: 17px; }
+  .topo .marca-topo { width: 38px; height: 38px; margin-top: 2px; }
+  .topo .acoes { margin-left: 0; width: 100%; justify-content: flex-end; }
   .filtros { padding: 8px 16px; }
   .filtros .linha { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
   .slicer { min-width: 116px; flex-shrink: 0; }
@@ -436,6 +442,10 @@ svg text { font-family: inherit; }
 var SHEETJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 var CHAVE_BASE = 'painel-turbinas:base';
 var CHAVE_TEMA = 'painel-turbinas:tema';
+// Logo da empresa (data URI ou URL). Vazio = ícone genérico de turbina.
+// O script scripts/gerar-com-dados.js preenche com --logo=arquivo.png.
+var LOGO_URL = '';
+var LOGO_NOME = 'Logo da empresa';
 var DIA_MS = 864e5;
 var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 var MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -1970,7 +1980,7 @@ function montarApp() {
   var raiz = document.getElementById('raiz');
   raiz.textContent = '';
   var nav = h('nav', { class: 'rail', 'aria-label': 'Páginas do painel' },
-    h('div', { class: 'marca', 'aria-hidden': 'true' }, logo()));
+    LOGO_URL ? null : h('div', { class: 'marca', 'aria-hidden': 'true' }, logo()));
   Object.keys(PAGINAS).forEach(function (k) {
     nav.append(h('button', { type: 'button', class: 'nav-btn', 'data-p': k, onclick: function () { irPara(k); } }, icone(PAGINAS[k].icone), PAGINAS[k].rot));
   });
@@ -1979,7 +1989,8 @@ function montarApp() {
 
   var nTurb = M.ativos.length, modelo = M.ativos[0] && M.ativos[0].modelo;
   var topo = h('header', { class: 'topo' },
-    h('div', null,
+    LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
+    h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · Complexo Asa Branca'),
       h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · ' + fInt(N) + ' OMs · dados de ' + fData(diaMin) + ' a ' + fData(diaMax))),
     h('div', { class: 'acoes' },
@@ -2042,6 +2053,7 @@ function alternarTema() {
 }
 
 function logo() {
+  if (LOGO_URL) return h('img', { src: LOGO_URL, alt: LOGO_NOME, width: '42', height: '42', decoding: 'async' });
   var s = document.createElementNS(SVGNS, 'svg');
   s.setAttribute('viewBox', '0 0 32 32');
   s.innerHTML = '<rect width="32" height="32" rx="9" fill="#2a78d6"/><path d="M16 17v12M16 17 9.5 6M16 17l11-4M16 17 7.5 22" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><circle cx="16" cy="17" r="2.6" fill="#fff"/>';

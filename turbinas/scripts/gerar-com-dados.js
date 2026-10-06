@@ -3,7 +3,7 @@
  * Gera uma versão do painel com os dados já embutidos (funciona offline,
  * sem precisar carregar a planilha no navegador).
  *
- * Uso: node gerar-com-dados.js <Base_PowerBI_Ordens.xlsx> <saida.html>
+ * Uso: node gerar-com-dados.js <Base_PowerBI_Ordens.xlsx> <saida.html> [--logo=logo.png] [--logo-nome="Empresa"]
  * Requer o pacote "xlsx" (SheetJS): npm install xlsx
  *
  * Atenção: o HTML gerado contém os dados da operação — não publique em
@@ -15,9 +15,12 @@ var path = require('path');
 var XLSX = require('xlsx');
 var Modelo = require('../modelo.js');
 
-var entrada = process.argv[2], saida = process.argv[3];
+var args = process.argv.slice(2);
+var opcao = function (nome) { var a = args.filter(function (x) { return x.indexOf('--' + nome + '=') === 0; })[0]; return a ? a.slice(nome.length + 3) : null; };
+var posicionais = args.filter(function (x) { return x.indexOf('--') !== 0; });
+var entrada = posicionais[0], saida = posicionais[1];
 if (!entrada || !saida) {
-  console.error('Uso: node gerar-com-dados.js <planilha.xlsx> <saida.html>');
+  console.error('Uso: node gerar-com-dados.js <planilha.xlsx> <saida.html> [--logo=logo.png] [--logo-nome="Empresa"]');
   process.exit(1);
 }
 
@@ -33,6 +36,17 @@ var marcaModelo = '<script src="modelo.js"></script>';
 if (html.indexOf(marcaDados) < 0 || html.indexOf(marcaModelo) < 0) throw new Error('index.html sem os marcadores esperados.');
 html = html.replace(marcaDados, function () { return '<script id="dados-embutidos" type="application/json">' + json + '</script>'; })
   .replace(marcaModelo, function () { return '<script>\n' + modeloJs + '</script>'; });
+
+var arquivoLogo = opcao('logo');
+if (arquivoLogo) {
+  var ext = path.extname(arquivoLogo).slice(1).toLowerCase().replace('jpg', 'jpeg').replace('svg', 'svg+xml');
+  var dataUri = 'data:image/' + ext + ';base64,' + fs.readFileSync(arquivoLogo).toString('base64');
+  var marcaLogo = "var LOGO_URL = '';", marcaNome = "var LOGO_NOME = 'Logo da empresa';";
+  if (html.indexOf(marcaLogo) < 0 || html.indexOf(marcaNome) < 0) throw new Error('index.html sem o marcador do logo.');
+  html = html.replace(marcaLogo, function () { return 'var LOGO_URL = ' + JSON.stringify(dataUri) + ';'; })
+    .replace(marcaNome, function () { return 'var LOGO_NOME = ' + JSON.stringify(opcao('logo-nome') || 'Logo da empresa') + ';'; })
+    .replace(/<link rel="icon" href="[^"]*">/, function () { return '<link rel="icon" href="' + dataUri + '">'; });
+}
 
 fs.writeFileSync(saida, html);
 console.log('Gerado ' + saida + ' (' + Math.round(html.length / 1024) + ' KB, ' + modelo.ordens.om.length + ' OMs)');

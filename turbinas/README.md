@@ -22,6 +22,15 @@ node turbinas/scripts/gerar-com-dados.js Base_PowerBI_Ordens.xlsx painel-com-dad
 Gera um único HTML com os dados dentro, que abre sem internet. Não publique
 esse arquivo em local público.
 
+Para colocar o símbolo da empresa no cabeçalho (e como ícone da aba), passe
+uma imagem quadrada (PNG, ~128 px):
+
+```bash
+node turbinas/scripts/gerar-com-dados.js Base.xlsx painel.html --logo=simbolo.png --logo-nome="Nome da empresa"
+```
+
+A imagem fica só no HTML gerado; não é versionada aqui.
+
 ## Páginas
 
 | Página | Conteúdo |
