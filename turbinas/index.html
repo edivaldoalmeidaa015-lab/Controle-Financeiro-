@@ -440,6 +440,7 @@ svg text { font-family: inherit; }
 </head>
 <body>
 <div id="raiz"></div>
+<noscript><p style="padding:24px;font:16px system-ui">Este aplicativo não executa o painel. Abra o arquivo pelo Google Chrome (Downloads → toque no arquivo → Abrir com → Chrome).</p></noscript>
 <div class="tip" id="tip" role="tooltip"></div>
 
 <!-- Quando o painel é gerado com dados embutidos, o modelo vai aqui. -->
@@ -1658,7 +1659,10 @@ var pilha = [], ignorarPop = 0;
 function topo() { return pilha[pilha.length - 1] || null; }
 function fecharCamada() {
   if (!pilha.length) return;
-  if (history.state && history.state.camada === pilha.length) { history.back(); return; } // o popstate fecha
+  var t = topo();
+  if (t.noHistorico && history.state && history.state.camada === pilha.length) {
+    try { history.back(); return; } catch (e) { /* histórico bloqueado: fecha direto */ }
+  }
   removerTopo();
 }
 function removerTopo() {
@@ -1689,7 +1693,8 @@ function abrirCamada(painel, opcoes) {
   document.body.append(veu, painel);
   var c = { veu: veu, painel: painel, foco: foco, aoFechar: opcoes.aoFechar, navegar: opcoes.navegar };
   pilha.push(c);
-  history.pushState({ camada: pilha.length }, '', location.href);
+  // Leitores de arquivo do celular (content://) bloqueiam o histórico; aí a janela só não cria o passo do "voltar".
+  try { history.pushState({ camada: pilha.length }, '', location.href); c.noHistorico = true; } catch (e) { c.noHistorico = false; }
   requestAnimationFrame(function () { veu.classList.add('on'); painel.classList.add('on'); });
   var f = painel.querySelector('[data-foco]') || painel.querySelector('button'); if (f) f.focus({ preventScroll: true });
   return c;
@@ -2004,10 +2009,10 @@ function salvarHash() {
   if (estado.metricaMapa !== 'oms') p.set('mapa', estado.metricaMapa);
   if (estado.atipicos) p.set('atip', '1');
   var novo = '#' + p.toString();
-  if (location.hash !== novo) history.replaceState(history.state, '', novo);
+  try { if (location.hash !== novo) history.replaceState(history.state, '', novo); } catch (e) { /* endereço sem histórico (leitor de arquivos do celular) */ }
 }
 function lerHash() {
-  var p = new URLSearchParams(location.hash.slice(1));
+  var p; try { p = new URLSearchParams((location.hash || '').slice(1)); } catch (e) { p = new URLSearchParams(); }
   if (PAGINAS[p.get('p')]) estado.pagina = p.get('p');
   var per = p.get('per');
   estado.per = { chave: 'tudo', ini: diaMin, fim: diaMax };
@@ -2168,7 +2173,7 @@ function lerArquivo(arquivo, aoErro) {
       var wb = XLSX.read(buf, { type: 'array' });
       var modelo = ModeloTurbinas.montar(wb, XLSX);
       try { localStorage.setItem(CHAVE_BASE, JSON.stringify(modelo)); } catch (e) { /* base grande demais ou armazenamento bloqueado */ }
-      location.hash = '';
+      try { location.hash = ''; } catch (e) { /* sem histórico */ }
       iniciar(modelo);
     });
   }).catch(function (e) { aoErro(e.message || String(e)); });
@@ -2199,8 +2204,21 @@ function telaCarga(msgErro) {
   raiz.append(h('div', { class: 'boas-vindas' }, drop));
 }
 
+function telaErro(e) {
+  var raiz = document.getElementById('raiz');
+  if (!raiz) return;
+  raiz.textContent = '';
+  raiz.append(h('div', { class: 'boas-vindas' }, h('div', { class: 'drop' },
+    h('h1', null, 'Painel de Turbinas'),
+    h('p', null, 'O painel não conseguiu abrir neste aplicativo. Abra o arquivo pelo Google Chrome (Downloads → toque no arquivo → Abrir com → Chrome).'),
+    h('div', { class: 'erro', role: 'alert' }, 'Detalhe técnico: ' + (e && e.message || String(e))))));
+}
+
 (function () {
-  aplicarTemaSalvo();
+  try { iniciarPainel(); } catch (e) { telaErro(e); }
+})();
+function iniciarPainel() {
+  try { aplicarTemaSalvo(); } catch (e) { /* tema padrão */ }
   // Usa a base mais recente entre a embutida no arquivo e a última carregada neste navegador
   // (pelo botão "Trocar base"); assim uma planilha nova não é perdida ao reabrir o painel.
   var embutido = document.getElementById('dados-embutidos').textContent.trim();
@@ -2210,7 +2228,7 @@ function telaCarga(msgErro) {
   if (modeloSalvo && (!modeloEmbutido || (modeloSalvo.gerado || '') > (modeloEmbutido.gerado || ''))) { iniciar(modeloSalvo); return; }
   if (modeloEmbutido) { iniciar(modeloEmbutido); return; }
   telaCarga();
-})();
+}
 </script>
 </body>
 </html>
