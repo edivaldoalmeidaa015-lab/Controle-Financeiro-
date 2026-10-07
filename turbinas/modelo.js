@@ -788,6 +788,7 @@
       versao: 1,
       versaoPecas: VERSAO_PECAS,
       gerado: new Date().toISOString(),
+      fonte: wb.Sheets[ABA_MANUSIS] ? 'manusis' : 'powerbi',
       origem: new Date(Date.UTC(anoBase, 0, 1)).toISOString().slice(0, 10),
       ultimoDia: Math.floor(maxSerial) - origem,
       parques: parques,

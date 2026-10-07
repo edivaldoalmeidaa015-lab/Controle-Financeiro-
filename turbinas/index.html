@@ -218,6 +218,9 @@ button { cursor: pointer; }
 .titulo-pag p { margin: 0; color: var(--ink-2); font-size: 13px; }
 .s3 { grid-column: span 3; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; }
 .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: 1 / -1; }
+.faixa-aviso { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--warning); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ink); }
+.faixa-aviso > span { flex: 1 1 260px; }
 .kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 
 .card {
@@ -767,6 +770,9 @@ function hhDaOM(i) {
   });
   return p.length ? p.join(' · ') : '–';
 }
+function chaveAvisoComplexo() { return 'turbinas-aviso-complexo-' + (M.gerado || ''); }
+function avisoComplexoFechado() { try { return localStorage.getItem(chaveAvisoComplexo()) === '1'; } catch (e) { return false; } }
+function fecharAvisoComplexo() { try { localStorage.setItem(chaveAvisoComplexo(), '1'); } catch (e) { /* sem armazenamento */ } }
 function notaJanela() { return 'A base traz as OMs criadas a partir de ' + fData(diaMin) + '; pendências abertas antes disso não constam no backlog.'; }
 function mostrarTip(x, y, titulo, linhas, nota) {
   tipEl.textContent = '';
@@ -1144,6 +1150,15 @@ function paginaVisao(pg) {
   var canc = contar(B, function (i) { return O.grupo[i] === IDX.grupo.Cancelada; });
   var aguard = contar(bkl, function (i) { return M.dic.status[O.status[i]] === 'Apontamentos concluídos'; });
 
+  // base Power BI antiga (só Asa Branca): explica como trazer os dois complexos
+  if (M.fonte !== 'manusis' && M.complexos.length === 1 && !avisoComplexoFechado()) {
+    var faixa = h('div', { class: 'faixa-aviso', role: 'note' },
+      h('span', null, 'Esta base é a antiga e tem só o complexo Asa Branca. Para ver também Chapada do Piauí, toque em ', h('b', null, 'Atualizar base'),
+        ' e escolha a exportação do Manusis (.zip ou .xlsx).'),
+      h('button', { class: 'btn', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Atualizar base'),
+      h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar aviso', onclick: function () { fecharAvisoComplexo(); faixa.remove(); } }, icone('fechar')));
+    pg.append(faixa);
+  }
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'OMs no período', valor: fInt(B.length), valorTexto: fInt(B.length), sub: fInt(conc) + ' fechadas · ' + fInt(canc) + ' canceladas · ' + fInt(bkl.length) + ' em aberto', spark: serieContagem(B, O.dAb, b),
       tip: 'Ordens criadas dentro do período e dos filtros, com a situação de hoje: fechadas + canceladas + em aberto = criadas. ' + (B.length ? fPct(corr / B.length) : '–') + ' delas são corretivas.' }),
@@ -2316,6 +2331,37 @@ function carregarSheetJS() {
   });
 }
 
+/**
+ * O Manusis exporta a planilha dentro de um .zip. Se o arquivo for um zip que não é ele mesmo
+ * uma planilha (o .xlsx também é zip, mas tem [Content_Types].xml), devolve o primeiro .xlsx de dentro.
+ */
+function planilhaDoZip(buf) {
+  var u = new Uint8Array(buf), dv = new DataView(buf);
+  if (u.length < 22 || u[0] !== 0x50 || u[1] !== 0x4b) return Promise.resolve(buf);
+  // fim do diretório central (procura de trás para frente; o comentário do zip tem até 64 KB)
+  var fim = -1;
+  for (var p = u.length - 22; p >= Math.max(0, u.length - 65557); p--) if (dv.getUint32(p, true) === 0x06054b50) { fim = p; break; }
+  if (fim < 0) return Promise.resolve(buf);
+  var n = dv.getUint16(fim + 10, true), q = dv.getUint32(fim + 16, true), dec = new TextDecoder();
+  var entradas = [];
+  for (var k = 0; k < n && dv.getUint32(q, true) === 0x02014b50; k++) {
+    var lNome = dv.getUint16(q + 28, true), lExtra = dv.getUint16(q + 30, true), lCom = dv.getUint16(q + 32, true);
+    entradas.push({ nome: dec.decode(u.subarray(q + 46, q + 46 + lNome)), metodo: dv.getUint16(q + 10, true),
+      tam: dv.getUint32(q + 20, true), local: dv.getUint32(q + 42, true) });
+    q += 46 + lNome + lExtra + lCom;
+  }
+  if (entradas.some(function (e) { return e.nome === '[Content_Types].xml'; })) return Promise.resolve(buf); // já é a planilha
+  var x = entradas.filter(function (e) { return /\.xlsx$/i.test(e.nome) && !/(^|\/)(__MACOSX|\.)/.test(e.nome); })[0];
+  if (!x) return Promise.reject(new Error('O arquivo .zip não tem nenhuma planilha .xlsx dentro.'));
+  var ini = x.local + 30 + dv.getUint16(x.local + 26, true) + dv.getUint16(x.local + 28, true);
+  var dados = u.subarray(ini, ini + x.tam);
+  if (x.metodo === 0) return Promise.resolve(dados.slice().buffer);
+  if (x.metodo !== 8 || typeof DecompressionStream === 'undefined')
+    return Promise.reject(new Error('Não consegui abrir o .zip neste aparelho. Extraia a planilha .xlsx e escolha ela.'));
+  var fluxo = new Blob([dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Response(fluxo).arrayBuffer();
+}
+
 function lerBytes(arquivo) {
   if (arquivo.arrayBuffer) return arquivo.arrayBuffer();
   return new Promise(function (ok, erro) { // aplicativos antigos sem File.arrayBuffer
@@ -2378,7 +2424,7 @@ function lerArquivo(arquivo, aoErro) {
   new Promise(function (ok) { setTimeout(ok, 60); })
     .then(carregarSheetJS)
     .then(function (XLSX) {
-      return lerBytes(arquivo).then(function (buf) {
+      return lerBytes(arquivo).then(planilhaDoZip).then(function (buf) {
         var wb;
         try { wb = XLSX.read(buf, { type: 'array' }); }
         catch (e) { throw new Error('Não consegui abrir “' + arquivo.name + '” como planilha do Excel (.xlsx).'); }
@@ -2407,7 +2453,7 @@ function escolherArquivo() {
   var antigo = document.getElementById('escolher-base');
   if (antigo) antigo.remove();
   // Alguns aplicativos de celular ignoram um seletor de arquivo que não está na página.
-  var inp = h('input', { type: 'file', id: 'escolher-base', accept: '.xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel', style: 'position:fixed;left:-9999px;opacity:0' });
+  var inp = h('input', { type: 'file', id: 'escolher-base', accept: '.xlsx,.xlsm,.xls,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
   inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; inp.remove(); if (f) lerArquivo(f); });
   document.body.append(inp);
   inp.click();
