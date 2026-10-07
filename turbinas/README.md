@@ -1,12 +1,20 @@
 # Painel de Turbinas — Ordens de Manutenção
 
-Painel interativo (estilo Power BI) para a base `Base_PowerBI_Ordens_*.xlsx`
-(tabelas `fato_*` e `dim_*`). Funciona direto no navegador, sem servidor.
+Painel interativo (estilo Power BI) para as ordens de manutenção dos
+aerogeradores. Funciona direto no navegador, sem servidor, e aceita dois
+formatos de planilha:
+
+- a **exportação de ordens de manutenção do Manusis 4**, como sai do sistema
+  (aba "Ordens de manutenção" + "Especialidades"; o `.zip` baixado deve ser
+  extraído antes). Turbina, parque e complexo vêm do campo Ativo/Localização;
+  vários complexos (ex.: Asa Branca e Chapada do Piauí) ganham o filtro
+  **Complexo**;
+- a base `Base_PowerBI_Ordens_*.xlsx` (tabelas `fato_*` e `dim_*`).
 
 ## Como usar
 
 1. Abra `turbinas/index.html` no navegador.
-2. Arraste a planilha `.xlsx` para a tela (ou clique em **Escolher planilha**).
+2. Arraste a planilha `.xlsx` (Manusis ou Power BI) para a tela (ou clique em **Escolher planilha**).
    A leitura é feita só no seu navegador — nada é enviado.
 
 ### Aplicativo no celular
@@ -79,3 +87,14 @@ Seguem as medidas DAX da aba `LEIA-ME`:
 - `index.html` — o painel (HTML, CSS e JS sem dependências; SheetJS é baixado do cdnjs só na hora do upload)
 - `modelo.js` — converte a planilha no modelo de dados (navegador e Node)
 - `scripts/gerar-com-dados.js` — gera a versão com dados embutidos
+
+## Peças trocadas e auditoria
+
+As peças são lidas do texto do serviço executado (`componentesTrocados` em
+`modelo.js`). As regras foram ajustadas com duas auditorias OM por OM (cerca de
+3.200 trocas lidas por pessoas/agentes): não contam recomendações e
+"Pendências:", trocas só de teste ou desfeitas ("retornada a original"),
+histórico ("já havia sido substituído"), remontagem em relatórios de grande
+corretiva, peças de outra turbina e a mesma troca lançada em duas OMs da mesma
+turbina (preventiva + corretiva, ou texto que cita a outra OM). Ao mudar as
+regras, suba `VERSAO_PECAS`: o app relê as bases já guardadas no aparelho.

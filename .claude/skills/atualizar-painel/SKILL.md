@@ -1,6 +1,6 @@
 ---
 name: atualizar-painel
-description: Atualiza o Painel de Turbinas com uma planilha nova de OMs (Base_PowerBI_Ordens*.xlsx). Use quando o usuário enviar a planilha de ordens e pedir para atualizar, gerar ou republicar o painel.
+description: Atualiza o Painel de Turbinas com uma planilha nova de OMs — a exportação do Manusis 4 (ordens_de_manutencao_*.xlsx ou o .zip dela) ou a Base_PowerBI_Ordens*.xlsx. Use quando o usuário enviar a planilha de ordens e pedir para atualizar, gerar ou republicar o painel.
 ---
 
 # Atualizar o Painel de Turbinas
@@ -11,7 +11,9 @@ entregar o arquivo. Responda sempre em português, com frases curtas.
 
 ## Passos
 
-1. **Planilha.** Localize o `.xlsx` que o usuário anexou (`Base_PowerBI_Ordens*.xlsx`).
+1. **Planilha.** Localize o arquivo que o usuário anexou: a exportação do Manusis
+   (`ordens_de_manutencao_*.xlsx`, ou o `.zip` — extraia em uma pasta própria do
+   scratchpad) ou a `Base_PowerBI_Ordens*.xlsx`. O `modelo.js` lê os dois formatos.
    Se não houver anexo, peça a planilha e pare.
 2. **Ferramentas.** No scratchpad, rode `npm install xlsx` (uma vez por sessão).
 3. **Símbolo da empresa.** O logo **não** fica no repositório, porque ele é público.
