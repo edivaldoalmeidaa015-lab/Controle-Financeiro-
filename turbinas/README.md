@@ -7,8 +7,16 @@ Painel interativo (estilo Power BI) para a base `Base_PowerBI_Ordens_*.xlsx`
 
 1. Abra `turbinas/index.html` no navegador.
 2. Arraste a planilha `.xlsx` para a tela (ou clique em **Escolher planilha**).
-   A leitura é feita só no seu navegador — nada é enviado. A última base
-   carregada fica lembrada neste navegador; use **Trocar base** para outra.
+   A leitura é feita só no seu navegador — nada é enviado.
+
+### Atualizar a planilha de OMs
+
+Toque em **Atualizar base** (no topo) e escolha a planilha nova. Um aviso
+mostra o andamento e o resultado ("Base atualizada: N OMs, dados até …"); o
+cabeçalho passa a mostrar as novas datas. A base fica guardada no aparelho
+(IndexedDB) e é usada ao reabrir, desde que seja mais recente que a embutida
+no arquivo. Aplicativos que não guardam dados (leitores de arquivo do
+celular) atualizam só naquela abertura — o aviso informa; use o Chrome.
 
 > Os dados da operação **não** ficam neste repositório (ele é público).
 
@@ -19,7 +27,7 @@ npm install xlsx
 node turbinas/scripts/gerar-com-dados.js Base_PowerBI_Ordens.xlsx painel-com-dados.html
 ```
 
-Gera um único HTML com os dados dentro, que abre sem internet. Não publique
+Gera um único HTML com os dados e o leitor de Excel dentro, que abre e atualiza sem internet. Não publique
 esse arquivo em local público.
 
 Para colocar o símbolo da empresa no cabeçalho (e como ícone da aba), passe

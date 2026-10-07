@@ -117,6 +117,18 @@ button { cursor: pointer; }
 .btn.prim { background: var(--accent); border-color: transparent; color: #fff; }
 .btn.prim:hover { filter: brightness(1.06); }
 .btn.icone { padding: 7px; }
+.aviso-base {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 300;
+  max-width: min(560px, calc(100vw - 32px)); display: flex; gap: 10px; align-items: flex-start;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.4; box-shadow: 0 8px 28px rgba(0,0,0,.18);
+}
+.aviso-base.ok { border-left-color: var(--good, #2e8540); }
+.aviso-base.erro { border-left-color: var(--critical, #c0392b); }
+.aviso-base.alerta { border-left-color: var(--warning, #d98c00); }
+.aviso-base .fechar { margin-left: auto; border: 0; background: none; color: var(--ink-2); font-size: 18px; line-height: 1; padding: 0 2px; }
+.aviso-base .giro { width: 16px; height: 16px; flex: none; margin-top: 2px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: giro .8s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
 
 /* ---------- barra de filtros (slicers) ---------- */
 .filtros {
@@ -411,6 +423,8 @@ svg text { font-family: inherit; }
   .main { padding-bottom: 68px; }
   .topo { padding: 12px 16px 8px; flex-wrap: wrap; }
   .topo .acoes .txt { display: none; }
+  .topo .acoes .btn.prim .txt { display: inline; }
+  .aviso-base { bottom: 84px; }
   .topo { gap: 12px; align-items: flex-start; }
   .topo h1 { font-size: 17px; }
   .topo .marca-topo { width: 38px; height: 38px; margin-top: 2px; }
@@ -2061,10 +2075,10 @@ function montarApp() {
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · Complexo Asa Branca'),
-      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · ' + fInt(N) + ' OMs · dados de ' + fData(diaMin) + ' a ' + fData(diaMax))),
+      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · ' + fInt(N) + ' OMs · dados de ' + fData(diaMin) + ' a ' + fData(diaMax) + textoAtualizada())),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
-      h('button', { class: 'btn', type: 'button', onclick: escolherArquivo, title: 'Carregar outra planilha' }, icone('enviar'), h('span', { class: 'txt' }, 'Trocar base')),
+      h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo, title: 'Carregar a planilha de OMs mais recente' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
       h('button', { class: 'btn icone', type: 'button', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro', title: 'Tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'))));
   var filtros = h('div', { class: 'filtros' });
   var pagina = h('main', { class: 'pagina', id: 'pagina', tabindex: '-1' });
@@ -2156,32 +2170,130 @@ function iniciar(modelo) {
   montarApp();
 }
 
+function textoAtualizada() {
+  var d = M && M.gerado ? new Date(M.gerado) : null;
+  if (!d || isNaN(d)) return '';
+  return ' · base atualizada em ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+// Aviso flutuante (substitui alert(), que muitos aplicativos de celular não mostram).
+function avisar(msg, tipo, persistente) {
+  var el = document.getElementById('aviso-base');
+  if (el) el.remove();
+  if (!msg) return;
+  el = h('div', { id: 'aviso-base', class: 'aviso-base ' + (tipo || ''), role: tipo === 'erro' ? 'alert' : 'status' },
+    tipo === 'info' ? h('span', { class: 'giro', 'aria-hidden': 'true' }) : null,
+    h('div', null, msg),
+    tipo === 'info' ? null : h('button', { class: 'fechar', type: 'button', 'aria-label': 'Fechar aviso', onclick: function () { el.remove(); } }, '×'));
+  document.body.append(el);
+  if (!persistente && tipo === 'ok') setTimeout(function () { if (el.isConnected) el.remove(); }, 8000);
+}
+
 function carregarSheetJS() {
   return new Promise(function (ok, erro) {
-    if (window.XLSX) return ok(window.XLSX);
+    if (window.XLSX) return ok(window.XLSX); // já vem embutido no arquivo gerado
     var s = document.createElement('script');
     s.src = SHEETJS_URL;
     s.onload = function () { ok(window.XLSX); };
-    s.onerror = function () { erro(new Error('Não foi possível carregar o leitor de Excel (SheetJS). Verifique a conexão com a internet.')); };
+    s.onerror = function () { erro(new Error('Não foi possível carregar o leitor de Excel. Verifique a conexão com a internet.')); };
     document.head.append(s);
   });
 }
 
-function lerArquivo(arquivo, aoErro) {
-  carregarSheetJS().then(function (XLSX) {
-    return arquivo.arrayBuffer().then(function (buf) {
-      var wb = XLSX.read(buf, { type: 'array' });
-      var modelo = ModeloTurbinas.montar(wb, XLSX);
-      try { localStorage.setItem(CHAVE_BASE, JSON.stringify(modelo)); } catch (e) { /* base grande demais ou armazenamento bloqueado */ }
-      try { location.hash = ''; } catch (e) { /* sem histórico */ }
-      iniciar(modelo);
-    });
-  }).catch(function (e) { aoErro(e.message || String(e)); });
+function lerBytes(arquivo) {
+  if (arquivo.arrayBuffer) return arquivo.arrayBuffer();
+  return new Promise(function (ok, erro) { // aplicativos antigos sem File.arrayBuffer
+    var r = new FileReader();
+    r.onload = function () { ok(r.result); };
+    r.onerror = function () { erro(new Error('Não foi possível ler o arquivo.')); };
+    r.readAsArrayBuffer(arquivo);
+  });
 }
 
+/* ---- Base guardada no aparelho: IndexedDB (cabe bases grandes), localStorage como reserva ---- */
+function abrirBanco() {
+  return new Promise(function (ok, erro) {
+    try {
+      var req = indexedDB.open('painel-turbinas', 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('base'); };
+      req.onsuccess = function () { ok(req.result); };
+      req.onerror = function () { erro(req.error); };
+      req.onblocked = function () { erro(new Error('bloqueado')); };
+    } catch (e) { erro(e); }
+  });
+}
+function lerBaseGuardada() {
+  var doLocal = null;
+  try { var t = localStorage.getItem(CHAVE_BASE); if (t) doLocal = JSON.parse(t); } catch (e) { /* sem armazenamento ou inválida */ }
+  var doBanco = abrirBanco().then(function (db) {
+    return new Promise(function (ok) {
+      var req = db.transaction('base', 'readonly').objectStore('base').get('atual');
+      req.onsuccess = function () { ok(req.result || null); };
+      req.onerror = function () { ok(null); };
+    });
+  }).catch(function () { return null; });
+  var limite = new Promise(function (ok) { setTimeout(function () { ok(null); }, 2500); });
+  return Promise.race([doBanco, limite]).then(function (b) { return maisRecente(b, doLocal); });
+}
+function guardarBase(modelo) {
+  return abrirBanco().then(function (db) {
+    return new Promise(function (ok, erro) {
+      var tx = db.transaction('base', 'readwrite');
+      tx.objectStore('base').put(modelo, 'atual');
+      tx.oncomplete = function () { ok(); };
+      tx.onerror = tx.onabort = function () { erro(tx.error); };
+    });
+  }).then(function () {
+    try { localStorage.removeItem(CHAVE_BASE); } catch (e) { /* nada a limpar */ }
+    return true;
+  }).catch(function () {
+    try { localStorage.setItem(CHAVE_BASE, JSON.stringify(modelo)); return true; } catch (e) { return false; }
+  });
+}
+function maisRecente(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  return (a.gerado || '') >= (b.gerado || '') ? a : b;
+}
+
+function lerArquivo(arquivo, aoErro) {
+  avisar('Lendo a planilha “' + arquivo.name + '”… Pode levar alguns segundos.', 'info', true);
+  // deixa o aviso aparecer antes do processamento pesado
+  new Promise(function (ok) { setTimeout(ok, 60); })
+    .then(carregarSheetJS)
+    .then(function (XLSX) {
+      return lerBytes(arquivo).then(function (buf) {
+        var wb;
+        try { wb = XLSX.read(buf, { type: 'array' }); }
+        catch (e) { throw new Error('Não consegui abrir “' + arquivo.name + '” como planilha do Excel (.xlsx).'); }
+        var modelo = ModeloTurbinas.montar(wb, XLSX);
+        return guardarBase(modelo).then(function (guardou) {
+          fecharTodasCamadas();
+          try { location.hash = ''; } catch (e) { /* sem histórico */ }
+          iniciar(modelo);
+          window.scrollTo(0, 0);
+          var msg = '✅ Base atualizada: ' + fInt(N) + ' OMs, dados até ' + fData(diaMax) + '.';
+          if (guardou) avisar(msg, 'ok');
+          else avisar(msg + ' Atenção: este aplicativo não guarda dados — ao fechar, volta a base anterior. Abra o painel pelo Chrome para manter a atualização.', 'alerta', true);
+        });
+      });
+    })
+    .catch(function (e) {
+      var msg = '❌ A base não foi atualizada. ' + (e && e.message || String(e));
+      avisar(msg, 'erro', true);
+      if (aoErro) aoErro(msg);
+    });
+}
+
+function fecharTodasCamadas() { while (pilha.length) removerTopo(); }
+
 function escolherArquivo() {
-  var inp = h('input', { type: 'file', accept: '.xlsx,.xlsm,.xls' });
-  inp.addEventListener('change', function () { if (inp.files[0]) lerArquivo(inp.files[0], function (msg) { alert(msg); }); });
+  var antigo = document.getElementById('escolher-base');
+  if (antigo) antigo.remove();
+  // Alguns aplicativos de celular ignoram um seletor de arquivo que não está na página.
+  var inp = h('input', { type: 'file', id: 'escolher-base', accept: '.xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel', style: 'position:fixed;left:-9999px;opacity:0' });
+  inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; inp.remove(); if (f) lerArquivo(f); });
+  document.body.append(inp);
   inp.click();
 }
 
@@ -2219,15 +2331,14 @@ function telaErro(e) {
 })();
 function iniciarPainel() {
   try { aplicarTemaSalvo(); } catch (e) { /* tema padrão */ }
-  // Usa a base mais recente entre a embutida no arquivo e a última carregada neste navegador
-  // (pelo botão "Trocar base"); assim uma planilha nova não é perdida ao reabrir o painel.
+  // Usa a base mais recente entre a embutida no arquivo e a última carregada neste aparelho
+  // (pelo botão "Atualizar base"); assim uma planilha nova não é perdida ao reabrir o painel.
   var embutido = document.getElementById('dados-embutidos').textContent.trim();
   var modeloEmbutido = embutido ? JSON.parse(embutido) : null;
-  var modeloSalvo = null;
-  try { var salvo = localStorage.getItem(CHAVE_BASE); if (salvo) modeloSalvo = JSON.parse(salvo); } catch (e) { /* sem armazenamento ou base salva inválida */ }
-  if (modeloSalvo && (!modeloEmbutido || (modeloSalvo.gerado || '') > (modeloEmbutido.gerado || ''))) { iniciar(modeloSalvo); return; }
-  if (modeloEmbutido) { iniciar(modeloEmbutido); return; }
-  telaCarga();
+  lerBaseGuardada().then(function (salvo) {
+    var m = maisRecente(salvo, modeloEmbutido);
+    try { if (m) iniciar(m); else telaCarga(); } catch (e) { telaErro(e); }
+  });
 }
 </script>
 </body>

@@ -28,6 +28,8 @@ var raiz = path.join(__dirname, '..');
 var html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 var modeloJs = fs.readFileSync(path.join(raiz, 'modelo.js'), 'utf8');
 var modelo = Modelo.montar(XLSX.readFile(entrada), XLSX);
+// Leitor de Excel (SheetJS, versão enxuta) embutido: o botão "Atualizar base" funciona sem internet.
+var leitorExcel = fs.readFileSync(require.resolve('xlsx/dist/xlsx.mini.min.js'), 'utf8').replace(/<\/script/gi, '<\\/script');
 // "</" dentro de JSON embutido fecharia a tag <script>
 var json = JSON.stringify(modelo).replace(/<\//g, '<\\/');
 
@@ -35,7 +37,7 @@ var marcaDados = '<script id="dados-embutidos" type="application/json"></script>
 var marcaModelo = '<script src="modelo.js"></script>';
 if (html.indexOf(marcaDados) < 0 || html.indexOf(marcaModelo) < 0) throw new Error('index.html sem os marcadores esperados.');
 html = html.replace(marcaDados, function () { return '<script id="dados-embutidos" type="application/json">' + json + '</script>'; })
-  .replace(marcaModelo, function () { return '<script>\n' + modeloJs + '</script>'; });
+  .replace(marcaModelo, function () { return '<script>\n' + modeloJs + '</script>\n<script>\n' + leitorExcel + '</script>'; });
 
 var arquivoLogo = opcao('logo');
 if (arquivoLogo) {
