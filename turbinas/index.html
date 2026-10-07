@@ -266,6 +266,7 @@ select.mini {
 }
 button.bh-row:hover, .bh-row.foco { background: var(--hover); }
 .bh-lab { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.bh-lab small { display: block; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .bh-track { height: 14px; display: flex; gap: 2px; }
 .bh-bar { height: 100%; border-radius: 0 4px 4px 0; min-width: 0; transition: width .25s ease; }
 .bh-track .bh-bar + .bh-bar { border-radius: 0; }
@@ -656,6 +657,11 @@ function fCustoLinha(v, r) {
   if (r && !custoValido(r.i)) return h('span', { class: 'st alerta', title: 'Valor lançado ' + fMoedaCompleta(v) + ' — fora dos totais (veja Custos)' }, 'atípico');
   return v === null || v === undefined ? '–' : fMoeda(v);
 }
+// peças da OM que contam: com filtro de componente, só as dos componentes escolhidos
+function pecasContadas(i) {
+  var f = estado.f.peca;
+  return f.size ? O.pecasItens[i].filter(function (it) { return f.has(it[0]); }) : O.pecasItens[i];
+}
 function custoValido(i) { return estado.atipicos || !O.atipico[i]; }
 function soma(ix, col, filtro) { var s = 0; for (var k = 0; k < ix.length; k++) { var i = ix[k]; if (filtro && !filtro(i)) continue; var v = col[i]; if (v !== null) s += v; } return s; }
 function media(ix, col) { var s = 0, n = 0; for (var k = 0; k < ix.length; k++) { var v = col[ix[k]]; if (v !== null && v !== undefined) { s += v; n++; } } return n ? s / n : null; }
@@ -797,7 +803,7 @@ function barrasH(el, itens, o) {
   var max = o.max || Math.max.apply(null, itens.map(function (d) { return d.v; })) || 1;
   // coluna do valor com a mesma largura em todas as linhas: a barra tem o mesmo comprimento máximo em todas
   var maiorVal = Math.max.apply(null, itens.map(function (d) { return (fmt(d.v) + (d.extra ? ' ' + d.extra : '')).length; }));
-  var lista = h('div', { class: 'bh', style: (o.larguraRotulo ? '--rot:' + o.larguraRotulo + ';' : '') + '--val:' + Math.min(22, maiorVal * 0.62 + 1).toFixed(1) + 'em' });
+  var lista = h('div', { class: 'bh', style: (o.larguraRotulo ? '--rot:' + o.larguraRotulo + ';' : '') + '--val:' + Math.min(22, maiorVal * 0.68 + 1).toFixed(1) + 'em' });
   var ativo = o.ativo;
   itens.forEach(function (d) {
     var sel = ativo && ativo.has(d.k), dim = ativo && ativo.size && !sel;
@@ -807,7 +813,7 @@ function barrasH(el, itens, o) {
       'aria-pressed': clic ? String(!!sel) : null, tabindex: clic ? null : '0',
       onclick: clic ? function () { o.onClick(d.k); } : null
     },
-    h('span', { class: 'bh-lab' }, d.rot),
+    h('span', { class: 'bh-lab' }, d.rot, d.nota ? h('small', null, d.nota) : null),
     h('span', { class: 'bh-track' }, h('span', { class: 'bh-bar', style: 'width:' + (d.v > 0 ? Math.max(d.v / max * 100, .8) : 0) + '%;background:' + (d.cor || o.cor || 'var(--s1)') })),
     h('span', { class: 'bh-val' }, fmt(d.v), d.extra ? h('small', null, d.extra) : null));
     tipEm(row, function () {
@@ -1282,7 +1288,7 @@ var METRICAS_MAPA = {
   corr: { rot: 'OMs corretivas', valor: function (i) { return O.tipo[i] === IDX.tipo['Corretiva'] ? 1 : 0; }, fmt: fInt },
   bkl: { rot: 'OMs em backlog', valor: function (i) { return O.grupo[i] === IDX.grupo.Backlog ? 1 : 0; }, fmt: fInt },
   custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } },
-  pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecasItens[i].length; }, fmt: fInt },
+  pecas: { rot: 'Peças trocadas', valor: function (i) { return pecasContadas(i).length; }, fmt: fInt },
   falhas: { rot: 'OMs com código de falha', valor: function (i) { return O.falhas[i].length ? 1 : 0; }, fmt: fInt }
 };
 function seletorMetrica() {
@@ -1388,7 +1394,7 @@ function paginaTurbinas(pg) {
     r.oms++;
     if (O.tipo[i] === IDX.tipo['Corretiva']) r.corr++;
     if (O.grupo[i] === IDX.grupo.Backlog) { r.bkl++; if (O.idadeBkl[i] !== null) { r.idadeS += O.idadeBkl[i]; r.idadeN++; } }
-    r.pecas += O.pecasItens[i].length;
+    r.pecas += pecasContadas(i).length;
     r.hh += O.hhApont[i] || 0;
     if (custoValido(i)) r.custo += O.custoTot[i] || 0;
   });
@@ -1522,9 +1528,9 @@ function paginaComponentes(pg) {
   var comPeca = B.filter(function (i) { return O.pecas[i].length; });
   var trocas = 0, porComp = new Map(), mes = new Array(b.length).fill(0);
   comPeca.forEach(function (i) {
-    trocas += O.pecasItens[i].length;
+    trocas += pecasContadas(i).length;
     O.pecas[i].forEach(function (k) { porComp.set(k, (porComp.get(k) || 0) + 1); });
-    var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += O.pecasItens[i].length;
+    var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += pecasContadas(i).length;
   });
   var top = Array.from(porComp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
   var custoMat = soma(comPeca, O.custoMat, custoValido);
@@ -1541,22 +1547,32 @@ function paginaComponentes(pg) {
 
   pg.append(cartaoPecas('s6', 12));
 
-  var porW = new Map();
+  // o número é o total de peças trocadas na turbina (de todos os tipos, ou só dos componentes filtrados);
+  // a linha de baixo diz qual peça mais se repetiu e quantas vezes, para não parecer que todas são dela
+  var porW = new Map(), filtroPeca = estado.f.peca.size > 0;
   comPeca.forEach(function (i) {
     if (O.wtg[i] < 0) return;
-    var r = porW.get(O.wtg[i]) || { k: O.wtg[i], v: 0, comp: new Map() };
-    r.v += O.pecasItens[i].length;
-    O.pecas[i].forEach(function (k) { r.comp.set(k, (r.comp.get(k) || 0) + 1); });
+    var r = porW.get(O.wtg[i]) || { k: O.wtg[i], v: 0, oms: 0, comp: new Map() };
+    var its = pecasContadas(i);
+    if (!its.length) return;
+    r.v += its.length; r.oms++;
+    its.forEach(function (it) { r.comp.set(it[0], (r.comp.get(it[0]) || 0) + 1); });
     porW.set(O.wtg[i], r);
   });
+  var pecaTxt = function (n) { return fInt(n) + (n === 1 ? ' peça' : ' peças'); };
+  var nomesFiltro = Array.from(estado.f.peca).map(function (k) { return M.componentes[k]; }).join(', ');
   var itW = Array.from(porW.values()).sort(function (a, c) { return c.v - a.v; }).map(function (r) {
     var principal = Array.from(r.comp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
-    return { k: r.k, rot: M.dic.wtg[r.k], v: r.v, extra: M.componentes[principal[0]], cor: 'var(--s3)' };
+    var nota = r.comp.size === 1 ? M.componentes[principal[0]] + ' · em ' + fInt(r.oms) + (r.oms === 1 ? ' OM' : ' OMs')
+      : 'mais trocada: ' + M.componentes[principal[0]] + ' (' + fInt(principal[1]) + ' de ' + fInt(r.v) + ')';
+    return { k: r.k, rot: M.dic.wtg[r.k], v: r.v, nota: nota, mais: M.componentes[principal[0]], maisN: principal[1], oms: r.oms, cor: 'var(--s3)' };
   });
   pg.append(cartao({
-    id: 'pecas-wtg', span: 's6', titulo: 'Turbinas com mais trocas', sub: 'Top 10 · ao lado, a peça mais trocada · clique para ver a turbina',
-    desenhar: function (el) { barrasH(el, itW.slice(0, 10), { onClick: function (k) { abrirTurbina(k); }, larguraRotulo: '26%', unidade: 'peças trocadas' }); },
-    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'Peças trocadas', num: true, fmt: fInt }, { k: 'extra', rot: 'Mais trocada' }], linhas: itW }
+    id: 'pecas-wtg', span: 's6', titulo: 'Turbinas com mais trocas',
+    sub: (filtroPeca ? 'Peças de ' + nomesFiltro + ' trocadas em cada turbina' : 'Total de peças trocadas em cada turbina, de todos os tipos') + ' · top 10 · clique para ver a turbina',
+    desenhar: function (el) { barrasH(el, itW.slice(0, 10), { onClick: function (k) { abrirTurbina(k); }, larguraRotulo: '46%', fmt: pecaTxt, unidade: 'trocadas' }); },
+    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'Peças trocadas', num: true, fmt: fInt }, { k: 'oms', rot: 'OMs', num: true, fmt: fInt },
+      { k: 'mais', rot: 'Peça mais trocada' }, { k: 'maisN', rot: 'Vezes', num: true, fmt: fInt }], linhas: itW }
   }));
 
   var linhas = comPeca.map(function (i) {
@@ -1784,7 +1800,7 @@ function abrirTurbina(w) {
     corpo);
   corpo.append(h('div', { class: 'mini-kpis' },
     miniKpi('OMs', fInt(ix.length)), miniKpi('Corretivas', fInt(corr)), miniKpi('Backlog', fInt(bkl.length)),
-    miniKpi('Peças trocadas', fInt(ix.reduce(function (t, i) { return t + O.pecasItens[i].length; }, 0))), miniKpi('Falhas citadas', fInt(contar(ix, function (i) { return O.falhas[i].length > 0; }))), miniKpi('Custo', fMoeda(custo))));
+    miniKpi('Peças trocadas', fInt(ix.reduce(function (t, i) { return t + pecasContadas(i).length; }, 0))), miniKpi('Falhas citadas', fInt(contar(ix, function (i) { return O.falhas[i].length > 0; }))), miniKpi('Custo', fMoeda(custo))));
   var cardT = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'OMs por ' + b.tipo + ' e tipo'), h('p', null, 'Tempo médio p/ fechar: ' + (lead === null ? '–' : fDias(lead / 24))))));
   var bodyT = h('div', { class: 'card-b' }); cardT.append(bodyT);
   var cardS = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Sistemas'))));
