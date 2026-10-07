@@ -77,6 +77,10 @@
   var OUTRAS = COMPONENTES.length - 1;
   // verbos de troca JÁ REALIZADA (exclui infinitivo "substituir"/"trocar", que costuma ser recomendação)
   var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|reposicao|repost[oa]s?|substitui-l[oa]s?|troca-l[oa]s?)$/;
+  // "Realizada instalação de UPS": instalar conta como troca só para peças de reposição — instalar
+  // controle da talha, linha de vida temporária, bomba off-line etc. é montagem de serviço, não peça trocada
+  var INSTALA = /^(instalacao|instalacoes|instalad[oa]s?|instalou|instalamos|instalaram|instalando|adicionad[oa]s?)$/;
+  var INSTALA_OK = /^(UPS|Placa|Encoder|Motor|Sensor|Anemômetro|Fusível|Disjuntor|Contatora|Bateria|Carregador|Slip ring|Escovas|Rolamento|Bobina|Acumulador|Freio|Ventilador|Manômetro|Radiador|Supressor|Válvula|Conversor|Switch|Redutora)/;
   var PENDENTE = /\bnao\b.{0,35}\b(necessari|necessidade)|\bsem (necessidade|necessari)|\bnao (foi|foram|sera|houve)\b.{0,25}(substitu|troca)|aguardando|programar|programad|recomend|sugerid|sugere|solicitad|solicitar|pendente|necessita|(?<!foi |foram |sendo |fez-se |se fez )necessari\w* (a |realizar |fazer )?(a )?(substitu|troca)|sera (necessari\w* )?(substitu|troca)|devera|deve ser|precisa|importante/;
   // palavras que podem ficar entre o verbo e a peça
   var LIGA = /^(doas|de|do|da|dos|das|o|a|os|as|um|uma|uns|umas|no|na|nos|nas|em|e|novo|nova|novos|novas|dois|duas|tres|quatro|seis|oito|ambos|ambas|todos|todas|completa|completo|conjunto|kit|jogo|cinco|sete|nove|dez|doze|quinze|vinte|trinta|quarenta|cinquenta|cem|02|\d+|\d+o|x|\d+x|pc|pcs|unidades?|corretiva|preventiva|imediata|integral|total|parcial)$/;
@@ -229,7 +233,8 @@
     var antesT = [], antesO = [];
     frases.forEach(function (frase) {
       // tokens originais (para o nome) e normalizados (para as regras), alinhados
-      var bruto = frase.replace(/(^|\s)-+/g, ' | ').replace(/[,;:()\[\]]/g, ' | ')
+      var bruto = frase.replace(/([A-Z]{2,})(?=[A-Z][a-z])/g, '$1 ').replace(/([A-Za-z]{2})\.(?=[A-Za-z])/g, '$1. ') // "UPSSerial", "UPS.Obs"
+        .replace(/(^|\s)-+/g, ' | ').replace(/[,;:()\[\]]/g, ' | ')
         .replace(/\b(porém|porem|mas|entretanto|contudo|todavia)\b/gi, ' | ').split(/\s+/);
       var orig = [], toks = [];
       bruto.forEach(function (o) {
@@ -269,6 +274,21 @@
         return T.slice(Math.max(base, a - 3), b + 1).join(' ');
       }
       for (var v = base; v < T.length; v++) {
+        if (INSTALA.test(T[v])) {
+          if (PENDENTE.test(oracao(v))) continue;
+          var ki = v + 1;
+          while (ki < T.length && T[ki] !== '|' && LIGA.test(T[ki])) ki++;
+          var ci = componenteEm(T, ki);
+          if (ci < 0 && /^(instalad|adicionad)/.test(T[v]) && componenteEm(T, v - 1) >= 0) { ki = v - 1; ci = componenteEm(T, ki); } // "UPS instalada"
+          if (ci < 0 && /^(instalad|adicionad)/.test(T[v]) && /^(foi|foram|sendo|sao|estao)$/.test(T[v - 1] || '')) {
+            // "a UPS foi instalada"
+            ki = v - 2;
+            while (ki > base && T[ki] !== '|' && componenteEm(T, ki) < 0 && v - ki < 5) ki--;
+            ci = componenteEm(T, ki);
+          }
+          if (ci >= 0 && INSTALA_OK.test(COMPONENTES[ci][0])) anota(ki);
+          continue;
+        }
         if (!VERBO.test(T[v]) || PENDENTE.test(oracao(v))) continue;
         var passiva = /^(substituid|trocad|repost)/.test(T[v]) && /^(foi|foram|sendo|sao|estao|sera)$/.test(T[v - 1] || '');
         // 1) objeto depois do verbo
