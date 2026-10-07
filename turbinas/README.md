@@ -9,6 +9,14 @@ Painel interativo (estilo Power BI) para a base `Base_PowerBI_Ordens_*.xlsx`
 2. Arraste a planilha `.xlsx` para a tela (ou clique em **Escolher planilha**).
    A leitura é feita só no seu navegador — nada é enviado.
 
+### Aplicativo no celular
+
+Publicado como site (ex.: GitHub Pages em `…/turbinas/`), o painel é um
+aplicativo instalável: no Chrome, toque em **Instalar app** (ou menu ⋮ →
+*Instalar aplicativo*). Depois abre pelo ícone "Turbinas", em tela cheia e
+sem internet (`sw.js` guarda o aplicativo; a base de OMs fica no aparelho).
+O leitor de Excel vai junto em `vendor/` (SheetJS, licença Apache 2.0).
+
 ### Atualizar a planilha de OMs
 
 Toque em **Atualizar base** (no topo) e escolha a planilha nova. Um aviso

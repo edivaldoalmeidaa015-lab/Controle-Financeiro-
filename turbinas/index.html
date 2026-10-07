@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Painel de Turbinas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#014e77">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Turbinas">
+<link rel="apple-touch-icon" href="icone-180.png">
 <meta name="description" content="Ordens de manutenção dos aerogeradores do Complexo Asa Branca: backlog, mão de obra, custos e mapa de turbinas, com filtros e segmentação.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M16 17 L16 29 M16 17 L9 6 M16 17 L27 13 M16 17 L8 22' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='2.6' fill='white'/%3E%3C/svg%3E">
 <style>
@@ -116,6 +122,7 @@ button { cursor: pointer; }
 .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .btn.prim { background: var(--accent); border-color: transparent; color: #fff; }
 .btn.prim:hover { filter: brightness(1.06); }
+[hidden] { display: none !important; }
 .btn.icone { padding: 7px; }
 .aviso-base {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 300;
@@ -423,7 +430,7 @@ svg text { font-family: inherit; }
   .main { padding-bottom: 68px; }
   .topo { padding: 12px 16px 8px; flex-wrap: wrap; }
   .topo .acoes .txt { display: none; }
-  .topo .acoes .btn.prim .txt { display: inline; }
+  .topo .acoes .btn.prim .txt, .topo .acoes .btn.instalar .txt { display: inline; }
   .aviso-base { bottom: 84px; }
   .topo { gap: 12px; align-items: flex-start; }
   .topo h1 { font-size: 17px; }
@@ -2078,6 +2085,7 @@ function montarApp() {
       h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · ' + fInt(N) + ' OMs · dados de ' + fData(diaMin) + ' a ' + fData(diaMax) + textoAtualizada())),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
+      botaoInstalar(),
       h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo, title: 'Carregar a planilha de OMs mais recente' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
       h('button', { class: 'btn icone', type: 'button', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro', title: 'Tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'))));
   var filtros = h('div', { class: 'filtros' });
@@ -2192,11 +2200,15 @@ function avisar(msg, tipo, persistente) {
 function carregarSheetJS() {
   return new Promise(function (ok, erro) {
     if (window.XLSX) return ok(window.XLSX); // já vem embutido no arquivo gerado
-    var s = document.createElement('script');
-    s.src = SHEETJS_URL;
-    s.onload = function () { ok(window.XLSX); };
-    s.onerror = function () { erro(new Error('Não foi possível carregar o leitor de Excel. Verifique a conexão com a internet.')); };
-    document.head.append(s);
+    var fontes = ['vendor/xlsx.mini.min.js', SHEETJS_URL]; // cópia do aplicativo primeiro, internet depois
+    (function tentar(k) {
+      if (k >= fontes.length) return erro(new Error('Não foi possível carregar o leitor de Excel. Verifique a conexão com a internet.'));
+      var s = document.createElement('script');
+      s.src = fontes[k];
+      s.onload = function () { if (window.XLSX) ok(window.XLSX); else tentar(k + 1); };
+      s.onerror = function () { s.remove(); tentar(k + 1); };
+      document.head.append(s);
+    })(0);
   });
 }
 
@@ -2329,6 +2341,38 @@ function telaErro(e) {
 (function () {
   try { iniciarPainel(); } catch (e) { telaErro(e); }
 })();
+/* =====================================================================
+   Aplicativo instalável (ícone na tela inicial, abre sem internet)
+   ===================================================================== */
+var pedidoInstalar = null;
+function modoApp() { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
+function botaoInstalar() {
+  var b = h('button', { class: 'btn instalar', type: 'button', id: 'btn-instalar', title: 'Instalar o painel como aplicativo', onclick: instalarApp, hidden: true },
+    icone('baixar'), h('span', { class: 'txt' }, 'Instalar app'));
+  if (pedidoInstalar && !modoApp()) b.hidden = false;
+  return b;
+}
+function instalarApp() {
+  if (!pedidoInstalar) return;
+  pedidoInstalar.prompt();
+  pedidoInstalar.userChoice.then(function (r) {
+    if (r.outcome === 'accepted') avisar('✅ Aplicativo instalado! Procure o ícone “Turbinas” na tela inicial.', 'ok');
+    pedidoInstalar = null;
+    var b = document.getElementById('btn-instalar'); if (b) b.hidden = true;
+  });
+}
+window.addEventListener('beforeinstallprompt', function (ev) {
+  ev.preventDefault(); pedidoInstalar = ev;
+  var b = document.getElementById('btn-instalar'); if (b && !modoApp()) b.hidden = false;
+});
+(function registrarApp() {
+  // Só na versão publicada como site (https), não no arquivo baixado com dados embutidos.
+  var embutido = document.getElementById('dados-embutidos');
+  if (embutido && embutido.textContent.trim()) return;
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  try { navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () { /* sem modo offline */ }); } catch (e) { /* idem */ }
+})();
+
 function iniciarPainel() {
   try { aplicarTemaSalvo(); } catch (e) { /* tema padrão */ }
   // Usa a base mais recente entre a embutida no arquivo e a última carregada neste aparelho
