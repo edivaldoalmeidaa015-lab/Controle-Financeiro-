@@ -1107,23 +1107,20 @@ function paginaVisao(pg) {
   var bkl = B.filter(function (i) { return O.grupo[i] === IDX.grupo['Backlog']; });
   var corr = contar(B, function (i) { return O.tipo[i] === IDX.tipo['Corretiva']; });
   var lead = media(B, O.leadH);
-  var AP = baseApont();
-  var hhTot = 0, hhProd = 0;
-  AP.forEach(function (j) { hhTot += A.horas[j]; if (M.categoriaAp[A.tipoAp[j]] === 'Produtivo') hhProd += A.horas[j]; });
   var idadeBkl = media(bkl, O.idadeBkl);
-  var paradas = contar(B, function (i) { return O.parada[i] === 1; });
+  var velhas = contar(bkl, function (i) { return O.idadeBkl[i] !== null && O.idadeBkl[i] > 90; });
   var fech = baseFechadas();
 
   pg.append(h('div', { class: 'kpis' },
-    kpi({ rot: 'OMs abertas', valor: fInt(B.length), valorTexto: fInt(B.length), sub: fInt(fech.length) + ' fechadas no período', spark: serieContagem(B, O.dAb, b),
+    kpi({ rot: 'OMs abertas', valor: fInt(B.length), valorTexto: fInt(B.length), sub: fInt(fech.length) + ' fechadas · ' + (B.length ? fPct(corr / B.length) : '–') + ' corretivas', spark: serieContagem(B, O.dAb, b),
       tip: 'Ordens com data de abertura dentro do período e dos filtros.' }),
     kpi({ rot: 'Backlog', valor: fInt(bkl.length), valorTexto: fInt(bkl.length),
       sub: idadeBkl === null ? 'sem OMs em aberto' : [statusTag(idadeBkl > 35 ? 'alerta' : 'bom', 'idade média ' + f1(idadeBkl) + ' d')],
       tip: 'OMs abertas, programadas, em espera ou com apontamentos concluídos. Referência de mercado: backlog saudável de 3 a 5 semanas.' }),
-    kpi({ rot: '% Corretivas', valor: B.length ? nf1.format(corr / B.length * 100) : '–', unid: '%', valorTexto: fPct(corr / B.length),
-      sub: fInt(corr) + ' corretivas · ' + fInt(paradas) + ' c/ máquina parada', spark: serieContagem(B.filter(function (i) { return O.tipo[i] === IDX.tipo['Corretiva']; }), O.dAb, b), corSpark: 'var(--s2)',
-      tip: 'Participação de manutenção corretiva (reativa) no total de OMs.' }),
-    kpi({ rot: 'Lead time médio', valor: lead === null ? '–' : f1(lead / 24), unid: 'dias', valorTexto: f1(lead / 24) + ' dias',
+    kpi({ rot: 'Backlog > 90 dias', valor: fInt(velhas), valorTexto: fInt(velhas),
+      sub: bkl.length ? [statusTag(velhas / bkl.length > .2 ? 'alerta' : 'bom', fPct(velhas / bkl.length) + ' do backlog')] : 'sem OMs em aberto',
+      tip: 'OMs ainda abertas há mais de 90 dias: as pendências mais antigas.' }),
+    kpi({ rot: 'Tempo médio p/ fechar', valor: lead === null ? '–' : f1(lead / 24), unid: 'dias', valorTexto: f1(lead / 24) + ' dias',
       sub: 'da abertura ao fechamento', tip: 'Média do Lead_Time_h das OMs concluídas ÷ 24.' })
   ));
 
@@ -1156,7 +1153,7 @@ function paginaVisao(pg) {
       linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], s: abertas[i] - fechadas[i], bk: backlogFim[i] }; }) }
   }));
 
-  pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, AP, hhTot, hhProd); } }));
+  pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, fech); } }));
 
   // as turbinas e as peças que mais pedem atenção
   pg.append(cartaoTopTurbinas('s4', 10, true));
@@ -1164,7 +1161,7 @@ function paginaVisao(pg) {
   pg.append(cartaoPecas('s4', 10));
 }
 
-function destaques(el, B, bkl, AP, hhTot, hhProd) {
+function destaques(el, B, bkl, fech) {
   var ul = h('ul', { class: 'destaques' });
   function item(ic, conteudo) { ul.append(h('li', null, h('span', { class: 'ic' }, icone(ic)), h('span', null, conteudo))); }
   if (!B.length) { el.append(h('div', { class: 'vazio' }, 'Sem OMs para os filtros atuais.')); return; }
@@ -1186,17 +1183,16 @@ function destaques(el, B, bkl, AP, hhTot, hhProd) {
       item('pessoa', ['“' + M.dic.espera[porM[0]] + '” é o principal motivo de espera: ', h('b', null, fPct(porM[1] / espera.length)), ' das ' + fInt(espera.length) + ' OMs paradas aguardando.']);
     }
   }
-  var geral = M.dic.sistema.indexOf('Turbina (geral)');
-  var esp = B.filter(function (i) { return O.sistema[i] !== geral && O.sistema[i] >= 0; });
-  if (esp.length) {
-    var s = Array.from(agrupar(esp, function (i) { return O.sistema[i]; }).entries()).sort(function (a, b) { return b[1] - a[1]; })[0];
-    item('engrenagem', ['Entre os sistemas identificados, ', h('button', { class: 'link', type: 'button', onclick: function () { alternarFiltro('sistema', s[0]); } }, M.dic.sistema[s[0]]),
-      ' lidera com ', h('b', null, fInt(s[1])), ' OMs.']);
+  if (B.length) {
+    item('tendencia', ['No período entraram ', h('b', null, fInt(B.length)), ' OMs e foram fechadas ', h('b', null, fInt(fech.length)),
+      ' — o equivalente a ', h('b', null, fPct(fech.length / B.length)), ' do que entrou.']);
   }
-  if (hhTot) {
-    var desloc = 0;
-    AP.forEach(function (j) { var t = M.dic.tipoAp[A.tipoAp[j]]; if (t === 'Deslocamento' || t === 'Preparação' || t === 'Dds') desloc += A.horas[j]; });
-    item('tendencia', ['Wrench time de ', h('b', null, fPct(hhProd / hhTot)), '; deslocamento, preparação e DDS consomem ', h('b', null, fPct(desloc / hhTot)), ' das horas apontadas.']);
+  var fx = new Map();
+  B.forEach(function (i) { O.falhas[i].forEach(function (f) { fx.set(f, (fx.get(f) || 0) + 1); }); });
+  if (fx.size) {
+    var fTop = Array.from(fx.entries()).sort(function (a, b) { return b[1] - a[1]; })[0];
+    item('alerta', ['Falha que mais se repete: ', h('button', { class: 'link', type: 'button', onclick: function () { alternarFiltro('falha', fTop[0]); } }, M.falhas[fTop[0]]),
+      ', em ', h('b', null, fInt(fTop[1])), ' OMs.']);
   }
   el.append(ul);
 }
@@ -1206,8 +1202,6 @@ var METRICAS_MAPA = {
   oms: { rot: 'Total de OMs', valor: function () { return 1; }, fmt: fInt },
   corr: { rot: 'OMs corretivas', valor: function (i) { return O.tipo[i] === IDX.tipo['Corretiva'] ? 1 : 0; }, fmt: fInt },
   bkl: { rot: 'OMs em backlog', valor: function (i) { return O.grupo[i] === IDX.grupo.Backlog ? 1 : 0; }, fmt: fInt },
-  parada: { rot: 'OMs com máquina parada', valor: function (i) { return O.parada[i]; }, fmt: fInt },
-  hh: { rot: 'Hh apontado', valor: function (i) { return O.hhApont[i] || 0; }, fmt: fH },
   custo: { rot: 'Custo total', valor: function (i) { return custoValido(i) ? O.custoTot[i] || 0 : 0; }, fmt: function (v) { return fMoeda(v); } },
   pecas: { rot: 'Peças trocadas', valor: function (i) { return O.pecasItens[i].length; }, fmt: fInt },
   falhas: { rot: 'OMs com código de falha', valor: function (i) { return O.falhas[i].length ? 1 : 0; }, fmt: fInt }
@@ -1336,7 +1330,6 @@ function paginaTurbinas(pg) {
           { k: 'bkl', rot: 'Backlog', num: true, fmt: fInt },
           { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
           { k: 'pecas', rot: 'Peças trocadas', num: true, fmt: fInt },
-          { k: 'hh', rot: 'Hh apontado', num: true, fmt: fH },
           { k: 'custo', rot: 'Custo', num: true, fmt: function (v) { return fMoeda(v); } }
         ],
         linhas: linhas, ordem: { k: estado.ranking.ordem, desc: estado.ranking.desc }, altura: 520,
@@ -1513,62 +1506,13 @@ function paginaComponentes(pg) {
 }
 
 /* ---------- Mão de obra ---------- */
-function paginaHH(pg) {
-  var AP = baseApont(), b = baldes();
-  var tot = 0, prod = 0, pessoas = new Map(), oms = new Set();
-  var cats = ['Produtivo', 'Apoio', 'Improdutivo', 'Pausa'];
-  var porMes = cats.map(function () { return new Array(b.length).fill(0); });
-  AP.forEach(function (j) {
-    var hr = A.horas[j], cat = M.categoriaAp[A.tipoAp[j]];
-    tot += hr; if (cat === 'Produtivo') prod += hr;
-    oms.add(A.ordem[j]);
-    var p = pessoas.get(A.pessoa[j]) || { tot: 0, prod: 0, oms: new Set() };
-    p.tot += hr; if (cat === 'Produtivo') p.prod += hr; p.oms.add(A.ordem[j]); pessoas.set(A.pessoa[j], p);
-    var k = b.de(A.dia[j]), ci = cats.indexOf(cat);
-    if (k >= 0 && ci >= 0) porMes[ci][k] += hr;
-  });
-  var wt = tot ? prod / tot : null;
-  var hhOM = oms.size ? tot / oms.size : null;
-  var wtMes = b.map(function (_, k) { var t = 0; porMes.forEach(function (s) { t += s[k]; }); return t ? porMes[0][k] / t : 0; });
-
-  pg.append(h('div', { class: 'kpis' },
-    kpi({ rot: 'Hh apontado', valor: fInt(tot), unid: 'h', valorTexto: fH(tot), sub: fH(prod) + ' produtivas', spark: porMes.reduce(function (acc, s) { return acc.map(function (v, k) { return v + s[k]; }); }, new Array(b.length).fill(0)) }),
-    kpi({ rot: 'Wrench time', valor: wt === null ? '–' : nf1.format(wt * 100), unid: '%', valorTexto: fPct(wt), spark: wtMes,
-      sub: [statusTag(wt !== null && wt >= .35 ? 'bom' : 'alerta', 'ref. 35% típico · 55% classe mundial')] }),
-    kpi({ rot: 'Técnicos com apontamento', valor: fInt(pessoas.size), valorTexto: fInt(pessoas.size), sub: pessoas.size ? fH(tot / pessoas.size) + ' por técnico' : '' }),
-    kpi({ rot: 'Hh por OM', valor: hhOM === null ? '–' : f1(hhOM), unid: 'h', valorTexto: f1(hhOM), sub: fInt(oms.size) + ' OMs com apontamento' })
-  ));
-  pg.append(h('p', { class: 'titulo-pag nota', style: 'margin:-6px 0 -4px' }, 'Nesta página o período é aplicado à data do apontamento; os demais filtros, às OMs apontadas.'));
-
-  var seriesCat = cats.map(function (c, ci) { return { nome: c, cor: COR_CATEGORIA[c], valores: porMes[ci] }; });
-  pg.append(cartao({
-    id: 'hh-mes', span: 's6', titulo: 'Hh apontado por ' + b.tipo, sub: 'Empilhado por categoria de apontamento',
-    desenhar: function (el) { serieTempo(el, { baldes: b, modo: 'colunas', series: seriesCat, fmt: fH, titulo: 'Hh por categoria' }); },
-    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }].concat(cats.map(function (c, ci) { return { k: 'c' + ci, rot: c, num: true, fmt: fH }; })).concat([{ k: 'wt', rot: 'Wrench time', num: true, fmt: fPct }]),
-      linhas: b.map(function (x, k) { var r = { p: x.longo, wt: wtMes[k] }; cats.forEach(function (c, ci) { r['c' + ci] = porMes[ci][k]; }); return r; }) }
-  }));
-
-  var linhasP = Array.from(pessoas.entries()).map(function (e) { return { nome: e[0] >= 0 ? M.dic.pessoa[e[0]] : '(não informado)', tot: e[1].tot, prod: e[1].prod, wt: e[1].tot ? e[1].prod / e[1].tot : null, oms: e[1].oms.size }; });
-  pg.append(cartao({
-    id: 'hh-pessoas', span: 's6', titulo: 'Equipe técnica', sub: 'Horas apontadas por técnico · ordene pelas colunas',
-    desenhar: function (el) {
-      tabela(el, {
-        cols: [{ k: 'nome', rot: 'Técnico', classe: 'forte quebra' }, { k: 'tot', rot: 'Hh total', num: true, barra: true, fmt: fH },
-          { k: 'wt', rot: 'Wrench time', num: true, fmt: fPct }, { k: 'oms', rot: 'OMs', num: true, fmt: fInt }],
-        linhas: linhasP, ordem: { k: estado.ordemPessoas || 'tot', desc: estado.descPessoas !== false }, altura: 470,
-        onOrdenar: function (k, desc) { estado.ordemPessoas = k; estado.descPessoas = desc; renderPagina(); }
-      });
-    }
-  }));
-}
-
-/* ---------- Custos ---------- */
 function paginaCustos(pg) {
   var B = base(), b = baldes();
   var C = B.filter(custoValido);
   var nAtip = contar(B, function (i) { return O.atipico[i] === 1; });
   var tot = soma(C, O.custoTot), mat = soma(C, O.custoMat), mo = soma(C, O.custoMO);
   var comCusto = C.filter(function (i) { return (O.custoTot[i] || 0) > 0; });
+  var nTurbC = new Set(comCusto.filter(function (i) { return parqueDoWtg[O.wtg[i]] >= 0; }).map(function (i) { return O.wtg[i]; })).size;
   var mesMat = new Array(b.length).fill(0), mesMO = new Array(b.length).fill(0);
   C.forEach(function (i) { var k = b.de(O.dAb[i]); if (k >= 0) { mesMat[k] += O.custoMat[i] || 0; mesMO[k] += O.custoMO[i] || 0; } });
 
@@ -1580,7 +1524,7 @@ function paginaCustos(pg) {
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'Custo total', valor: fMoeda(tot), valorTexto: fMoeda(tot), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos', spark: mesMat.map(function (v, k) { return v + mesMO[k]; }) }),
     kpi({ rot: 'Material', valor: fMoeda(mat), valorTexto: fMoeda(mat), sub: tot ? fPct(mat / tot) + ' do total' : '' }),
-    kpi({ rot: 'Mão de obra', valor: fMoeda(mo), valorTexto: fMoeda(mo), sub: tot ? fPct(mo / tot) + ' do total' : '' }),
+    kpi({ rot: 'Custo médio por turbina', valor: nTurbC ? fMoeda(tot / nTurbC) : '–', valorTexto: fMoeda(tot / nTurbC), sub: fInt(nTurbC) + ' turbinas com custo' }),
     kpi({ rot: 'Custo médio por OM', valor: comCusto.length ? fMoeda(tot / comCusto.length) : '–', valorTexto: fMoeda(tot / comCusto.length), sub: fInt(comCusto.length) + ' OMs com custo' })
   ));
 
@@ -1641,11 +1585,11 @@ function paginaOrdens(pg) {
   aposRender.push(function () {
     tabela(corpo, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte', ord: function (r) { return r.om; } }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'parqueTxt', rot: 'Parque' },
-        { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); }, ord: function (r) { return r.statusTxt; } },
+        { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); }, ord: function (r) { return r.statusTxt; } },
         { k: 'falhasTxt', rot: 'Falha', classe: 'larga', fmt: function (v) { return v || '–'; } },
         { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'quebra', fmt: function (v) { return v || '–'; } },
-        { k: 'parada', rot: 'Máq. parada' }, { k: 'lead', rot: 'Lead time', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
-        { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } }, { k: 'hh', rot: 'Hh', num: true, fmt: function (v) { return v === null ? '–' : fH(v); } },
+        { k: 'lead', rot: 'Tempo p/ fechar', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
+        { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
         { k: 'custo', rot: 'Custo', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }, { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } }],
       linhas: linhas, ordem: { k: estado.ordens.ordem, desc: estado.ordens.desc }, porPagina: 25, pagina: estado.ordens.pag,
       onOrdenar: function (k, desc) { estado.ordens.ordem = k === 'omTxt' ? 'omTxt' : k; estado.ordens.desc = desc; estado.ordens.pag = 0; renderPagina(); },
@@ -1730,8 +1674,6 @@ function abrirTurbina(w) {
   var corr = contar(ix, function (i) { return O.tipo[i] === IDX.tipo['Corretiva']; });
   var bkl = ix.filter(function (i) { return O.grupo[i] === IDX.grupo.Backlog; });
   var custo = soma(ix, O.custoTot, custoValido);
-  var hh = soma(ix, O.hhApont);
-  var parada = contar(ix, function (i) { return O.parada[i] === 1; });
   var lead = media(ix, O.leadH);
   var b = baldes();
   var sel = estado.f.wtg.has(w);
@@ -1746,7 +1688,7 @@ function abrirTurbina(w) {
     corpo);
   corpo.append(h('div', { class: 'mini-kpis' },
     miniKpi('OMs', fInt(ix.length)), miniKpi('Corretivas', fInt(corr)), miniKpi('Backlog', fInt(bkl.length)),
-    miniKpi('Máquina parada', fInt(parada)), miniKpi('Hh apontado', fH(hh)), miniKpi('Custo', fMoeda(custo))));
+    miniKpi('Peças trocadas', fInt(ix.reduce(function (t, i) { return t + O.pecasItens[i].length; }, 0))), miniKpi('Falhas citadas', fInt(contar(ix, function (i) { return O.falhas[i].length > 0; }))), miniKpi('Custo', fMoeda(custo))));
   var cardT = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'OMs por ' + b.tipo + ' e tipo'), h('p', null, 'Lead time médio: ' + (lead === null ? '–' : fDias(lead / 24))))));
   var bodyT = h('div', { class: 'card-b' }); cardT.append(bodyT);
   var cardS = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Sistemas'))));
@@ -1987,18 +1929,12 @@ function renderFiltros(cont) {
     h('span', { class: 'rot' }, 'Período'), h('span', { class: 'val' }, textoPeriodo()));
   bPer.addEventListener('click', function () { abrirPop(bPer, popPeriodo, 'periodo'); });
   linha.append(bPer);
-  ['parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status'].forEach(function (dim) {
+  ['parque', 'wtg', 'tipo', 'falha', 'peca', 'status'].forEach(function (dim) {
     var b = h('button', { type: 'button', class: 'slicer' + (estado.f[dim].size ? ' ativo' : ''), 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
       h('span', { class: 'rot' }, ROTULO_DIM[dim]), h('span', { class: 'val' }, textoDim(dim)));
     b.addEventListener('click', function () { abrirPop(b, function (el) { popDim(dim, el); }, dim); });
     linha.append(b);
   });
-  var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Máquina parada' }, h('span', { class: 'rot' }, 'Parada'));
-  [['Todas', null], ['Sim', 1], ['Não', 0]].forEach(function (o) {
-    var ativo = o[1] === null ? !estado.f.parada.size : estado.f.parada.size === 1 && estado.f.parada.has(o[1]);
-    seg.append(h('button', { type: 'button', 'aria-pressed': String(ativo), onclick: function () { estado.f.parada.clear(); if (o[1] !== null) estado.f.parada.add(o[1]); atualizar(); } }, o[0]));
-  });
-  linha.append(seg);
   if (temFiltro()) linha.append(h('button', { type: 'button', class: 'limpar', onclick: limparTudo }, 'Limpar filtros'));
   cont.append(linha);
 
@@ -2058,9 +1994,8 @@ function lerHash() {
 var PAGINAS = {
   visao: { rot: 'Visão geral', icone: 'visao', fn: paginaVisao },
   turbinas: { rot: 'Turbinas', icone: 'turbinas', fn: paginaTurbinas },
-  componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
   backlog: { rot: 'Backlog', icone: 'backlog', fn: paginaBacklog },
-  hh: { rot: 'Mão de obra', icone: 'hh', fn: paginaHH },
+  componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
   custos: { rot: 'Custos', icone: 'custos', fn: paginaCustos },
   ordens: { rot: 'Ordens', icone: 'ordens', fn: paginaOrdens }
 };
@@ -2082,7 +2017,7 @@ function montarApp() {
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · Complexo Asa Branca'),
-      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · ' + fInt(N) + ' OMs · dados de ' + fData(diaMin) + ' a ' + fData(diaMax) + textoAtualizada())),
+      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · dados até ' + fData(diaMax))),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
@@ -2176,12 +2111,6 @@ function iniciar(modelo) {
   for (var i = 0; i < N; i++) if (O.dAb[i] !== null && O.dAb[i] < diaMin) diaMin = O.dAb[i];
   lerHash();
   montarApp();
-}
-
-function textoAtualizada() {
-  var d = M && M.gerado ? new Date(M.gerado) : null;
-  if (!d || isNaN(d)) return '';
-  return ' · base atualizada em ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
 }
 
 // Aviso flutuante (substitui alert(), que muitos aplicativos de celular não mostram).

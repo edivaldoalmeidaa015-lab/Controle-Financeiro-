@@ -51,16 +51,15 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 
 | Página | Conteúdo |
 |---|---|
-| Visão geral | 4 indicadores, abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, falhas mais frequentes (códigos do SCADA citados na descrição, ex.: 120_Pitch controller communications fault), peças mais trocadas |
+| Visão geral | 4 indicadores (OMs, backlog, backlog > 90 dias, tempo médio para fechar), abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, falhas mais frequentes (códigos do SCADA citados na descrição, ex.: 120_Pitch controller communications fault), peças mais trocadas |
 | Turbinas | Mapa 5 parques × 20 posições (métrica selecionável) e ranking das 100 turbinas |
 | Peças | Peças trocadas identificadas no texto do serviço executado: ranking, turbinas e OMs com a frase de origem |
 | Backlog | Envelhecimento, motivos de espera e OMs mais antigas |
-| Mão de obra | Hh por mês por categoria e equipe técnica (wrench time) |
 | Custos | Custo por mês e por tipo de serviço e OMs de maior custo; custos atípicos (≥ R$ 10 mi) excluídos por padrão |
 | Ordens | Tabela com busca, ordenação, paginação e exportação CSV |
 
 **Filtros** (valem para todas as páginas): período, parque, turbina, tipo de
-serviço, sistema, falha, componente trocado, status e máquina parada. Clicar numa barra ou num parque
+serviço, falha, componente trocado e status. Clicar numa barra ou num parque
 também filtra (cross-filter). Clique numa turbina para abrir o detalhe e numa
 OM para ver a ficha completa. O estado fica na URL, então o link pode ser
 compartilhado já filtrado. Todo gráfico tem o botão de **visão em tabela**.
@@ -72,10 +71,8 @@ Seguem as medidas DAX da aba `LEIA-ME`:
 - **% Conclusão** = Concluídas ÷ (Total − Canceladas)
 - **Backlog** = OMs dos status Abertas, Programadas, Em espera e Apontamentos concluídos
 - **Lead time médio (dias)** = média de `Lead_Time_h` ÷ 24
-- **Wrench time** = Hh produtivo ÷ Hh apontado (`fato_apontamentos`, categoria *Produtivo*)
 - **Entrega no prazo** = No prazo ÷ (No prazo + Atrasada)
-- **Período**: OMs pela data de abertura; "fechadas" pela data de fechamento;
-  na página Mão de obra, pela data do apontamento.
+- **Período**: OMs pela data de abertura; "fechadas" pela data de fechamento.
 
 ## Arquivos
 
