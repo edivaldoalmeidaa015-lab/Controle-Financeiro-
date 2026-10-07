@@ -15,7 +15,9 @@
   // Custo atípico (valor da origem a validar, fora dos totais por padrão): acima de R$ 2 mi, ou acima de
   // R$ 300 mil numa OM que não é troca de componente grande (troca de gearbox/gerador custa ~R$ 1 a 1,4 mi).
   var LIMITE_CUSTO_ATIPICO = 2e6, LIMITE_CUSTO_REVISAR = 3e5;
-  var COMPONENTE_GRANDE = /gear ?box|gbx|gerador|main ?bearing|main ?shaft|rolamento principal|\bp[aá]s?\b|blade|transformador|trafo|yaw ?drive|redutor|multiplicadora|liftra|guindaste|hss|conversor|converter/i;
+  // troca de componente grande (custa ~R$ 1 a 1,4 mi): o componente tem de ser o objeto da troca, não só citado
+  // ("Substituição de GERADOR com Liftra" sim; "troca de escovas de fase do gerador" não)
+  var COMPONENTE_GRANDE = /(substitui[\wÀ-ú]*|troca[\wÀ-ú]*|troc[\wÀ-ú]*|instala[\wÀ-ú]*|\bmce\b|montagem|atividade de)[\s\-:]+(?:\S+\s+){0,3}?(?:d[aeo]s?\s+)?(gear ?box|gbx|gerador|main ?bearing|main ?shaft|rolamento principal|p[aá]s?\b|blade|transformador|trafo|yaw ?drive|redutor\w*|multiplicadora|hss|pitch ?bearing|rolamento d[ao] pitch|power ?conver\w*)/i;
   var ETAPAS = ['Abertas', 'Programadas', 'Em espera', 'Apontamentos concluídos'];
 
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
@@ -80,7 +82,7 @@
   var OUTRAS = COMPONENTES.length - 1;
   function componenteIdx(nome) { for (var x = 0; x < COMPONENTES.length; x++) if (COMPONENTES[x][0] === nome) return x; return OUTRAS; }
   // Suba quando mudar a regra de peças: o painel refaz a leitura das bases já guardadas no aparelho.
-  var VERSAO_PECAS = 5;
+  var VERSAO_PECAS = 6;
   // verbos de troca JÁ REALIZADA (exclui infinitivo "substituir"/"trocar", que costuma ser recomendação)
   var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|substitui-l[oa]s?|troca-l[oa]s?)$/;
   // "Realizada instalação de UPS": instalar conta como troca só para peças de reposição — instalar
@@ -98,7 +100,7 @@
   // troca feita só como teste: "instalação da UPS reparada para teste", "testes com substituição de placas"
   var TESTE = /para testes?\b|como ?testes?\b|testes com|em testes?\b/;
   // histórico, tentativa ou programação logo ao lado do verbo: "já havia sido substituído", "não sendo possível realizar a substituição"
-  var PERTO = /nao (sendo|foi|foram|era) possivel|nao substitu|nao foi executad|programacao|sera realizad|ja (havia|haviam|tinha|tinham) (sido|passado|substitu|trocad)|recentemente|(a|ha) pouco tempo|anteriormente|tentativa/;
+  var PERTO = /nao (sendo|foi|foram|era) possivel|nao substitu|nao foi executad|programacao|sera realizad|ja (havia|haviam|tinha|tinham) (sido|passado|substitu|trocad)|recentemente|(a|ha) pouco tempo|anteriormente|tentativa|preparacao|abortad/;
   var PENDENTE = /interessante|agendar|assim que possivel|futuramente|nao deu|necessidade de (realizar )?(a )?(substitu|troca)|ate ?a substitu|apresentacao do procedimento|procedimento revisado|\bnao\b.{0,35}\b(necessari|necessidade)|\bsem (necessidade|necessari)|\bnao (foi|foram|sera|houve)\b.{0,25}(substitu|troca)|aguardando|programar|programad|recomend|sugerid|sugere|solicitad|solicitar|pendente|necessita|(?<!foi |foram |sendo |fez-se |se fez )necessari\w* (a |realizar |fazer )?(a )?(substitu|troca)|sera (necessari\w* )?(substitu|troca)|devera|deve ser|precisa|importante/;
   // palavras que podem ficar entre o verbo e a peça
   var LIGA = /^(doas|de|do|da|dos|das|o|a|os|as|um|uma|uns|umas|no|na|nos|nas|em|e|novo|nova|novos|novas|dois|duas|tres|quatro|seis|oito|ambos|ambas|todos|todas|completa|completo|conjunto|kit|jogo|cinco|sete|nove|dez|doze|quinze|vinte|trinta|quarenta|cinquenta|cem|02|\d+|\d+o|x|\d+x|pc|pcs|unidades?|corretiva|preventiva|imediata|integral|total|parcial)$/;
@@ -295,6 +297,7 @@
         // "sensor wind vane", "sensor de vento", "sensor ultrassônico" medem vento
         if (COMPONENTES[c][0] === 'Sensor' && (/^(wind|vane|vento|ultra-?s+on\w*)$/.test(T[pos + 1] === 'de' || T[pos + 1] === 'do' ? T[pos + 2] || '' : T[pos + 1] || '') || T[pos - 1] === 'wind')) c = componenteIdx('Anemômetro / biruta');
         if (/^bancos?$/.test(T[pos]) && /^capacit/.test(T[pos + 2] || '')) c = OUTRAS; // banco de capacitores
+        if (T.slice(pos, pos + 5).some(function (t) { return /^reparad[oa]s?$/.test(t); }) && !/reparad/i.test(r[1])) r[1] += ' (reparada)';
         var adiante = T.slice(pos, pos + 8).join(' ');
         if (/linha de vida/i.test(r[1]) || (COMPONENTES[c][0] === 'Cabo / conector' && /linha de vida/.test(adiante))) c = componenteIdx('Linha de vida');
         else if (/^pinos?$/.test(T[pos]) && /por (\w+ )?parafus/.test(adiante)) c = componenteIdx('Parafusos / fixação'); // pinos trocados por parafusos
@@ -412,9 +415,9 @@
       }
       // troca desfeita: "…então foi retornada a original", "voltamos a placa anterior" — sai a última troca antes disso
       for (var rv = base; rv < T.length; rv++) {
-        var adiante = T.slice(rv + 1, rv + 5);
+        var adiante = T.slice(rv + 1, rv + 7);
         var desfez = (/^retorn/.test(T[rv]) || /^reinstalad/.test(T[rv]) || /^deixad/.test(T[rv]) || /^recolocad/.test(T[rv]) || T[rv] === 'voltamos')
-          && (adiante.indexOf('original') >= 0 || adiante.indexOf('anterior') >= 0 || adiante.indexOf('antiga') >= 0 || adiante.indexOf('antigo') >= 0);
+          && /\b(original|anterior|antig[oa]|retirad[oa]|que estava)\b/.test(adiante.join(' '));
         if (!desfez) continue;
         for (var ad = adicionados.length - 1; ad >= 0; ad--) {
           if (adicionados[ad].v >= rv) continue;

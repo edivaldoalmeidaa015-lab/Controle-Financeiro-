@@ -261,7 +261,7 @@ select.mini {
 /* barras horizontais */
 .bh { display: flex; flex-direction: column; gap: 2px; }
 .bh-row {
-  display: grid; grid-template-columns: minmax(84px, var(--rot, 38%)) minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: minmax(84px, var(--rot, 38%)) minmax(0, 1fr) var(--val, auto); align-items: center; gap: 10px;
   border: 0; background: transparent; text-align: left; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; width: calc(100% + 12px);
 }
 button.bh-row:hover, .bh-row.foco { background: var(--hover); }
@@ -651,6 +651,11 @@ function baseApont() {
   for (var j = 0; j < A.horas.length; j++) if (ok[A.ordem[j]] && noPeriodo(A.dia[j])) r.push(j);
   return r;
 }
+// em tabelas de OMs: custo atípico fora dos totais aparece sinalizado, não como valor
+function fCustoLinha(v, r) {
+  if (r && !custoValido(r.i)) return h('span', { class: 'st alerta', title: 'Valor lançado ' + fMoedaCompleta(v) + ' — fora dos totais (veja Custos)' }, 'atípico');
+  return v === null || v === undefined ? '–' : fMoeda(v);
+}
 function custoValido(i) { return estado.atipicos || !O.atipico[i]; }
 function soma(ix, col, filtro) { var s = 0; for (var k = 0; k < ix.length; k++) { var i = ix[k]; if (filtro && !filtro(i)) continue; var v = col[i]; if (v !== null) s += v; } return s; }
 function media(ix, col) { var s = 0, n = 0; for (var k = 0; k < ix.length; k++) { var v = col[ix[k]]; if (v !== null && v !== undefined) { s += v; n++; } } return n ? s / n : null; }
@@ -748,6 +753,14 @@ var tipEl = document.getElementById('tip');
 var SISTEMA_UTIL = true;
 function semSistemaInutil(cols) { return SISTEMA_UTIL ? cols : cols.filter(function (c) { return c.k !== 'sistemaTxt'; }); }
 // A base só traz OMs criadas a partir da primeira data: pendências mais antigas não aparecem no backlog.
+// Homem-hora da OM numa linha só, com os campos que a base traz (o Manusis só traz parte deles).
+function hhDaOM(i) {
+  var p = [];
+  [['previsto', O.hhPrev], ['real', O.hhReal], ['apontado', O.hhApont], ['produtivo', O.hhProd]].forEach(function (x) {
+    if (x[1] && x[1][i] !== null && x[1][i] !== undefined) p.push(fH(x[1][i]) + ' ' + x[0]);
+  });
+  return p.length ? p.join(' · ') : '–';
+}
 function notaJanela() { return 'A base traz as OMs criadas a partir de ' + fData(diaMin) + '; pendências abertas antes disso não constam no backlog.'; }
 function mostrarTip(x, y, titulo, linhas, nota) {
   tipEl.textContent = '';
@@ -782,7 +795,9 @@ function barrasH(el, itens, o) {
   var fmt = o.fmt || fInt;
   if (!itens.length) { el.append(h('div', { class: 'vazio' }, 'Sem dados para os filtros atuais.')); return; }
   var max = o.max || Math.max.apply(null, itens.map(function (d) { return d.v; })) || 1;
-  var lista = h('div', { class: 'bh', style: o.larguraRotulo ? '--rot:' + o.larguraRotulo : null });
+  // coluna do valor com a mesma largura em todas as linhas: a barra tem o mesmo comprimento máximo em todas
+  var maiorVal = Math.max.apply(null, itens.map(function (d) { return (fmt(d.v) + (d.extra ? ' ' + d.extra : '')).length; }));
+  var lista = h('div', { class: 'bh', style: (o.larguraRotulo ? '--rot:' + o.larguraRotulo + ';' : '') + '--val:' + Math.min(22, maiorVal * 0.62 + 1).toFixed(1) + 'em' });
   var ativo = o.ativo;
   itens.forEach(function (d) {
     var sel = ativo && ativo.has(d.k), dim = ativo && ativo.size && !sel;
@@ -1119,18 +1134,21 @@ function paginaVisao(pg) {
   var idadeBkl = media(bkl, O.idadeBkl);
   var velhas = contar(bkl, function (i) { return O.idadeBkl[i] !== null && O.idadeBkl[i] > 90; });
   var fech = baseFechadas();
+  var conc = contar(B, function (i) { return O.grupo[i] === IDX.grupo['Concluída']; });
+  var canc = contar(B, function (i) { return O.grupo[i] === IDX.grupo.Cancelada; });
+  var aguard = contar(bkl, function (i) { return M.dic.status[O.status[i]] === 'Apontamentos concluídos'; });
 
   pg.append(h('div', { class: 'kpis' },
-    kpi({ rot: 'OMs no período', valor: fInt(B.length), valorTexto: fInt(B.length), sub: 'criadas · ' + fInt(fech.length) + ' fechadas · ' + (B.length ? fPct(corr / B.length) : '–') + ' corretivas', spark: serieContagem(B, O.dAb, b),
-      tip: 'Ordens com data de abertura dentro do período e dos filtros.' }),
+    kpi({ rot: 'OMs no período', valor: fInt(B.length), valorTexto: fInt(B.length), sub: fInt(conc) + ' fechadas · ' + fInt(canc) + ' canceladas · ' + fInt(bkl.length) + ' em aberto', spark: serieContagem(B, O.dAb, b),
+      tip: 'Ordens criadas dentro do período e dos filtros, com a situação de hoje: fechadas + canceladas + em aberto = criadas. ' + (B.length ? fPct(corr / B.length) : '–') + ' delas são corretivas.' }),
     kpi({ rot: 'Backlog', valor: fInt(bkl.length), valorTexto: fInt(bkl.length),
-      sub: idadeBkl === null ? 'sem OMs em aberto' : [statusTag(idadeBkl > 35 ? 'alerta' : 'bom', 'idade média ' + f1(idadeBkl) + ' d')],
-      tip: 'OMs abertas, programadas, em espera ou com apontamentos concluídos. Referência de mercado: backlog saudável de 3 a 5 semanas.' }),
+      sub: idadeBkl === null ? 'sem OMs em aberto' : [statusTag(idadeBkl > 35 ? 'alerta' : 'bom', 'idade média ' + f1(idadeBkl) + ' d'), aguard ? h('div', null, fInt(aguard) + ' executadas, aguardando encerramento') : null],
+      tip: 'OMs abertas, programadas, em espera ou com apontamentos concluídos (serviço executado, falta encerrar a OM no sistema). Referência de mercado: backlog saudável de 3 a 5 semanas. A idade média é um mínimo: ' + notaJanela() }),
     kpi({ rot: 'Backlog > 90 dias', valor: fInt(velhas), valorTexto: fInt(velhas),
       sub: bkl.length ? [statusTag(velhas / bkl.length > .2 ? 'alerta' : 'bom', fPct(velhas / bkl.length) + ' do backlog')] : 'sem OMs em aberto',
       tip: 'OMs ainda abertas há mais de 90 dias: as pendências mais antigas.' }),
     kpi({ rot: 'Tempo médio p/ fechar', valor: lead === null ? '–' : f1(lead / 24), unid: 'dias', valorTexto: f1(lead / 24) + ' dias',
-      sub: 'da abertura ao fechamento', tip: 'Média do Lead_Time_h das OMs concluídas ÷ 24.' })
+      sub: 'da abertura ao fechamento', tip: 'Média, em dias, do tempo entre a abertura e o fechamento das OMs fechadas no período.' })
   ));
 
   // tendência abertas x fechadas
@@ -1146,20 +1164,25 @@ function paginaVisao(pg) {
         !(temCancel ? O.dCa[i] !== null && O.dCa[i] <= x.fim : O.grupo[i] === IDX.grupo.Cancelada);
     });
   });
-  var totAb = abertas.reduce(function (a, v) { return a + v; }, 0), totFe = fechadas.reduce(function (a, v) { return a + v; }, 0);
+  // canceladas por data de cancelamento: sem elas, criadas − fechadas não bate com a variação do backlog
+  var canceladas = b.map(function () { return 0; });
+  if (temCancel) estoque.forEach(function (i) { if (O.dCa[i] !== null && noPeriodo(O.dCa[i])) { var k = b.de(O.dCa[i]); if (k >= 0) canceladas[k]++; } });
+  var soma = function (v) { return v.reduce(function (a, x) { return a + x; }, 0); };
+  var totAb = soma(abertas), totFe = soma(fechadas), totCa = soma(canceladas);
   var saldo = function (v) { return (v > 0 ? '+' : '') + fInt(v); };
+  var saldoDe = function (i) { return abertas[i] - fechadas[i] - canceladas[i]; };
   pg.append(cartao({
     id: 'tendencia', span: 's8', titulo: 'OMs criadas × fechadas e backlog',
-    sub: fInt(totAb) + ' criadas e ' + fInt(totFe) + ' fechadas no período · backlog no fim: ' + fInt(backlogFim[b.length - 1] || 0) + ' OMs',
+    sub: fInt(totAb) + ' criadas, ' + fInt(totFe) + ' fechadas' + (totCa ? ' e ' + fInt(totCa) + ' canceladas' : '') + ' no período · backlog no fim: ' + fInt(backlogFim[b.length - 1] || 0) + ' OMs',
     desenhar: function (el) {
       serieTempo(el, { baldes: b, modo: 'agrupado', titulo: 'OMs criadas, fechadas e backlog por ' + b.tipo, altura: 270, notaJanela: true,
         series: [{ nome: 'Criadas', cor: 'var(--s1)', valores: abertas }, { nome: 'Fechadas', cor: 'var(--s2)', valores: fechadas }],
         linhasSobre: [{ nome: 'Backlog no fim do ' + b.tipo, cor: 'var(--ink-2)', valores: backlogFim, rotular: true }],
-        tipExtra: function (i) { return [{ valor: saldo(abertas[i] - fechadas[i]), rotulo: 'Saldo (criadas − fechadas)' }]; } });
+        tipExtra: function (i) { return [{ valor: fInt(canceladas[i]), rotulo: 'Canceladas' }, { valor: saldo(saldoDe(i)), rotulo: 'Saldo (criadas − fechadas − canceladas)' }]; } });
     },
     dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'a', rot: 'Criadas', num: true, fmt: fInt }, { k: 'f', rot: 'Fechadas', num: true, fmt: fInt },
-        { k: 's', rot: 'Saldo', num: true, fmt: saldo }, { k: 'bk', rot: 'Backlog no fim', num: true, fmt: fInt }],
-      linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], s: abertas[i] - fechadas[i], bk: backlogFim[i] }; }) }
+        { k: 'c', rot: 'Canceladas', num: true, fmt: fInt }, { k: 's', rot: 'Saldo', num: true, fmt: saldo }, { k: 'bk', rot: 'Backlog no fim', num: true, fmt: fInt }],
+      linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], c: canceladas[i], s: saldoDe(i), bk: backlogFim[i] }; }) }
   }));
 
   pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, fech); } }));
@@ -1177,16 +1200,18 @@ function cartaoParques(B) {
   var nT = M.parques.map(function () { return 0; });
   M.ativos.forEach(function (a) { if (a.parque >= 0) nT[a.parque]++; });
   var st = M.parques.map(function () { return { oms: 0, corr: 0, bkl: 0, velhas: 0 }; });
+  var semParque = 0, modeloP = M.parques.map(function () { return []; });
+  M.ativos.forEach(function (a) { if (a.parque >= 0 && a.modelo && modeloP[a.parque].indexOf(a.modelo) < 0) modeloP[a.parque].push(a.modelo); });
   B.forEach(function (i) {
     var p = O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]];
-    if (p < 0) return;
+    if (p < 0) { semParque++; return; }
     var x = st[p]; x.oms++;
     if (O.tipo[i] === IDX.tipo['Corretiva']) x.corr++;
     if (O.grupo[i] === IDX.grupo.Backlog) { x.bkl++; if (O.idadeBkl[i] !== null && O.idadeBkl[i] > 90) x.velhas++; }
   });
   var linhas = M.parques.map(function (nome, p) {
     var t = nT[p] || 1, x = st[p];
-    return { p: p, parque: nome, complexo: M.complexos[M.parqueComplexo[p]] || '', turb: nT[p], oms: x.oms, omsT: x.oms / t, corrT: x.corr / t, bkl: x.bkl, bklT: x.bkl / t, velhas: x.velhas };
+    return { p: p, parque: nome, complexo: M.complexos[M.parqueComplexo[p]] || '', modelo: modeloP[p].join(', '), turb: nT[p], oms: x.oms, omsT: x.oms / t, corrT: x.corr / t, bkl: x.bkl, bklT: x.bkl / t, velhas: x.velhas };
   }).filter(function (r) { return r.oms > 0; });
   var f2 = function (v) { return nf1.format(v); };
   var cols;
@@ -1196,14 +1221,16 @@ function cartaoParques(B) {
   } else {
     cols = [{ k: 'parque', rot: 'Parque', classe: 'forte' }];
     if (M.complexos.length > 1) cols.push({ k: 'complexo', rot: 'Complexo' });
+    if (modeloP.some(function (m) { return m.length; })) cols.push({ k: 'modelo', rot: 'Modelo' });
     cols = cols.concat([{ k: 'turb', rot: 'Turbinas', num: true, fmt: fInt }, { k: 'omsT', rot: 'OMs por turbina', num: true, barra: true, fmt: f2 },
       { k: 'corrT', rot: 'Corretivas por turbina', num: true, barra: true, corBarra: 'var(--s2)', fmt: f2 }, { k: 'bkl', rot: 'Backlog', num: true, fmt: fInt },
       { k: 'bklT', rot: 'Backlog por turbina', num: true, fmt: f2 }, { k: 'velhas', rot: 'Backlog > 90 dias', num: true, fmt: fInt }]);
   }
+  var notaSem = semParque ? ' · ' + fInt(semParque) + ' OM(s) sem turbina identificada ficam fora desta tabela' : '';
   return cartao({
     id: 'parques', span: 's12', titulo: 'Comparativo por parque',
-    sub: innerWidth < 700 ? '* por turbina (os parques têm tamanhos diferentes) · > 90 d: backlog com mais de 90 dias · toque para filtrar'
-      : 'Números por turbina, porque os parques têm tamanhos diferentes · ordene pelas colunas · clique para filtrar o parque',
+    sub: (innerWidth < 700 ? '* por turbina (os parques têm tamanhos diferentes) · > 90 d: backlog com mais de 90 dias · toque para filtrar'
+      : 'Números por turbina, porque os parques têm tamanhos diferentes · ordene pelas colunas · clique para filtrar o parque') + notaSem,
     desenhar: function (el) {
       tabela(el, { cols: cols, linhas: linhas, ordem: { k: 'omsT', desc: true }, altura: 420,
         onLinha: function (r) { estado.f.parque.clear(); estado.f.parque.add(r.p); atualizar(); window.scrollTo(0, 0); } });
@@ -1221,7 +1248,7 @@ function destaques(el, B, bkl, fech) {
     var top = Array.from(porW.entries()).sort(function (a, b) { return b[1] - a[1]; })[0];
     var nW = porW.size;
     item('turbinas', [h('button', { class: 'link', type: 'button', onclick: function () { abrirTurbina(top[0]); } }, M.dic.wtg[top[0]]),
-      ' é a turbina com mais corretivas: ', h('b', null, fInt(top[1])), ' OMs (média da frota com corretiva: ' + f1(corrIx.length / nW) + ').']);
+      ' é a turbina com mais corretivas: ', h('b', null, fInt(top[1])), ' OMs (média por turbina com corretiva: ' + f1(corrIx.length / nW) + ').']);
   }
   if (bkl.length) {
     var velhas = contar(bkl, function (i) { return O.idadeBkl[i] !== null && O.idadeBkl[i] > 90; });
@@ -1234,8 +1261,10 @@ function destaques(el, B, bkl, fech) {
     }
   }
   if (B.length) {
-    item('tendencia', ['No período entraram ', h('b', null, fInt(B.length)), ' OMs e foram fechadas ', h('b', null, fInt(fech.length)),
-      ' — o equivalente a ', h('b', null, fPct(fech.length / B.length)), ' do que entrou.']);
+    var concB = contar(B, function (i) { return O.grupo[i] === IDX.grupo['Concluída']; });
+    var cancB = contar(B, function (i) { return O.grupo[i] === IDX.grupo.Cancelada; });
+    item('tendencia', ['Das ', h('b', null, fInt(B.length)), ' OMs criadas no período, ', h('b', null, fInt(concB)), ' já foram fechadas, ', h('b', null, fInt(cancB)),
+      ' canceladas e ', h('b', null, fInt(bkl.length)), ' seguem em aberto.']);
   }
   var fx = new Map();
   B.forEach(function (i) { O.falhas[i].forEach(function (f) { fx.set(f, (fx.get(f) || 0) + 1); }); });
@@ -1403,7 +1432,7 @@ function paginaBacklog(pg) {
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'Backlog', valor: fInt(bkl.length), valorTexto: fInt(bkl.length), sub: B.length ? fPct(bkl.length / B.length) + ' das OMs do período' : '', spark: serieContagem(bkl, O.dAb, b), corSpark: 'var(--s2)' }),
     kpi({ rot: 'Idade média', valor: idade === null ? '–' : f1(idade), unid: 'dias', valorTexto: f1(idade) + ' dias', sub: [statusTag(idade !== null && idade > 35 ? 'alerta' : 'bom', idade !== null && idade > 35 ? 'acima de 5 semanas' : 'até 5 semanas')],
-      tip: 'Referência: backlog saudável fica entre 3 e 5 semanas.' }),
+      tip: 'Referência: backlog saudável fica entre 3 e 5 semanas. É um valor mínimo: ' + notaJanela() }),
     kpi({ rot: 'Backlog > 90 dias', valor: fInt(velhas), valorTexto: fInt(velhas), sub: [statusTag(velhas ? 'ruim' : 'bom', bkl.length ? fPct(velhas / bkl.length) + ' do backlog' : '–')] }),
     kpi({ rot: 'Em espera', valor: fInt(espera.length), valorTexto: fInt(espera.length), sub: espera.length ? fPct(faltaMO / espera.length) + ' por falta de mão de obra' : 'nenhuma OM aguardando' })
   ));
@@ -1478,12 +1507,12 @@ function cartaoPecas(span, top) {
   var visiveis = itens.slice(0, top);
   estado.f.peca.forEach(function (k) { if (!visiveis.some(function (d) { return d.k === k; })) { var d = itens.filter(function (x) { return x.k === k; })[0]; if (d) visiveis.push(d); } });
   return cartao({
-    id: 'pecas-rank', span: span, titulo: 'Peças mais trocadas', sub: 'Por tipo de peça · top ' + top + ' de ' + itens.length + ' · clique para filtrar',
+    id: 'pecas-rank', span: span, titulo: 'Peças mais trocadas', sub: 'OMs com troca de cada tipo de peça · % sobre as ' + fInt(totOMs) + ' OMs com troca · top ' + top + ' de ' + itens.length + ' · clique para filtrar',
     desenhar: function (el) {
       if (!visiveis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada nos filtros atuais.')); return; }
-      barrasH(el, visiveis.map(function (d) { return { k: d.k, rot: d.rot, v: d.v, extra: d.extra, cor: 'var(--s3)' }; }), { onClick: function (k) { alternarFiltro('peca', k); }, ativo: estado.f.peca, larguraRotulo: '46%', unidade: 'vezes' });
+      barrasH(el, visiveis.map(function (d) { return { k: d.k, rot: d.rot, v: d.v, extra: d.extra, cor: 'var(--s3)' }; }), { onClick: function (k) { alternarFiltro('peca', k); }, ativo: estado.f.peca, larguraRotulo: '46%', unidade: 'OMs' });
     },
-    dados: { cols: [{ k: 'rot', rot: 'Componente' }, { k: 'v', rot: 'Trocas', num: true, fmt: fInt }, { k: 'extra', rot: '% das OMs', num: true }], linhas: itens }
+    dados: { cols: [{ k: 'rot', rot: 'Componente' }, { k: 'v', rot: 'OMs com troca', num: true, fmt: fInt }, { k: 'extra', rot: '% das OMs com troca', num: true }], linhas: itens }
   });
 }
 
@@ -1506,7 +1535,7 @@ function paginaComponentes(pg) {
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'OMs com peça trocada', valor: fInt(comPeca.length), valorTexto: fInt(comPeca.length), sub: comTexto ? fPct(comPeca.length / comTexto) + ' das OMs com serviço executado' : '' }),
     kpi({ rot: 'Peças trocadas', valor: fInt(trocas), valorTexto: fInt(trocas), sub: 'trocas identificadas', spark: mes, corSpark: 'var(--s3)' }),
-    kpi({ rot: 'Mais trocado', valor: top ? M.componentes[top[0]] : '–', valorTexto: top ? M.componentes[top[0]] : '–', sub: top ? fInt(top[1]) + ' vezes' : 'nenhuma troca identificada' }),
+    kpi({ rot: 'Mais trocado', valor: top ? M.componentes[top[0]] : '–', valorTexto: top ? M.componentes[top[0]] : '–', sub: top ? 'em ' + fInt(top[1]) + ' OMs' : 'nenhuma troca identificada' }),
     kpi({ rot: 'Material nessas OMs', valor: fMoeda(custoMat), valorTexto: fMoeda(custoMat), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })
   ));
 
@@ -1545,7 +1574,7 @@ function paginaComponentes(pg) {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte', ord: function (r) { return r.om; } }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' },
         { k: 'tipoTxt', rot: 'Tipo' }, { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'forte quebra' },
         { k: 'trecho', rot: 'Trecho do serviço executado', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v); } },
-        { k: 'custoMat', rot: 'Material', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }],
+        { k: 'custoMat', rot: 'Material', num: true, fmt: fCustoLinha }],
       linhas: linhas, ordem: { k: estado.pecasTab.ordem, desc: estado.pecasTab.desc }, porPagina: 25, pagina: estado.pecasTab.pag,
       onOrdenar: function (k, desc) { estado.pecasTab = { ordem: k, desc: desc, pag: 0 }; renderPagina(); },
       onPaginaSilenciosa: function (p) { estado.pecasTab.pag = p; },
@@ -1564,7 +1593,12 @@ function paginaCustos(pg) {
   var comCusto = C.filter(function (i) { return (O.custoTot[i] || 0) > 0; });
   var nTurbC = new Set(comCusto.filter(function (i) { return parqueDoWtg[O.wtg[i]] >= 0; }).map(function (i) { return O.wtg[i]; })).size;
   var mesMat = new Array(b.length).fill(0), mesMO = new Array(b.length).fill(0);
-  C.forEach(function (i) { var k = b.de(O.dAb[i]); if (k >= 0) { mesMat[k] += O.custoMat[i] || 0; mesMO[k] += O.custoMO[i] || 0; } });
+  // o custo cai no mês em que a OM foi fechada (execução); as que seguem abertas, no mês de abertura
+  var diaCusto = function (i) { return O.dFe[i] !== null ? O.dFe[i] : O.dAb[i]; };
+  C.forEach(function (i) { var k = b.de(diaCusto(i)); if (k >= 0) { mesMat[k] += O.custoMat[i] || 0; mesMO[k] += O.custoMO[i] || 0; } });
+  var comMO = contar(comCusto, function (i) { return (O.custoMO[i] || 0) > 0; });
+  var atip = B.filter(function (i) { return O.atipico[i] === 1; }).sort(function (a, b) { return (O.custoTot[b] || 0) - (O.custoTot[a] || 0); });
+  var totAtip = soma(atip, O.custoTot);
 
   var toggle = h('button', { class: 'btn', type: 'button', 'aria-pressed': String(estado.atipicos), onclick: function () { estado.atipicos = !estado.atipicos; salvarHash(); renderPagina(); } },
     icone(estado.atipicos ? 'ok' : 'filtro'), estado.atipicos ? 'Incluindo custos atípicos' : 'Custos atípicos excluídos');
@@ -1573,13 +1607,14 @@ function paginaCustos(pg) {
 
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'Custo total', valor: fMoeda(tot), valorTexto: fMoeda(tot), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos', spark: mesMat.map(function (v, k) { return v + mesMO[k]; }) }),
-    kpi({ rot: 'Material', valor: fMoeda(mat), valorTexto: fMoeda(mat), sub: tot ? fPct(mat / tot) + ' do total' : '' }),
+    kpi({ rot: 'Material', valor: fMoeda(mat), valorTexto: fMoeda(mat), sub: tot ? fPct(mat / tot) + ' do total · mão de obra lançada em ' + fPct(comCusto.length ? comMO / comCusto.length : 0) + ' das OMs' : '',
+      tip: 'A mão de obra só entra no custo quando é lançada na OM. Hoje ela aparece em ' + fInt(comMO) + ' de ' + fInt(comCusto.length) + ' OMs com custo, então o custo total está concentrado em material.' }),
     kpi({ rot: 'Custo médio por turbina', valor: nTurbC ? fMoeda(tot / nTurbC) : '–', valorTexto: fMoeda(tot / nTurbC), sub: fInt(nTurbC) + ' turbinas com custo' }),
     kpi({ rot: 'Custo médio por OM', valor: comCusto.length ? fMoeda(tot / comCusto.length) : '–', valorTexto: fMoeda(tot / comCusto.length), sub: fInt(comCusto.length) + ' OMs com custo' })
   ));
 
   pg.append(cartao({
-    id: 'custo-mes', span: 's8', titulo: 'Custo por ' + b.tipo + ' de abertura', sub: 'Material e mão de obra',
+    id: 'custo-mes', span: 's8', titulo: 'Custo por ' + b.tipo, sub: 'Material e mão de obra · mês de fechamento da OM (as abertas entram no mês de abertura)',
     desenhar: function (el) { serieTempo(el, { baldes: b, modo: 'colunas', eixo: 'moeda', fmt: function (v) { return fMoeda(v); }, titulo: 'Custo por período',
       series: [{ nome: 'Material', cor: 'var(--s1)', valores: mesMat }, { nome: 'Mão de obra', cor: 'var(--s2)', valores: mesMO }] }); },
     dados: { cols: [{ k: 'p', rot: 'Período' }, { k: 'm', rot: 'Material', num: true, fmt: fMoedaCompleta }, { k: 'o', rot: 'Mão de obra', num: true, fmt: fMoedaCompleta }],
@@ -1601,12 +1636,23 @@ function paginaCustos(pg) {
   pg.append(cartao({
     id: 'custo-om', span: 's12', titulo: 'OMs de maior custo', sub: 'Top 25' + (estado.atipicos ? ' (inclui atípicos, sinalizados)' : ' sem os custos atípicos') + ' · clique para ver a OM',
     desenhar: function (el) {
-      tabela(el, {
-        cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
-          { k: 'atip', rot: '', fmt: function (v) { return v ? statusTag('alerta', v) : ''; } },
-          { k: 'mat', rot: 'Material', num: true, fmt: function (v) { return fMoeda(v); } }, { k: 'custo', rot: 'Total', num: true, fmt: function (v) { return fMoeda(v); } }]),
-        linhas: topOM, altura: 440, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
-      });
+      var cols = [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' }];
+      if (estado.atipicos) cols.push({ k: 'atip', rot: '', fmt: function (v) { return v ? statusTag('alerta', v) : ''; } });
+      cols = cols.concat([{ k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
+        { k: 'mat', rot: 'Material', num: true, fmt: function (v) { return fMoeda(v); } }, { k: 'mo', rot: 'Mão de obra', num: true, fmt: function (v) { return v ? fMoeda(v) : '–'; } },
+        { k: 'custo', rot: 'Total', num: true, fmt: function (v) { return fMoeda(v); } }]);
+      tabela(el, { cols: semSistemaInutil(cols), linhas: topOM, altura: 440, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); } });
+    }
+  }));
+
+  if (atip.length) pg.append(cartao({
+    id: 'custo-atipico', span: 's12', titulo: 'Custos atípicos (' + (estado.atipicos ? 'incluídos nos totais' : 'fora dos totais') + ')',
+    sub: fInt(atip.length) + ' OM(s) somando ' + fMoeda(totAtip) + ' · valores lançados na origem que não combinam com o serviço descrito; confira no Manusis antes de usar · clique para ver a OM',
+    desenhar: function (el) {
+      tabela(el, { cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' },
+          { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
+          { k: 'custo', rot: 'Valor lançado', num: true, fmt: function (v) { return fMoeda(v); } }],
+        linhas: atip.map(linhaOM), ordem: { k: 'custo', desc: true }, altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); } });
     }
   }));
 }
@@ -1640,7 +1686,7 @@ function paginaOrdens(pg) {
         { k: 'pecasTxt', rot: 'Peças trocadas', classe: 'quebra', fmt: function (v) { return v || '–'; } },
         { k: 'lead', rot: 'Tempo p/ fechar', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
         { k: 'idade', rot: 'Idade backlog', num: true, fmt: function (v) { return v === null ? '–' : fDias(v); } },
-        { k: 'custo', rot: 'Custo', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }, { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } }],
+        { k: 'custo', rot: 'Custo', num: true, fmt: fCustoLinha }, { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } }],
       linhas: linhas, ordem: { k: estado.ordens.ordem, desc: estado.ordens.desc }, porPagina: 25, pagina: estado.ordens.pag,
       onOrdenar: function (k, desc) { estado.ordens.ordem = k === 'omTxt' ? 'omTxt' : k; estado.ordens.desc = desc; estado.ordens.pag = 0; renderPagina(); },
       onPaginaSilenciosa: function (p) { estado.ordens.pag = p; },
@@ -1651,7 +1697,7 @@ function paginaOrdens(pg) {
 }
 
 function exportarCSV(linhas) {
-  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Lead time (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Falha (código na descrição)', 'Peças trocadas (identificadas no texto)', 'Descrição'];
+  var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Tempo p/ fechar (dias)', 'Idade backlog (dias)', 'Hh apontado', 'Custo total', 'Falha (código na descrição)', 'Peças trocadas (identificadas no texto)', 'Descrição'];
   var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var num = function (v) { return v === null || v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','); };
   var txt = [cab.join(';')].concat(linhas.map(function (r) {
@@ -1739,7 +1785,7 @@ function abrirTurbina(w) {
   corpo.append(h('div', { class: 'mini-kpis' },
     miniKpi('OMs', fInt(ix.length)), miniKpi('Corretivas', fInt(corr)), miniKpi('Backlog', fInt(bkl.length)),
     miniKpi('Peças trocadas', fInt(ix.reduce(function (t, i) { return t + O.pecasItens[i].length; }, 0))), miniKpi('Falhas citadas', fInt(contar(ix, function (i) { return O.falhas[i].length > 0; }))), miniKpi('Custo', fMoeda(custo))));
-  var cardT = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'OMs por ' + b.tipo + ' e tipo'), h('p', null, 'Lead time médio: ' + (lead === null ? '–' : fDias(lead / 24))))));
+  var cardT = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'OMs por ' + b.tipo + ' e tipo'), h('p', null, 'Tempo médio p/ fechar: ' + (lead === null ? '–' : fDias(lead / 24))))));
   var bodyT = h('div', { class: 'card-b' }); cardT.append(bodyT);
   var cardS = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Sistemas'))));
   var bodyS = h('div', { class: 'card-b' }); cardS.append(bodyS);
@@ -1836,10 +1882,9 @@ function fichaOM(i, lista, pos, navegar) {
     nav,
     h('div', { class: 'campos' },
       campo('Abertura', fData(O.dAb[i])), campo('Fechamento', O.dFe[i] === null ? '–' : fData(O.dFe[i])), campo('Natureza', M.dic.natureza[O.natureza[i]]),
-      campo('Máquina parada', r.parada), campo('Lead time', r.lead === null ? '–' : fDias(r.lead)), campo('Idade no backlog', r.idade === null ? '–' : fDias(r.idade)),
+      campo('Máquina parada', r.parada), campo('Tempo p/ fechar', r.lead === null ? '–' : fDias(r.lead)), campo('Idade no backlog', r.idade === null ? '–' : fDias(r.idade)),
       campo('Prazo', O.entrega[i] >= 0 ? M.dic.entrega[O.entrega[i]] : '–'), campo('Reprogramada', O.reprog[i] ? 'Sim' : 'Não'), campo('Motivo de espera', r.esperaTxt),
-      campo('Técnicos', O.tecnicos[i] === null ? '–' : fInt(O.tecnicos[i])), campo('Hh previsto / real', (O.hhPrev[i] === null ? '–' : fH(O.hhPrev[i])) + ' / ' + (O.hhReal[i] === null ? '–' : fH(O.hhReal[i]))),
-      campo('Hh apontado / produtivo', (O.hhApont[i] === null ? '–' : fH(O.hhApont[i])) + ' / ' + (O.hhProd[i] === null ? '–' : fH(O.hhProd[i]))),
+      campo('Técnicos', O.tecnicos[i] === null ? '–' : fInt(O.tecnicos[i])), campo('Homem-hora', hhDaOM(i)),
       campo('Custo material', O.custoMat[i] === null ? '–' : fMoedaCompleta(O.custoMat[i])), campo('Custo mão de obra', O.custoMO[i] === null ? '–' : fMoedaCompleta(O.custoMO[i])),
       campo('Custo total', O.custoTot[i] === null ? '–' : fMoedaCompleta(O.custoTot[i]) + (O.atipico[i] ? ' (atípico)' : '')),
       campo('Responsável', O.resp[i] >= 0 ? M.dic.pessoa[O.resp[i]] : '–'), campo('Motivo de cancelamento', O.cancel[i] >= 0 ? M.dic.cancel[O.cancel[i]] : '–'),
