@@ -12,8 +12,10 @@
 
   var DIA_MS = 864e5;
   var EPOCA_EXCEL = Date.UTC(1899, 11, 30);
-  // Custo acima disto é tratado como valor atípico da origem (ver aba LEIA-ME).
-  var LIMITE_CUSTO_ATIPICO = 10e6;
+  // Custo atípico (valor da origem a validar, fora dos totais por padrão): acima de R$ 2 mi, ou acima de
+  // R$ 300 mil numa OM que não é troca de componente grande (troca de gearbox/gerador custa ~R$ 1 a 1,4 mi).
+  var LIMITE_CUSTO_ATIPICO = 2e6, LIMITE_CUSTO_REVISAR = 3e5;
+  var COMPONENTE_GRANDE = /gear ?box|gbx|gerador|main ?bearing|main ?shaft|rolamento principal|\bp[aá]s?\b|blade|transformador|trafo|yaw ?drive|redutor|multiplicadora|liftra|guindaste|hss|conversor|converter/i;
   var ETAPAS = ['Abertas', 'Programadas', 'Em espera', 'Apontamentos concluídos'];
 
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
@@ -78,7 +80,7 @@
   var OUTRAS = COMPONENTES.length - 1;
   function componenteIdx(nome) { for (var x = 0; x < COMPONENTES.length; x++) if (COMPONENTES[x][0] === nome) return x; return OUTRAS; }
   // Suba quando mudar a regra de peças: o painel refaz a leitura das bases já guardadas no aparelho.
-  var VERSAO_PECAS = 4;
+  var VERSAO_PECAS = 5;
   // verbos de troca JÁ REALIZADA (exclui infinitivo "substituir"/"trocar", que costuma ser recomendação)
   var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|substitui-l[oa]s?|troca-l[oa]s?)$/;
   // "Realizada instalação de UPS": instalar conta como troca só para peças de reposição — instalar
@@ -120,6 +122,12 @@
    */
   var RE_FALHA = /(?<![\w\/.])(\d{1,3})\s?_\s?([A-Za-z](?:(?!\d{1,3}\s?_)[^\n])*)/g;
   var RE_FALHA_HIFEN = /(?<![\w\/.])(\d{1,3})\s?-\s?([A-Za-z](?:(?!\d{1,3}\s?[-_])[^\n])*)/g;
+  // nome de plano de preventiva, não falha: "WTG-CYCLE-SEMIANNUAL-2…"
+  function custoAtipico(custo, desc, exec) {
+    return custo !== null && custo !== undefined && (custo >= LIMITE_CUSTO_ATIPICO ||
+      (custo >= LIMITE_CUSTO_REVISAR && !COMPONENTE_GRANDE.test(String(desc || '') + ' ' + String(exec || '').slice(0, 400)))) ? 1 : 0;
+  }
+  var PLANO = /cycle|annual|semian|wtg-|preventiv|^pm\b/i;
   var FIM_NOME_FALHA = /\s+(e|associad\w*|com|foi|foram|realizad\w*|sincroniza\w*|apresenta\w*|porem|porém|na|no|em|que|apos|após|devido|onde|sendo|toolbox|tooblbox|via|logo|mesmo|mesma|durante|ao|pois|conforme)\b.*$/i;
 
   function nomeFalha(bruto) {
@@ -136,7 +144,7 @@
     var brutas = descricoes.map(function (t) {
       var r = [];
       if (!t) return r;
-      String(t).replace(/\n(?=[a-z])/g, ' ').replace(RE_FALHA, function (_, cod, nome) { var n = nomeFalha(nome); if (n.length >= 3) r.push([+cod, n]); return _; });
+      String(t).replace(/\n(?=[a-z])/g, ' ').replace(RE_FALHA, function (_, cod, nome) { var n = nomeFalha(nome); if (n.length >= 3 && !PLANO.test(n)) r.push([+cod, n]); return _; });
       return r;
     });
     var conhecidos = {};
@@ -145,7 +153,7 @@
       if (!t) return;
       String(t).replace(/\n(?=[a-z])/g, ' ').replace(RE_FALHA_HIFEN, function (_, cod, nome) {
         var n = nomeFalha(nome);
-        if (conhecidos[+cod] && n.length >= 3 && !brutas[i].some(function (f) { return f[0] === +cod; })) brutas[i].push([+cod, n]);
+        if (conhecidos[+cod] && n.length >= 3 && !PLANO.test(n) && !brutas[i].some(function (f) { return f[0] === +cod; })) brutas[i].push([+cod, n]);
         return _;
       });
     });
@@ -610,8 +618,7 @@
    * Mesma turbina e tipo de peça, serviço com até 3 dias de diferença: sai da OM que cita a outra pelo número
    * ou, se nenhuma cita, da preventiva.
    */
-  function deduplicarEntreOMs(col, d) {
-    var prev = d.tipo.pos['Preventiva'];
+  function deduplicarEntreOMs(col, prev) {
     function diaServico(i) {
       var m, re = /\[(\d{2})\/(\d{2})\/(\d{4})/g, melhor = null;
       while ((m = re.exec(col.exec[i]))) { var t = Date.UTC(+m[3], +m[2] - 1, +m[1]) / DIA_MS; if (melhor === null || t > melhor) melhor = t; }
@@ -641,6 +648,26 @@
       for (var j = col.pecasItens[i].length - 1; j >= 0; j--) if (col.pecasItens[i][j][0] === c) { col.pecasItens[i].splice(j, 1); col.pecasTrecho[i].splice(j, 1); }
       col.pecas[i] = col.pecas[i].filter(function (x) { return x !== c; });
     });
+  }
+
+  /**
+   * Refaz, num modelo já montado (base guardada no aparelho), o que depende das regras de leitura:
+   * peças trocadas, falhas e custos atípicos. Usado quando VERSAO_PECAS muda.
+   */
+  function relerRegras(M) {
+    var O = M.ordens, n = O.om.length;
+    M.componentes = COMPONENTES.map(function (c) { return c[0]; });
+    O.pecas = []; O.pecasItens = []; O.pecasTrecho = [];
+    for (var i = 0; i < n; i++) {
+      var r = componentesTrocados(O.exec[i]);
+      O.pecas.push(r.ids); O.pecasItens.push(r.itens); O.pecasTrecho.push(r.trechos);
+    }
+    deduplicarEntreOMs(O, M.dic.tipo.indexOf('Preventiva'));
+    var fx = extrairFalhas(O.desc);
+    M.falhas = fx.rotulos; O.falhas = fx.falhas;
+    O.atipico = O.custoTot.map(function (c, i) { return custoAtipico(c, O.desc[i], O.exec[i]); });
+    M.versaoPecas = VERSAO_PECAS;
+    return M;
   }
 
   /** Lê o workbook (SheetJS) e devolve o modelo colunar. */
@@ -725,14 +752,15 @@
         desc: texto(r.Descricao), exec: texto(r.Servico_Executado),
         obsEspera: texto(r.Obs_Motivo_Espera), obsCancel: texto(r.Obs_Cancelamento),
         pecas: null, pecasItens: null, pecasTrecho: null, falhas: null,
-        atipico: custo !== null && custo >= LIMITE_CUSTO_ATIPICO ? 1 : 0, tecnicos: num(r.Qtd_Tecnicos, 0)
+        atipico: custoAtipico(custo, r.Descricao, r.Servico_Executado),
+        tecnicos: num(r.Qtd_Tecnicos, 0)
       };
       var comp = componentesTrocados(v.exec);
       v.pecas = comp.ids; v.pecasItens = comp.itens; v.pecasTrecho = comp.trechos;
       CAMPOS.forEach(function (c) { col[c].push(v[c]); });
     });
 
-    deduplicarEntreOMs(col, d);
+    deduplicarEntreOMs(col, d.tipo.pos['Preventiva']);
 
     var fal = extrairFalhas(col.desc);
     col.falhas = fal.falhas;
@@ -778,5 +806,5 @@
     };
   }
 
-  return { montar: montar, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });

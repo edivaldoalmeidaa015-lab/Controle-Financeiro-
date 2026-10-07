@@ -744,6 +744,11 @@ function grupoDoStatus(k) {
 
 /* ---------- tooltip ---------- */
 var tipEl = document.getElementById('tip');
+// "Sistema" só aparece quando informa algo: na exportação do Manusis quase tudo vem "Turbina (geral)".
+var SISTEMA_UTIL = true;
+function semSistemaInutil(cols) { return SISTEMA_UTIL ? cols : cols.filter(function (c) { return c.k !== 'sistemaTxt'; }); }
+// A base só traz OMs criadas a partir da primeira data: pendências mais antigas não aparecem no backlog.
+function notaJanela() { return 'A base traz as OMs criadas a partir de ' + fData(diaMin) + '; pendências abertas antes disso não constam no backlog.'; }
 function mostrarTip(x, y, titulo, linhas, nota) {
   tipEl.textContent = '';
   if (titulo) tipEl.append(h('div', { class: 't-tit' }, titulo));
@@ -967,6 +972,7 @@ function serieTempo(el, c) {
   }
   el.append(caixa);
   if (c.baldes.some(function (b) { return b.parcial; })) el.append(h('div', { class: 'nota' }, '* ' + (c.baldes.tipo === 'mês' ? 'Mês' : 'Semana') + ' parcial — dados até ' + fData(diaMax) + '.'));
+  if (c.notaJanela) el.append(h('div', { class: 'nota' }, notaJanela()));
 }
 
 /** Mini gráfico de linha para cartões KPI. */
@@ -1115,7 +1121,7 @@ function paginaVisao(pg) {
   var fech = baseFechadas();
 
   pg.append(h('div', { class: 'kpis' },
-    kpi({ rot: 'OMs abertas', valor: fInt(B.length), valorTexto: fInt(B.length), sub: fInt(fech.length) + ' fechadas · ' + (B.length ? fPct(corr / B.length) : '–') + ' corretivas', spark: serieContagem(B, O.dAb, b),
+    kpi({ rot: 'OMs no período', valor: fInt(B.length), valorTexto: fInt(B.length), sub: 'criadas · ' + fInt(fech.length) + ' fechadas · ' + (B.length ? fPct(corr / B.length) : '–') + ' corretivas', spark: serieContagem(B, O.dAb, b),
       tip: 'Ordens com data de abertura dentro do período e dos filtros.' }),
     kpi({ rot: 'Backlog', valor: fInt(bkl.length), valorTexto: fInt(bkl.length),
       sub: idadeBkl === null ? 'sem OMs em aberto' : [statusTag(idadeBkl > 35 ? 'alerta' : 'bom', 'idade média ' + f1(idadeBkl) + ' d')],
@@ -1143,25 +1149,66 @@ function paginaVisao(pg) {
   var totAb = abertas.reduce(function (a, v) { return a + v; }, 0), totFe = fechadas.reduce(function (a, v) { return a + v; }, 0);
   var saldo = function (v) { return (v > 0 ? '+' : '') + fInt(v); };
   pg.append(cartao({
-    id: 'tendencia', span: 's8', titulo: 'OMs abertas × fechadas e backlog',
-    sub: fInt(totAb) + ' abertas e ' + fInt(totFe) + ' fechadas no período · backlog no fim: ' + fInt(backlogFim[b.length - 1] || 0) + ' OMs',
+    id: 'tendencia', span: 's8', titulo: 'OMs criadas × fechadas e backlog',
+    sub: fInt(totAb) + ' criadas e ' + fInt(totFe) + ' fechadas no período · backlog no fim: ' + fInt(backlogFim[b.length - 1] || 0) + ' OMs',
     desenhar: function (el) {
-      serieTempo(el, { baldes: b, modo: 'agrupado', titulo: 'OMs abertas, fechadas e backlog por ' + b.tipo, altura: 270,
-        series: [{ nome: 'Abertas', cor: 'var(--s1)', valores: abertas }, { nome: 'Fechadas', cor: 'var(--s2)', valores: fechadas }],
+      serieTempo(el, { baldes: b, modo: 'agrupado', titulo: 'OMs criadas, fechadas e backlog por ' + b.tipo, altura: 270, notaJanela: true,
+        series: [{ nome: 'Criadas', cor: 'var(--s1)', valores: abertas }, { nome: 'Fechadas', cor: 'var(--s2)', valores: fechadas }],
         linhasSobre: [{ nome: 'Backlog no fim do ' + b.tipo, cor: 'var(--ink-2)', valores: backlogFim, rotular: true }],
-        tipExtra: function (i) { return [{ valor: saldo(abertas[i] - fechadas[i]), rotulo: 'Saldo (abertas − fechadas)' }]; } });
+        tipExtra: function (i) { return [{ valor: saldo(abertas[i] - fechadas[i]), rotulo: 'Saldo (criadas − fechadas)' }]; } });
     },
-    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'a', rot: 'Abertas', num: true, fmt: fInt }, { k: 'f', rot: 'Fechadas', num: true, fmt: fInt },
+    dados: { cols: [{ k: 'p', rot: b.tipo === 'mês' ? 'Mês' : 'Semana' }, { k: 'a', rot: 'Criadas', num: true, fmt: fInt }, { k: 'f', rot: 'Fechadas', num: true, fmt: fInt },
         { k: 's', rot: 'Saldo', num: true, fmt: saldo }, { k: 'bk', rot: 'Backlog no fim', num: true, fmt: fInt }],
       linhas: b.map(function (x, i) { return { p: x.longo, a: abertas[i], f: fechadas[i], s: abertas[i] - fechadas[i], bk: backlogFim[i] }; }) }
   }));
 
   pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, fech); } }));
 
+  pg.append(cartaoParques(B));
+
   // as turbinas e as peças que mais pedem atenção
   pg.append(cartaoTopTurbinas('s4', 10, true));
   pg.append(cartaoFalhas('s4', 10));
   pg.append(cartaoPecas('s4', 10));
+}
+
+/* Comparativo por parque: números por turbina, porque os parques têm tamanhos diferentes (16 a 20 máquinas). */
+function cartaoParques(B) {
+  var nT = M.parques.map(function () { return 0; });
+  M.ativos.forEach(function (a) { if (a.parque >= 0) nT[a.parque]++; });
+  var st = M.parques.map(function () { return { oms: 0, corr: 0, bkl: 0, velhas: 0 }; });
+  B.forEach(function (i) {
+    var p = O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]];
+    if (p < 0) return;
+    var x = st[p]; x.oms++;
+    if (O.tipo[i] === IDX.tipo['Corretiva']) x.corr++;
+    if (O.grupo[i] === IDX.grupo.Backlog) { x.bkl++; if (O.idadeBkl[i] !== null && O.idadeBkl[i] > 90) x.velhas++; }
+  });
+  var linhas = M.parques.map(function (nome, p) {
+    var t = nT[p] || 1, x = st[p];
+    return { p: p, parque: nome, complexo: M.complexos[M.parqueComplexo[p]] || '', turb: nT[p], oms: x.oms, omsT: x.oms / t, corrT: x.corr / t, bkl: x.bkl, bklT: x.bkl / t, velhas: x.velhas };
+  }).filter(function (r) { return r.oms > 0; });
+  var f2 = function (v) { return nf1.format(v); };
+  var cols;
+  if (innerWidth < 700) { // celular: só o essencial, sem rolar para o lado
+    cols = [{ k: 'parque', rot: 'Parque', classe: 'forte' }, { k: 'omsT', rot: 'OMs*', num: true, fmt: f2 },
+      { k: 'corrT', rot: 'Corret.*', num: true, fmt: f2 }, { k: 'velhas', rot: '> 90 d', num: true, fmt: fInt }];
+  } else {
+    cols = [{ k: 'parque', rot: 'Parque', classe: 'forte' }];
+    if (M.complexos.length > 1) cols.push({ k: 'complexo', rot: 'Complexo' });
+    cols = cols.concat([{ k: 'turb', rot: 'Turbinas', num: true, fmt: fInt }, { k: 'omsT', rot: 'OMs por turbina', num: true, barra: true, fmt: f2 },
+      { k: 'corrT', rot: 'Corretivas por turbina', num: true, barra: true, corBarra: 'var(--s2)', fmt: f2 }, { k: 'bkl', rot: 'Backlog', num: true, fmt: fInt },
+      { k: 'bklT', rot: 'Backlog por turbina', num: true, fmt: f2 }, { k: 'velhas', rot: 'Backlog > 90 dias', num: true, fmt: fInt }]);
+  }
+  return cartao({
+    id: 'parques', span: 's12', titulo: 'Comparativo por parque',
+    sub: innerWidth < 700 ? '* por turbina (os parques têm tamanhos diferentes) · > 90 d: backlog com mais de 90 dias · toque para filtrar'
+      : 'Números por turbina, porque os parques têm tamanhos diferentes · ordene pelas colunas · clique para filtrar o parque',
+    desenhar: function (el) {
+      tabela(el, { cols: cols, linhas: linhas, ordem: { k: 'omsT', desc: true }, altura: 420,
+        onLinha: function (r) { estado.f.parque.clear(); estado.f.parque.add(r.p); atualizar(); window.scrollTo(0, 0); } });
+    }
+  });
 }
 
 function destaques(el, B, bkl, fech) {
@@ -1367,7 +1414,7 @@ function paginaBacklog(pg) {
   var itF = M.dic.faixa.map(function (n, k) { return { k: k, rot: n, v: porFaixa.get(k) || 0, cor: corOrdinal(k, nF) }; });
   pg.append(cartao({
     id: 'faixa', span: 's6', titulo: 'Envelhecimento do backlog', sub: 'OMs pendentes por faixa de idade',
-    desenhar: function (el) { barrasH(el, itF, { larguraRotulo: '30%', unidade: 'OMs' }); },
+    desenhar: function (el) { barrasH(el, itF, { larguraRotulo: '30%', unidade: 'OMs' }); el.append(h('div', { class: 'nota' }, notaJanela())); },
     dados: { cols: [{ k: 'rot', rot: 'Faixa' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itF }
   }));
 
@@ -1384,9 +1431,9 @@ function paginaBacklog(pg) {
     id: 'antigas', span: 's12', titulo: 'OMs mais antigas no backlog', sub: 'As 25 pendências com maior idade · clique para ver a OM',
     desenhar: function (el) {
       tabela(el, {
-        cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
+        cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
           { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'esperaTxt', rot: 'Motivo de espera' },
-          { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'idade', rot: 'Idade', num: true, barra: true, corBarra: 'var(--s2)', fmt: function (v) { return fDias(v); } }],
+          { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'idade', rot: 'Idade', num: true, barra: true, corBarra: 'var(--s2)', fmt: function (v) { return fDias(v); } }]),
         linhas: antigas, altura: 520, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
       });
     }
@@ -1522,7 +1569,7 @@ function paginaCustos(pg) {
   var toggle = h('button', { class: 'btn', type: 'button', 'aria-pressed': String(estado.atipicos), onclick: function () { estado.atipicos = !estado.atipicos; salvarHash(); renderPagina(); } },
     icone(estado.atipicos ? 'ok' : 'filtro'), estado.atipicos ? 'Incluindo custos atípicos' : 'Custos atípicos excluídos');
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Custos de manutenção'),
-    h('p', null, nAtip ? fInt(nAtip) + ' OM(s) no filtro com custo ≥ R$ 10 mi (valor da origem, a validar).' : 'Nenhuma OM com custo atípico nos filtros atuais.'), nAtip ? toggle : null));
+    h('p', null, nAtip ? fInt(nAtip) + ' OM(s) com custo atípico — acima de R$ 2 mi, ou acima de R$ 300 mil sem troca de componente grande (gearbox, gerador, main bearing…). São valores da origem a validar e ficam fora dos totais.' : 'Nenhuma OM com custo atípico nos filtros atuais.'), nAtip ? toggle : null));
 
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'Custo total', valor: fMoeda(tot), valorTexto: fMoeda(tot), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos', spark: mesMat.map(function (v, k) { return v + mesMO[k]; }) }),
@@ -1548,16 +1595,16 @@ function paginaCustos(pg) {
     dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'Custo', num: true, fmt: fMoedaCompleta }], linhas: itT }
   }));
 
-  var topOM = B.filter(function (i) { return (O.custoTot[i] || 0) > 0; }).sort(function (a, b) { return O.custoTot[b] - O.custoTot[a]; }).slice(0, 25).map(function (i) {
+  var topOM = B.filter(function (i) { return (O.custoTot[i] || 0) > 0 && custoValido(i); }).sort(function (a, b) { return O.custoTot[b] - O.custoTot[a]; }).slice(0, 25).map(function (i) {
     var r = linhaOM(i); r.mat = O.custoMat[i]; r.mo = O.custoMO[i]; r.atip = O.atipico[i] ? 'Atípico' : ''; return r;
   });
   pg.append(cartao({
-    id: 'custo-om', span: 's12', titulo: 'OMs de maior custo', sub: 'Top 25 (inclui atípicos, sinalizados) · clique para ver a OM',
+    id: 'custo-om', span: 's12', titulo: 'OMs de maior custo', sub: 'Top 25' + (estado.atipicos ? ' (inclui atípicos, sinalizados)' : ' sem os custos atípicos') + ' · clique para ver a OM',
     desenhar: function (el) {
       tabela(el, {
-        cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
+        cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
           { k: 'atip', rot: '', fmt: function (v) { return v ? statusTag('alerta', v) : ''; } },
-          { k: 'mat', rot: 'Material', num: true, fmt: function (v) { return fMoeda(v); } }, { k: 'custo', rot: 'Total', num: true, fmt: function (v) { return fMoeda(v); } }],
+          { k: 'mat', rot: 'Material', num: true, fmt: function (v) { return fMoeda(v); } }, { k: 'custo', rot: 'Total', num: true, fmt: function (v) { return fMoeda(v); } }]),
         linhas: topOM, altura: 440, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
       });
     }
@@ -1702,7 +1749,9 @@ function abrirTurbina(w) {
   var bodyP = h('div', { class: 'card-b' }); cardP.append(bodyP);
   var cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), h('p', null, 'Mais recentes primeiro · clique para abrir'))));
   var bodyL = h('div', { class: 'card-b' }); cardL.append(bodyL);
-  corpo.append(cardT, cardF, cardP, cardS, cardL);
+  corpo.append(cardT, cardF, cardP);
+  if (SISTEMA_UTIL) corpo.append(cardS);
+  corpo.append(cardL);
   abrirCamada(painel);
 
   requestAnimationFrame(function () {
@@ -1724,7 +1773,7 @@ function abrirTurbina(w) {
     if (itP.length) barrasH(bodyP, itP, { larguraRotulo: '52%', unidade: 'vezes', cor: 'var(--s3)' });
     else bodyP.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada no período.'));
     tabela(bodyL, {
-      cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }],
+      cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }]),
       linhas: ix.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   });
@@ -1782,7 +1831,7 @@ function fichaOM(i, lista, pos, navegar) {
   var campo = function (rot, val) { return h('div', null, h('span', null, rot), h('b', null, val === null || val === undefined || val === '' ? '–' : val)); };
   return [
     h('div', { class: 'drawer-h' },
-      h('div', null, h('h2', { id: 'om-tit' }, r.omTxt), h('p', null, r.wtgTxt + ' · ' + r.tipoTxt + ' · ' + r.sistemaTxt)),
+      h('div', null, h('h2', { id: 'om-tit' }, r.omTxt), h('p', null, r.wtgTxt + ' · ' + r.tipoTxt + (SISTEMA_UTIL ? ' · ' + r.sistemaTxt : ''))),
       h('div', { class: 'ferr' }, pillStatus(r.status), h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', 'data-foco': '', onclick: fecharCamada }, icone('fechar')))),
     nav,
     h('div', { class: 'campos' },
@@ -2043,7 +2092,7 @@ function montarApp() {
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0])),
-      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · dados até ' + fData(diaMax))),
+      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · OMs criadas de ' + fData(diaMin) + ' a ' + fData(diaMax))),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
@@ -2129,18 +2178,17 @@ function iniciar(modelo) {
     M.falhas = fx.rotulos; O.falhas = fx.falhas;
   }
   var versaoPecas = window.ModeloTurbinas && ModeloTurbinas.VERSAO_PECAS;
-  if (!O.pecas || !M.componentes || !O.pecasItens || (versaoPecas && M.versaoPecas !== versaoPecas)) {
-    // base salva por uma versão anterior do painel, ou a regra de peças mudou: refaz a leitura do texto
-    var ext = window.ModeloTurbinas && ModeloTurbinas.componentesTrocados;
-    M.versaoPecas = versaoPecas;
-    M.componentes = ext ? ModeloTurbinas.COMPONENTES.map(function (c) { return c[0]; }) : [];
-    O.pecas = []; O.pecasItens = []; O.pecasTrecho = [];
-    for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], itens: [], trechos: [] }; O.pecas.push(r.ids); O.pecasItens.push(r.itens); O.pecasTrecho.push(r.trechos); }
-    if (ext) guardarBase(M); // guarda já relida, para não refazer a cada abertura
+  if (versaoPecas && ModeloTurbinas.relerRegras && (!O.pecas || !M.componentes || !O.pecasItens || M.versaoPecas !== versaoPecas)) {
+    // base salva por uma versão anterior do painel, ou as regras mudaram: refaz peças, falhas e custos atípicos
+    ModeloTurbinas.relerRegras(M);
+    guardarBase(M); // guarda já relida, para não refazer a cada abertura
   }
   if (!M.complexos || !M.parqueComplexo) { // base salva por uma versão anterior do painel
     M.complexos = ['Asa Branca']; M.parqueComplexo = M.parques.map(function () { return 0; });
   }
+  var contaSis = {}, maiorSis = 0;
+  O.sistema.forEach(function (k) { contaSis[k] = (contaSis[k] || 0) + 1; if (contaSis[k] > maiorSis) maiorSis = contaSis[k]; });
+  SISTEMA_UTIL = maiorSis < 0.7 * N;
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
   parqueDoWtg = []; posDoWtg = [];
   M.ativos.forEach(function (a) { parqueDoWtg[a.wtg] = a.parque; posDoWtg[a.wtg] = a.pos; });
