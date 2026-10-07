@@ -2107,11 +2107,15 @@ function iniciar(modelo) {
     var fx = window.ModeloTurbinas && ModeloTurbinas.extrairFalhas ? ModeloTurbinas.extrairFalhas(O.desc) : { rotulos: [], falhas: O.desc.map(function () { return []; }) };
     M.falhas = fx.rotulos; O.falhas = fx.falhas;
   }
-  if (!O.pecas || !M.componentes || !O.pecasItens) { // base salva por uma versão anterior do painel
+  var versaoPecas = window.ModeloTurbinas && ModeloTurbinas.VERSAO_PECAS;
+  if (!O.pecas || !M.componentes || !O.pecasItens || (versaoPecas && M.versaoPecas !== versaoPecas)) {
+    // base salva por uma versão anterior do painel, ou a regra de peças mudou: refaz a leitura do texto
     var ext = window.ModeloTurbinas && ModeloTurbinas.componentesTrocados;
+    M.versaoPecas = versaoPecas;
     M.componentes = ext ? ModeloTurbinas.COMPONENTES.map(function (c) { return c[0]; }) : [];
     O.pecas = []; O.pecasItens = []; O.pecasTrecho = [];
     for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], itens: [], trechos: [] }; O.pecas.push(r.ids); O.pecasItens.push(r.itens); O.pecasTrecho.push(r.trechos); }
+    if (ext) guardarBase(M); // guarda já relida, para não refazer a cada abertura
   }
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
   parqueDoWtg = []; posDoWtg = [];

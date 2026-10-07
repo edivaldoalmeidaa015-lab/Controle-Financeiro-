@@ -75,6 +75,8 @@
     ['Outras peças', /^$/]
   ];
   var OUTRAS = COMPONENTES.length - 1;
+  // Suba quando mudar a regra de peças: o painel refaz a leitura das bases já guardadas no aparelho.
+  var VERSAO_PECAS = 2;
   // verbos de troca JÁ REALIZADA (exclui infinitivo "substituir"/"trocar", que costuma ser recomendação)
   var VERBO = /^(substituicao|substituicoes|substituid[oa]s?|substitui|substituimos|substituiram|substituindo|troca|trocas|trocad[oa]s?|trocou|trocamos|trocaram|trocando|reposicao|repost[oa]s?|substitui-l[oa]s?|troca-l[oa]s?)$/;
   // "Realizada instalação de UPS": instalar conta como troca só para peças de reposição — instalar
@@ -496,6 +498,7 @@
     Object.keys(d).forEach(function (k) { dic[k] = d[k].itens; });
     return {
       versao: 1,
+      versaoPecas: VERSAO_PECAS,
       gerado: new Date().toISOString(),
       origem: new Date(Date.UTC(anoBase, 0, 1)).toISOString().slice(0, 10),
       ultimoDia: Math.floor(maxSerial) - origem,
@@ -513,5 +516,5 @@
     };
   }
 
-  return { montar: montar, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });
