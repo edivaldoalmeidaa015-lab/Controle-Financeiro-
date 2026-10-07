@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Turbinas">
 <link rel="apple-touch-icon" href="icone-180.png">
-<meta name="description" content="Ordens de manutenção dos aerogeradores do Complexo Asa Branca: backlog, mão de obra, custos e mapa de turbinas, com filtros e segmentação.">
+<meta name="description" content="Ordens de manutenção dos aerogeradores: backlog, peças, falhas, custos e mapa de turbinas, com filtros e segmentação.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M16 17 L16 29 M16 17 L9 6 M16 17 L27 13 M16 17 L8 22' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='2.6' fill='white'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -579,23 +579,24 @@ var origemMs = 0;
 var diaMin = 0, diaMax = 0;
 var IDX = { tipo: {}, grupo: {}, status: {}, faixa: {}, entrega: {}, categoria: [] };
 
-var DIMS = ['parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status', 'parada'];
-var ROTULO_DIM = { parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente', falha: 'Falha' };
+var DIMS = ['complexo', 'parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status', 'parada'];
+var ROTULO_DIM = { complexo: 'Complexo', parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente', falha: 'Falha' };
 var estado = {
   pagina: 'visao',
   per: { chave: 'tudo', ini: 0, fim: 0 },
-  f: { parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), falha: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
+  f: { complexo: new Set(), parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), falha: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
   pecasTab: { ordem: 'abertura', desc: true, pag: 0 },
   atipicos: false,
   metricaMapa: 'oms',
   tabelaVisivel: {},
-  ordens: { busca: '', ordem: 'dAb', desc: true, pag: 0 },
+  ordens: { busca: '', ordem: 'abertura', desc: true, pag: 0 },
   ultimaOM: null, irParaOM: null,
   ranking: { ordem: 'oms', desc: true }
 };
 
 function valorDim(dim, i) {
   switch (dim) {
+    case 'complexo': return O.wtg[i] < 0 || parqueDoWtg[O.wtg[i]] < 0 ? -1 : M.parqueComplexo[parqueDoWtg[O.wtg[i]]];
     case 'parque': return O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]];
     case 'wtg': return O.wtg[i];
     case 'tipo': return O.tipo[i];
@@ -608,6 +609,7 @@ function valorDim(dim, i) {
 }
 function itensDim(dim) {
   switch (dim) {
+    case 'complexo': return M.complexos;
     case 'parque': return M.parques;
     case 'wtg': return M.dic.wtg;
     case 'tipo': return M.dic.tipo;
@@ -1951,7 +1953,7 @@ function renderFiltros(cont) {
     h('span', { class: 'rot' }, 'Período'), h('span', { class: 'val' }, textoPeriodo()));
   bPer.addEventListener('click', function () { abrirPop(bPer, popPeriodo, 'periodo'); });
   linha.append(bPer);
-  ['parque', 'wtg', 'tipo', 'falha', 'peca', 'status'].forEach(function (dim) {
+  (M.complexos.length > 1 ? ['complexo'] : []).concat(['parque', 'wtg', 'tipo', 'falha', 'peca', 'status']).forEach(function (dim) {
     var b = h('button', { type: 'button', class: 'slicer' + (estado.f[dim].size ? ' ativo' : ''), 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
       h('span', { class: 'rot' }, ROTULO_DIM[dim]), h('span', { class: 'val' }, textoDim(dim)));
     b.addEventListener('click', function () { abrirPop(b, function (el) { popDim(dim, el); }, dim); });
@@ -2034,11 +2036,13 @@ function montarApp() {
   nav.append(h('div', { class: 'rodape' },
     h('button', { type: 'button', class: 'nav-btn', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'), 'Tema')));
 
-  var nTurb = M.ativos.length, modelo = M.ativos[0] && M.ativos[0].modelo;
+  var nTurb = M.ativos.length, modelos = [];
+  M.ativos.forEach(function (x) { if (x.modelo && modelos.indexOf(x.modelo) < 0) modelos.push(x.modelo); });
+  var modelo = modelos.join(', ');
   var topo = h('header', { class: 'topo' + (LOGO_URL ? ' com-marca' : '') },
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
     h('div', { class: 'titulo' },
-      h('h1', null, 'Manutenção de Aerogeradores · Complexo Asa Branca'),
+      h('h1', null, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0])),
       h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · dados até ' + fData(diaMax))),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
@@ -2133,6 +2137,9 @@ function iniciar(modelo) {
     O.pecas = []; O.pecasItens = []; O.pecasTrecho = [];
     for (var j = 0; j < N; j++) { var r = ext ? ext(O.exec[j]) : { ids: [], itens: [], trechos: [] }; O.pecas.push(r.ids); O.pecasItens.push(r.itens); O.pecasTrecho.push(r.trechos); }
     if (ext) guardarBase(M); // guarda já relida, para não refazer a cada abertura
+  }
+  if (!M.complexos || !M.parqueComplexo) { // base salva por uma versão anterior do painel
+    M.complexos = ['Asa Branca']; M.parqueComplexo = M.parques.map(function () { return 0; });
   }
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
   parqueDoWtg = []; posDoWtg = [];

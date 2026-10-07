@@ -1,7 +1,8 @@
 /*
  * Modelo de dados do Painel de Turbinas.
- * Converte a planilha "Base_PowerBI_Ordens" (tabelas fato_* e dim_*) num modelo
- * colunar compacto. Roda no navegador (window.ModeloTurbinas) e no Node.
+ * Converte a planilha "Base_PowerBI_Ordens" (tabelas fato_* e dim_*) — ou a exportação
+ * de ordens de manutenção do Manusis 4, como sai do sistema — num modelo colunar
+ * compacto. Roda no navegador (window.ModeloTurbinas) e no Node.
  */
 (function (raiz, fabrica) {
   if (typeof module === 'object' && module.exports) module.exports = fabrica();
@@ -436,15 +437,144 @@
     return XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
   }
 
+  /* ---------------- Exportação do Manusis 4 ---------------- */
+  var ABA_MANUSIS = 'Ordens de manutenção';
+  var TIPO_MANUSIS = { 'Corrective Maintenance': 'Corretiva', 'Preventive maintenance': 'Preventiva', 'Preventiva': 'Preventiva',
+    'Performance': 'Performance', 'Inspeção': 'Inspeção', 'Field Services': 'Field Services' };
+  function romano(r) {
+    var v = { I: 1, V: 5, X: 10, L: 50 }, t = 0;
+    for (var i = 0; i < r.length; i++) { var a = v[r[i]] || 0, b = v[r[i + 1]] || 0; t += a < b ? -a : a; }
+    return t;
+  }
+  // "07/10/2025" + "00:06" -> "2025-10-07T00:06"
+  function dataBR(d, h) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(d || '').trim());
+    if (!m) return null;
+    var hm = /^(\d{1,2}):(\d{2})/.exec(String(h || '').trim());
+    return m[3] + '-' + m[2] + '-' + m[1] + 'T' + (hm ? ('0' + hm[1]).slice(-2) + ':' + hm[2] : '00:00');
+  }
+  // "4.300,62" -> 4300.62
+  function numBR(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number') return v;
+    var n = parseFloat(String(v).replace(/\./g, '').replace(',', '.'));
+    return isFinite(n) ? n : null;
+  }
+  // "Usuário: FulanoData: 02/04/2026 11:21Texto" -> "[02/04/2026 11:21 - Fulano] Texto", um apontamento por linha
+  function textoManusis(v) {
+    return String(v || '').replace(/\s*(?:Usuário|User):\s*(.+?)\s*(?:Data|Date):\s*(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2})\s*/g,
+      function (_, nome, d, h) { return '\n[' + d + ' ' + h + ' - ' + nome.trim() + '] '; }).trim();
+  }
+  // "WTG0-0004-ASA-Aerogerador AB-IV04" -> { wtg: 'AB-IV04', parque: 'Asa Branca IV', pos: 4 }
+  function turbinaManusis(ativo) {
+    var m = /Aerogerador\s+(.+?)\s*$/.exec(String(ativo || ''));
+    if (!m) return null;
+    var nome = m[1], p;
+    if ((p = /^AB-([IVXL]+)(\d+)$/.exec(nome))) return { wtg: nome, parque: 'Asa Branca ' + p[1], grupo: 'AB', num: romano(p[1]), pos: +p[2] };
+    if ((p = /^([A-Z]{2,4})\s+([IVXL]+)-(\d+)$/.exec(nome))) return { wtg: nome, parque: p[1] + ' ' + p[2], grupo: p[1], num: romano(p[2]), pos: +p[3] };
+    return { wtg: nome, parque: nome.replace(/[-\s]*\d+$/, ''), grupo: nome, num: 0, pos: parseInt((/(\d+)$/.exec(nome) || [0, 0])[1], 10) };
+  }
+  function complexoManusis(loc) {
+    var c = String(loc || '').replace(/^SITE-[A-Z]+-/, '').replace(/^EOL\s+/, '').trim();
+    return c.replace(/Piaui$/, 'Piauí') || 'Outros';
+  }
+
+  /** Converte a exportação do Manusis nas linhas de fato_ordens e dim_ativo. */
+  function deManusis(wb, XLSX) {
+    var brutas = XLSX.utils.sheet_to_json(wb.Sheets[ABA_MANUSIS], { defval: '', raw: false });
+    if (!brutas.length) throw new Error('A aba "' + ABA_MANUSIS + '" está vazia.');
+    if (!('Número de ordem' in brutas[0])) throw new Error('A aba "' + ABA_MANUSIS + '" não tem a coluna "Número de ordem".');
+    // Hh por OM (aba Especialidades): os totais se repetem em cada linha da OM
+    var hh = Object.create(null);
+    if (wb.Sheets.Especialidades) {
+      XLSX.utils.sheet_to_json(wb.Sheets.Especialidades, { defval: '', raw: false }).forEach(function (e) {
+        var k = e['Número de ordem'];
+        if (k && !hh[k]) hh[k] = { prev: numBR(e['Total Hh prev']), real: numBR(e['Total Hh real']) };
+      });
+    }
+    var vistas = Object.create(null), ativos = Object.create(null), ordens = [];
+    var hoje = -Infinity;
+    function horas(a, b) { var x = serial(a), y = serial(b); return x === null || y === null ? null : Math.round((y - x) * 24 * 10) / 10; }
+    brutas.forEach(function (r) {
+      var om = String(r['Número de ordem'] || '').trim();
+      if (!om || vistas[om]) return; // OM repetida na exportação
+      vistas[om] = 1;
+      var t = turbinaManusis(r['Ativo']);
+      var complexo = complexoManusis(r['Localização 2']);
+      if (t && !ativos[t.wtg]) {
+        ativos[t.wtg] = { WTG: t.wtg, Parque: t.parque, Posicao_No_Parque: t.pos, Complexo: complexo,
+          Modelo: String(r['Familia de ativos'] || '').split('-TURBINAS')[0].trim(), _grupo: t.grupo, _num: t.num,
+          Ativo_Codigo: String(r['Ativo']).trim() };
+      }
+      var st = String(r['Status'] || '').trim();
+      var ab = dataBR(r['Data de abertura'], r['Hora de abertura']), fe = dataBR(r['Data de fechamento'], r['Hora de fechamento']);
+      var ca = dataBR(r['Data do cancelamento']), ini = dataBR(r['Data de início do serviço'], r['Hora de início do serviço']);
+      var fim = dataBR(r['Data final do serviço'], r['Hora final do serviço']), prev = dataBR(r['Data prevista para entrega'], r['Hora prevista para entrega']);
+      [ab, fe, ca].forEach(function (x) { var s = serial(x); if (s !== null && s > hoje) hoje = s; });
+      var grupo = st === 'Fechadas' ? 'Concluída' : st === 'Canceladas' ? 'Cancelada' : 'Backlog';
+      var custos = ['Custo de mão de obra', 'Custo de material', 'Custo de recurso de apoio', 'Outros custos'].map(function (c) { return numBR(r[c]); });
+      var total = custos.some(function (c) { return c !== null; }) ? custos.reduce(function (a, c) { return a + (c || 0); }, 0) : null;
+      var conj = String(r['Conjunto'] || '').replace(/^.*?-\d{4}-[A-Z]+-[A-Z0-9]+-\d+-/, '').trim();
+      var h = hh[om] || {};
+      ordens.push({
+        OM: om, OM_Num: parseInt(om.replace(/\D/g, ''), 10), Status: st, Grupo_Status: grupo,
+        Tipo_Servico: TIPO_MANUSIS[String(r['Tipo de serviço']).trim()] || 'Outros', Natureza_Servico: r['Natureza do serviço'] || null,
+        WTG: t ? t.wtg : null, Sistema: conj || 'Turbina (geral)', Maquina_Parada: r['Máquina parada?'],
+        Data_Abertura: ab, Data_Fechamento: grupo === 'Concluída' ? fe : null, Data_Cancelamento: grupo === 'Cancelada' ? (ca || fe) : null,
+        Lead_Time_h: grupo === 'Concluída' ? horas(ab, fe) : null, _prev: prev, _fe: fe,
+        Duracao_Servico_h: horas(ini, fim), Tempo_Ate_Inicio_h: horas(ab, ini),
+        Hh_Previsto: h.prev === undefined ? null : h.prev, Hh_Real: h.real === undefined ? null : h.real, Hh_Apontado: h.real === undefined ? null : h.real,
+        Custo_MO: custos[0], Custo_Material: custos[1], Custo_Total: total,
+        Motivo_Espera: r['Motivo de espera'] || null, Obs_Motivo_Espera: r['Observação do motivo de espera'],
+        Motivo_Cancelamento: r['Motivo do cancelamento'] || null, Obs_Cancelamento: r['Observação do motivo de cancelamento'],
+        Mantenedor_Responsavel: r['Mantenedor responsável'] || null, Reprogramada: r['Motivo de Reprogramação'] ? 'Sim' : 'Não',
+        Descricao: r['Descrição'], Servico_Executado: textoManusis(r['Serviço executado'])
+      });
+    });
+    // idade do backlog e entrega no prazo, com a data mais recente da exportação como "hoje"
+    ordens.forEach(function (o) {
+      var a = serial(o.Data_Abertura), p = serial(o._prev);
+      if (o.Grupo_Status === 'Backlog' && a !== null) {
+        var idade = Math.floor(hoje) - Math.floor(a);
+        o.Idade_Backlog_dias = idade;
+        o.Faixa_Idade_Backlog = idade <= 30 ? '0-30 dias' : idade <= 60 ? '31-60 dias' : idade <= 90 ? '61-90 dias' : '>90 dias';
+      }
+      o.Entrega_No_Prazo = p === null ? 'Sem prazo definido' : o.Grupo_Status === 'Backlog' || o.Grupo_Status === 'Cancelada' ? 'Em aberto'
+        : serial(o._fe) !== null && serial(o._fe) <= p ? 'No prazo' : 'Atrasada';
+    });
+    // turbinas: complexo (na ordem em que aparecem), grupo do parque e número romano, posição
+    var lista = Object.keys(ativos).map(function (k) { return ativos[k]; });
+    var ordemCx = [];
+    lista.forEach(function (a) { if (ordemCx.indexOf(a.Complexo) < 0) ordemCx.push(a.Complexo); });
+    ordemCx.sort(function (x, y) { return (x === 'Asa Branca' ? 0 : 1) - (y === 'Asa Branca' ? 0 : 1) || x.localeCompare(y); });
+    lista.sort(function (a, b) {
+      return ordemCx.indexOf(a.Complexo) - ordemCx.indexOf(b.Complexo) || a._grupo.localeCompare(b._grupo) || a._num - b._num || a.Posicao_No_Parque - b.Posicao_No_Parque;
+    });
+    var parquesVistos = [];
+    lista.forEach(function (a, i) {
+      a.WTG_Seq = i + 1;
+      if (parquesVistos.indexOf(a.Parque) < 0) parquesVistos.push(a.Parque);
+      a.Ordem_Parque = parquesVistos.indexOf(a.Parque) + 1;
+      delete a._grupo; delete a._num;
+    });
+    return { ordens: ordens, ativos: lista };
+  }
+
   /** Lê o workbook (SheetJS) e devolve o modelo colunar. */
   function montar(wb, XLSX) {
-    var ordens = linhas(wb, XLSX, 'fato_ordens', true);
-    var ativos = linhas(wb, XLSX, 'dim_ativo', true)
-      .sort(function (a, b) { return (a.WTG_Seq || 0) - (b.WTG_Seq || 0); });
-    var apont = linhas(wb, XLSX, 'fato_apontamentos');
-    var mov = linhas(wb, XLSX, 'fato_movimentacao_status');
-    var tiposAp = linhas(wb, XLSX, 'dim_tipo_apontamento');
-    if (!ordens.length) throw new Error('A aba fato_ordens está vazia.');
+    var ordens, ativos, apont = [], mov = [], tiposAp = [];
+    if (wb.Sheets[ABA_MANUSIS]) {
+      var mn = deManusis(wb, XLSX);
+      ordens = mn.ordens; ativos = mn.ativos;
+    } else {
+      ordens = linhas(wb, XLSX, 'fato_ordens', true);
+      ativos = linhas(wb, XLSX, 'dim_ativo', true)
+        .sort(function (a, b) { return (a.WTG_Seq || 0) - (b.WTG_Seq || 0); });
+      apont = linhas(wb, XLSX, 'fato_apontamentos');
+      mov = linhas(wb, XLSX, 'fato_movimentacao_status');
+      tiposAp = linhas(wb, XLSX, 'dim_tipo_apontamento');
+    }
+    if (!ordens.length) throw new Error('A planilha não tem ordens de manutenção.');
 
     var minSerial = Infinity, maxSerial = -Infinity;
     ordens.forEach(function (r) {
@@ -458,12 +588,16 @@
     var parques = [];
     ativos.slice().sort(function (a, b) { return (a.Ordem_Parque || 0) - (b.Ordem_Parque || 0); })
       .forEach(function (a) { if (parques.indexOf(a.Parque) < 0) parques.push(a.Parque); });
+    // complexo de cada parque (a base Power BI antiga não traz: deduz do nome do parque)
+    function complexoDe(a) { return a && a.Complexo ? a.Complexo : a && /^Asa Branca/.test(a.Parque) ? 'Asa Branca' : 'Complexo'; }
+    var complexos = [];
+    ativos.forEach(function (a) { var c = complexoDe(a); if (complexos.indexOf(c) < 0) complexos.push(c); });
 
     var d = {
       wtg: new Dic(ativos.map(function (a) { return a.WTG; })),
       status: new Dic(ETAPAS.concat(['Fechadas', 'Canceladas'])),
       grupo: new Dic(['Concluída', 'Backlog', 'Cancelada']),
-      tipo: new Dic(['Preventiva', 'Corretiva', 'Performance', 'Inspeção', 'Field Services']),
+      tipo: new Dic(['Preventiva', 'Corretiva', 'Performance', 'Inspeção', 'Field Services', 'Outros']),
       natureza: new Dic(), sistema: new Dic(),
       faixa: new Dic(['0-30 dias', '31-60 dias', '61-90 dias', '>90 dias']),
       entrega: new Dic(['No prazo', 'Atrasada', 'Em aberto', 'Sem prazo definido']),
@@ -541,6 +675,11 @@
       origem: new Date(Date.UTC(anoBase, 0, 1)).toISOString().slice(0, 10),
       ultimoDia: Math.floor(maxSerial) - origem,
       parques: parques,
+      complexos: complexos,
+      parqueComplexo: parques.map(function (p) {
+        var a = ativos.filter(function (x) { return x.Parque === p; })[0];
+        return complexos.indexOf(complexoDe(a));
+      }),
       ativos: ativos.map(function (a) {
         return { wtg: d.wtg.id(a.WTG), parque: parques.indexOf(a.Parque), pos: a.Posicao_No_Parque, modelo: a.Modelo };
       }),
@@ -554,5 +693,5 @@
     };
   }
 
-  return { montar: montar, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });
