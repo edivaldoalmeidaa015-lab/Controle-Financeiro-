@@ -307,6 +307,8 @@ svg text { font-family: inherit; }
 .tab tr:last-child td { border-bottom: 0; }
 .tab tbody tr.clic { cursor: pointer; }
 .tab tbody tr.clic:hover td, .tab tbody tr.clic:focus-visible td { background: var(--hover); }
+.tab tbody tr.visto td { background: var(--accent-wash); }
+.tab tbody tr.visto td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .tab td.txt { white-space: normal; min-width: 320px; max-width: 460px; color: var(--ink-2); }
 .tab td.txt .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tab td.forte { font-weight: 600; }
@@ -368,7 +370,9 @@ svg text { font-family: inherit; }
   background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-pop); transition: opacity .16s, transform .16s;
 }
 .modal.on { opacity: 1; transform: translate(-50%, -50%); }
-.modal .drawer-h { position: sticky; top: 0; border-radius: 14px 14px 0 0; }
+.modal .drawer-h { position: sticky; top: 0; border-radius: 14px 14px 0 0; z-index: 1; }
+.nav-om { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); position: sticky; top: 0; font-size: 13px; color: var(--ink-2); }
+.nav-om .btn[disabled] { opacity: .4; cursor: default; }
 .campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 20px; }
 .campos div span { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
 .campos div b { font-weight: 600; font-size: 13.5px; }
@@ -563,6 +567,7 @@ var estado = {
   metricaMapa: 'oms',
   tabelaVisivel: {},
   ordens: { busca: '', ordem: 'dAb', desc: true, pag: 0 },
+  ultimaOM: null, irParaOM: null,
   ranking: { ordem: 'oms', desc: true }
 };
 
@@ -966,7 +971,13 @@ function tabela(el, cfg) {
       return ord.desc ? -r : r;
     });
   }
+  var ordenadas = linhas;
   var total = linhas.length, porPag = cfg.porPagina || 0, pag = cfg.pagina || 0;
+  // ao voltar de uma OM, a tabela vai para a página onde ela está
+  if (porPag && estado.irParaOM !== null && estado.irParaOM !== undefined) {
+    var pos = ordenadas.map(function (r) { return r.i; }).indexOf(estado.irParaOM);
+    if (pos >= 0) { pag = Math.floor(pos / porPag); if (cfg.onPaginaSilenciosa) cfg.onPaginaSilenciosa(pag); }
+  }
   if (porPag) { pag = Math.min(pag, Math.max(0, Math.ceil(total / porPag) - 1)); linhas = linhas.slice(pag * porPag, pag * porPag + porPag); }
   var maxBarra = {};
   cols.forEach(function (c) { if (c.barra) maxBarra[c.k] = Math.max.apply(null, cfg.linhas.map(function (r) { return r[c.k] || 0; }).concat([0])) || 1; });
@@ -980,10 +991,11 @@ function tabela(el, cfg) {
   }));
   var tbody = h('tbody');
   linhas.forEach(function (r) {
-    var tr = h('tr', { class: cfg.onLinha ? 'clic' : null, tabindex: cfg.onLinha ? '0' : null });
+    var visto = r.i !== undefined && r.i === estado.ultimaOM;
+    var tr = h('tr', { class: (cfg.onLinha ? 'clic' : '') + (visto ? ' visto' : ''), tabindex: cfg.onLinha ? '0' : null, 'data-om': r.i !== undefined ? r.i : null });
     if (cfg.onLinha) {
-      tr.addEventListener('click', function () { cfg.onLinha(r); });
-      tr.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); cfg.onLinha(r); } });
+      tr.addEventListener('click', function () { cfg.onLinha(r, ordenadas); });
+      tr.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); cfg.onLinha(r, ordenadas); } });
     }
     cols.forEach(function (c) {
       var v = r[c.k], txt = c.fmt ? c.fmt(v, r) : (v === null || v === undefined ? '–' : v);
@@ -1357,7 +1369,7 @@ function paginaBacklog(pg) {
         cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
           { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'esperaTxt', rot: 'Motivo de espera' },
           { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'idade', rot: 'Idade', num: true, barra: true, corBarra: 'var(--s2)', fmt: function (v) { return fDias(v); } }],
-        linhas: antigas, altura: 520, onLinha: function (r) { abrirOM(r.i); }
+        linhas: antigas, altura: 520, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
       });
     }
   }));
@@ -1471,8 +1483,9 @@ function paginaComponentes(pg) {
         { k: 'custoMat', rot: 'Material', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }],
       linhas: linhas, ordem: { k: estado.pecasTab.ordem, desc: estado.pecasTab.desc }, porPagina: 25, pagina: estado.pecasTab.pag,
       onOrdenar: function (k, desc) { estado.pecasTab = { ordem: k, desc: desc, pag: 0 }; renderPagina(); },
+      onPaginaSilenciosa: function (p) { estado.pecasTab.pag = p; },
       onPagina: function (p) { estado.pecasTab.pag = p; renderPagina(); corpo.scrollIntoView({ block: 'start' }); },
-      onLinha: function (r) { abrirOM(r.i); }
+      onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   });
 }
@@ -1576,7 +1589,7 @@ function paginaCustos(pg) {
         cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'wtgTxt', rot: 'Turbina' }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'sistemaTxt', rot: 'Sistema' },
           { k: 'atip', rot: '', fmt: function (v) { return v ? statusTag('alerta', v) : ''; } },
           { k: 'mat', rot: 'Material', num: true, fmt: function (v) { return fMoeda(v); } }, { k: 'custo', rot: 'Total', num: true, fmt: function (v) { return fMoeda(v); } }],
-        linhas: topOM, altura: 440, onLinha: function (r) { abrirOM(r.i); }
+        linhas: topOM, altura: 440, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
       });
     }
   }));
@@ -1614,8 +1627,9 @@ function paginaOrdens(pg) {
         { k: 'custo', rot: 'Custo', num: true, fmt: function (v) { return v === null ? '–' : fMoeda(v); } }, { k: 'desc', rot: 'Descrição', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } }],
       linhas: linhas, ordem: { k: estado.ordens.ordem, desc: estado.ordens.desc }, porPagina: 25, pagina: estado.ordens.pag,
       onOrdenar: function (k, desc) { estado.ordens.ordem = k === 'omTxt' ? 'omTxt' : k; estado.ordens.desc = desc; estado.ordens.pag = 0; renderPagina(); },
+      onPaginaSilenciosa: function (p) { estado.ordens.pag = p; },
       onPagina: function (p) { estado.ordens.pag = p; renderPagina(); document.querySelector('.pagina').scrollIntoView({ block: 'start' }); },
-      onLinha: function (r) { abrirOM(r.i); }
+      onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   });
 }
@@ -1637,25 +1651,48 @@ function exportarCSV(linhas) {
 /* =====================================================================
    Detalhe da turbina (drawer) e da OM (modal)
    ===================================================================== */
-var camada = null;
+// Janelas (detalhe da turbina, ficha da OM) ficam empilhadas: fechar uma revela a de baixo.
+// Cada janela registra um passo no histórico, então o "voltar" do celular fecha a janela
+// em vez de sair do painel.
+var pilha = [], ignorarPop = 0;
+function topo() { return pilha[pilha.length - 1] || null; }
 function fecharCamada() {
-  if (!camada) return;
-  var c = camada; camada = null;
+  if (!pilha.length) return;
+  if (history.state && history.state.camada === pilha.length) { history.back(); return; } // o popstate fecha
+  removerTopo();
+}
+function removerTopo() {
+  var c = pilha.pop();
+  if (!c) return;
   c.veu.classList.remove('on'); c.painel.classList.remove('on');
   setTimeout(function () { c.veu.remove(); c.painel.remove(); }, 220);
-  document.removeEventListener('keydown', escFechar);
-  if (c.foco && c.foco.focus) c.foco.focus();
+  if (c.aoFechar) c.aoFechar();
+  if (c.foco && c.foco.focus && document.body.contains(c.foco)) c.foco.focus({ preventScroll: true });
 }
-function escFechar(ev) { if (ev.key === 'Escape') fecharCamada(); }
-function abrirCamada(painel) {
+window.addEventListener('popstate', function () {
+  var nivel = history.state && history.state.camada || 0;
+  while (pilha.length > nivel) removerTopo();
+});
+document.addEventListener('keydown', function (ev) {
+  var t = topo();
+  if (!t) return;
+  if (ev.key === 'Escape') { ev.preventDefault(); fecharCamada(); }
+  else if (t.navegar && (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) {
+    ev.preventDefault(); t.navegar(ev.key === 'ArrowRight' ? 1 : -1);
+  }
+});
+function abrirCamada(painel, opcoes) {
+  opcoes = opcoes || {};
   var foco = document.activeElement;
-  if (camada) { camada.veu.remove(); camada.painel.remove(); camada = null; }
   var veu = h('div', { class: 'veu', onclick: fecharCamada });
+  veu.style.zIndex = 70 + pilha.length * 10; painel.style.zIndex = 75 + pilha.length * 10;
   document.body.append(veu, painel);
-  camada = { veu: veu, painel: painel, foco: foco };
+  var c = { veu: veu, painel: painel, foco: foco, aoFechar: opcoes.aoFechar, navegar: opcoes.navegar };
+  pilha.push(c);
+  history.pushState({ camada: pilha.length }, '', location.href);
   requestAnimationFrame(function () { veu.classList.add('on'); painel.classList.add('on'); });
-  document.addEventListener('keydown', escFechar);
-  var f = painel.querySelector('button'); if (f) f.focus();
+  var f = painel.querySelector('[data-foco]') || painel.querySelector('button'); if (f) f.focus({ preventScroll: true });
+  return c;
 }
 
 function abrirTurbina(w) {
@@ -1717,7 +1754,7 @@ function abrirTurbina(w) {
     else bodyP.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada no período.'));
     tabela(bodyL, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }],
-      linhas: ix.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r) { abrirOM(r.i); }
+      linhas: ix.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   });
 }
@@ -1731,14 +1768,52 @@ function passaDimsSemLocal(i) {
 }
 function miniKpi(rot, val) { return h('div', { class: 'card' }, h('div', { class: 'k-rot' }, rot), h('div', { class: 'k-val' }, val)); }
 
-function abrirOM(i) {
+/**
+ * Ficha da OM. "lista" = OMs da tabela de onde ela foi aberta (na mesma ordem), para
+ * navegar com Anterior/Próxima, setas do teclado ou deslizando para o lado no celular.
+ */
+function abrirOM(i, lista) {
   esconderTip();
+  lista = lista && lista.length ? lista : [i];
+  var pos = Math.max(0, lista.indexOf(i));
+  var t = topo();
+  if (t && t.ehOM) { t.ir(lista, pos); return; } // já há uma ficha aberta: só troca o conteúdo
+  var painel = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'om-tit' });
+  var c = abrirCamada(painel, {
+    navegar: function (passo) { var p = c.pos + passo; if (p >= 0 && p < c.lista.length) c.ir(c.lista, p); },
+    aoFechar: function () { estado.ultimaOM = c.lista[c.pos]; estado.irParaOM = c.lista[c.pos]; renderPagina(); estado.irParaOM = null; mostrarUltimaOM(); }
+  });
+  c.ehOM = true;
+  c.ir = function (l, p) { c.lista = l; c.pos = p; painel.textContent = ''; anexar(painel, fichaOM(l[p], l, p, c.navegar)); painel.scrollTop = 0; };
+  c.ir(lista, pos);
+  // deslizar para o lado no celular
+  var x0 = null, y0 = null;
+  painel.addEventListener('touchstart', function (ev) { x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; }, { passive: true });
+  painel.addEventListener('touchend', function (ev) {
+    if (x0 === null) return;
+    var dx = ev.changedTouches[0].clientX - x0, dy = ev.changedTouches[0].clientY - y0; x0 = null;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) c.navegar(dx < 0 ? 1 : -1);
+  });
+}
+function mostrarUltimaOM() {
+  var tr = document.querySelector('.pagina tr.visto') || document.querySelector('.drawer tr.visto');
+  if (!tr) return;
+  var r = tr.getBoundingClientRect();
+  if (r.top < 120 || r.bottom > innerHeight - 80) tr.scrollIntoView({ block: 'center' });
+  tr.focus({ preventScroll: true });
+}
+function fichaOM(i, lista, pos, navegar) {
+  var nav = lista.length > 1 ? h('div', { class: 'nav-om' },
+    h('button', { class: 'btn', type: 'button', disabled: pos === 0 ? true : null, onclick: function () { navegar(-1); } }, '‹ Anterior'),
+    h('span', { class: 'num' }, fInt(pos + 1) + ' de ' + fInt(lista.length)),
+    h('button', { class: 'btn', type: 'button', disabled: pos >= lista.length - 1 ? true : null, onclick: function () { navegar(1); } }, 'Próxima ›')) : null;
   var r = linhaOM(i);
   var campo = function (rot, val) { return h('div', null, h('span', null, rot), h('b', null, val === null || val === undefined || val === '' ? '–' : val)); };
-  var painel = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'om-tit' },
+  return [
     h('div', { class: 'drawer-h' },
       h('div', null, h('h2', { id: 'om-tit' }, r.omTxt), h('p', null, r.wtgTxt + ' · ' + r.tipoTxt + ' · ' + r.sistemaTxt)),
-      h('div', { class: 'ferr' }, pillStatus(r.status), h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', onclick: fecharCamada }, icone('fechar')))),
+      h('div', { class: 'ferr' }, pillStatus(r.status), h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', 'data-foco': '', onclick: fecharCamada }, icone('fechar')))),
+    nav,
     h('div', { class: 'campos' },
       campo('Abertura', fData(O.dAb[i])), campo('Fechamento', O.dFe[i] === null ? '–' : fData(O.dFe[i])), campo('Natureza', M.dic.natureza[O.natureza[i]]),
       campo('Máquina parada', r.parada), campo('Lead time', r.lead === null ? '–' : fDias(r.lead)), campo('Idade no backlog', r.idade === null ? '–' : fDias(r.idade)),
@@ -1756,8 +1831,7 @@ function abrirOM(i) {
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
       O.obsEspera && O.obsEspera[i] ? [h('h4', null, 'Observação da espera'), h('p', null, O.obsEspera[i])] : null,
-      O.obsCancel && O.obsCancel[i] ? [h('h4', null, 'Observação do cancelamento'), h('p', null, O.obsCancel[i])] : null));
-  abrirCamada(painel);
+      O.obsCancel && O.obsCancel[i] ? [h('h4', null, 'Observação do cancelamento'), h('p', null, O.obsCancel[i])] : null)];
 }
 
 /* =====================================================================
@@ -1930,7 +2004,7 @@ function salvarHash() {
   if (estado.metricaMapa !== 'oms') p.set('mapa', estado.metricaMapa);
   if (estado.atipicos) p.set('atip', '1');
   var novo = '#' + p.toString();
-  if (location.hash !== novo) history.replaceState(null, '', novo);
+  if (location.hash !== novo) history.replaceState(history.state, '', novo);
 }
 function lerHash() {
   var p = new URLSearchParams(location.hash.slice(1));
