@@ -261,7 +261,7 @@ select.mini {
 /* barras horizontais */
 .bh { display: flex; flex-direction: column; gap: 2px; }
 .bh-row {
-  display: grid; grid-template-columns: minmax(84px, var(--rot, 38%)) minmax(0, 1fr) var(--val, auto); align-items: center; gap: 10px;
+  display: grid; grid-template-columns: minmax(84px, var(--rot, 38%)) minmax(0, 1fr) minmax(44px, var(--val, auto)); align-items: center; gap: 10px;
   border: 0; background: transparent; text-align: left; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; width: calc(100% + 12px);
 }
 button.bh-row:hover, .bh-row.foco { background: var(--hover); }
@@ -812,7 +812,7 @@ function barrasH(el, itens, o) {
     h('span', { class: 'bh-val' }, fmt(d.v), d.extra ? h('small', null, d.extra) : null));
     tipEm(row, function () {
       return [d.rot, [{ cor: d.cor || o.cor || 'var(--s1)', valor: fmt(d.v), rotulo: o.unidade || '' }].concat(d.tip || []),
-        clic ? (sel ? 'Clique para remover o filtro' : 'Clique para filtrar o painel') : null];
+        clic ? (sel ? 'Clique para remover o filtro' : o.dica || 'Clique para filtrar o painel') : null];
     });
     lista.append(row);
   });
@@ -1793,7 +1793,7 @@ function abrirTurbina(w) {
   var bodyF = h('div', { class: 'card-b' }); cardF.append(bodyF);
   var cardP = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Peças trocadas'), h('p', null, 'Identificadas no texto do serviço executado'))));
   var bodyP = h('div', { class: 'card-b' }); cardP.append(bodyP);
-  var cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), h('p', null, 'Mais recentes primeiro · clique para abrir'))));
+  var subL = h('p', null), cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), subL)));
   var bodyL = h('div', { class: 'card-b' }); cardL.append(bodyL);
   corpo.append(cardT, cardF, cardP);
   if (SISTEMA_UTIL) corpo.append(cardS);
@@ -1807,21 +1807,47 @@ function abrirTurbina(w) {
     if (series.length) serieTempo(bodyT, { baldes: b, modo: 'colunas', series: series, altura: 200, titulo: 'OMs da turbina' });
     else bodyT.append(h('div', { class: 'vazio' }, 'Nenhuma OM no período.'));
     var porS = Array.from(agrupar(ix, function (i) { return O.sistema[i]; }).entries()).map(function (e) { return { k: e[0], rot: M.dic.sistema[e[0]] || '–', v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
-    barrasH(bodyS, porS, { larguraRotulo: '52%', unidade: 'OMs' });
     var porF = new Map();
     ix.forEach(function (i) { O.falhas[i].forEach(function (k) { porF.set(k, (porF.get(k) || 0) + 1); }); });
     var itF = Array.from(porF.entries()).map(function (e) { return { k: e[0], rot: M.falhas[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
-    if (itF.length) barrasH(bodyF, itF, { larguraRotulo: '64%', unidade: 'OMs', cor: 'var(--s2)' });
-    else bodyF.append(h('div', { class: 'vazio' }, 'Nenhum código de falha nas OMs do período.'));
     var porP = new Map();
     ix.forEach(function (i) { O.pecas[i].forEach(function (k) { porP.set(k, (porP.get(k) || 0) + 1); }); });
     var itP = Array.from(porP.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; });
-    if (itP.length) barrasH(bodyP, itP, { larguraRotulo: '52%', unidade: 'vezes', cor: 'var(--s3)' });
-    else bodyP.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada no período.'));
-    tabela(bodyL, {
-      cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }]),
-      linhas: ix.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
-    });
+
+    // tocar numa barra mostra, na lista de Ordens, só as OMs daquela barra; tocar de novo volta a todas
+    var escolha = null; // { g: 's' | 'f' | 'p', k, rot }
+    var GRUPOS = {
+      s: { nome: 'sistema', tem: function (i, k) { return O.sistema[i] === k; } },
+      f: { nome: 'falha', tem: function (i, k) { return O.falhas[i].indexOf(k) >= 0; } },
+      p: { nome: 'troca de', tem: function (i, k) { return O.pecas[i].indexOf(k) >= 0; } }
+    };
+    function escolher(g, itens) {
+      return function (k) {
+        if (escolha && escolha.g === g && escolha.k === k) escolha = null;
+        else escolha = { g: g, k: k, rot: itens.filter(function (d) { return d.k === k; })[0].rot };
+        desenhar();
+        cardL.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+    }
+    function ativoDe(g) { return escolha && escolha.g === g ? new Set([escolha.k]) : null; }
+    function desenhar() {
+      [bodyS, bodyF, bodyP, bodyL].forEach(function (el) { el.textContent = ''; });
+      barrasH(bodyS, porS, { larguraRotulo: '52%', unidade: 'OMs', onClick: escolher('s', porS), dica: 'Clique para ver só estas OMs', ativo: ativoDe('s') });
+      if (itF.length) barrasH(bodyF, itF, { larguraRotulo: '64%', unidade: 'OMs', cor: 'var(--s2)', onClick: escolher('f', itF), dica: 'Clique para ver só estas OMs', ativo: ativoDe('f') });
+      else bodyF.append(h('div', { class: 'vazio' }, 'Nenhum código de falha nas OMs do período.'));
+      if (itP.length) barrasH(bodyP, itP, { larguraRotulo: '52%', unidade: 'OMs', cor: 'var(--s3)', onClick: escolher('p', itP), dica: 'Clique para ver só estas OMs', ativo: ativoDe('p') });
+      else bodyP.append(h('div', { class: 'vazio' }, 'Nenhuma troca de peça identificada no período.'));
+      var lista = escolha ? ix.filter(function (i) { return GRUPOS[escolha.g].tem(i, escolha.k); }) : ix;
+      subL.textContent = '';
+      if (escolha) subL.append(fInt(lista.length) + ' OM(s) com ' + GRUPOS[escolha.g].nome + ' ' + escolha.rot + ' · ',
+        h('button', { class: 'link', type: 'button', onclick: function () { escolha = null; desenhar(); } }, 'mostrar todas'));
+      else subL.append('Mais recentes primeiro · toque numa barra acima para ver só as OMs dela');
+      tabela(bodyL, {
+        cols: semSistemaInutil([{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'tipoTxt', rot: 'Tipo' }, { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } }, { k: 'sistemaTxt', rot: 'Sistema' }]),
+        linhas: lista.slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(linhaOM), altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
+      });
+    }
+    desenhar();
   });
 }
 function passaDimsSemLocal(i) {
