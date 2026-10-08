@@ -345,6 +345,10 @@ svg text { font-family: inherit; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 550; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
 .pill i { width: 7px; height: 7px; border-radius: 50%; }
 .pecas { display: flex; flex-wrap: wrap; gap: 6px; }
+.baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+.tab.baixas td:first-child { white-space: normal; min-width: 180px; }
+.tab.baixas td small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
+.tab.baixas tr.consumivel b { font-weight: 500; color: var(--ink-2); }
 .pag { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 18px 0; font-size: 12.5px; color: var(--ink-2); }
 .barra-tab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .barra-tab .campo { max-width: 340px; }
@@ -760,6 +764,36 @@ function grupoDoStatus(k) {
 var tipEl = document.getElementById('tip');
 // "Sistema" só aparece quando informa algo: na exportação do Manusis quase tudo vem "Turbina (geral)".
 var SISTEMA_UTIL = true;
+/* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
+var CONS = null;
+function montarIndiceConsumo() {
+  CONS = null;
+  var C = M.consumo; if (!C) return;
+  var pos = new Map(); for (var i = 0; i < N; i++) pos.set(O.om[i], i);
+  CONS = new Array(N);
+  C.om.forEach(function (n, k) { var i = pos.get(n); if (i === undefined) return; (CONS[i] = CONS[i] || []).push(k); });
+}
+function baixasPeca(i) { return CONS && CONS[i] ? CONS[i].filter(function (k) { return M.consumo.peca[k]; }) : []; }
+// conferência da troca: 'ok' (texto e baixa), 'soTexto' (troca descrita sem baixa), 'soBaixa' (peça baixada sem troca no texto)
+function conferencia(i) {
+  if (!CONS) return null;
+  var t = O.pecas[i].length > 0, b = baixasPeca(i).length > 0;
+  // com peça baixada, a própria descrição da OM pode ser a troca ("Substituição de GERADOR")
+  if (!t && b && /substitui|\btroca|\btrocad/i.test(O.desc[i] || '')) t = true;
+  return t && b ? 'ok' : t ? 'soTexto' : b ? 'soBaixa' : null;
+}
+var CONF = {
+  ok: { rot: 'Troca confirmada pela baixa', curto: 'Confirmada', cor: 'var(--good)', tipo: 'bom', dica: 'O texto diz que trocou e há peça baixada no Manusis.' },
+  soTexto: { rot: 'Troca descrita, sem baixa de material', curto: 'Sem baixa', cor: 'var(--warning)', tipo: 'alerta', dica: 'O texto diz que trocou, mas não há peça baixada na OM: falta lançar o consumo ou a troca não aconteceu.' },
+  soBaixa: { rot: 'Peça baixada, sem troca no texto', curto: 'Sem troca no texto', cor: 'var(--serious)', tipo: 'alerta', dica: 'Saiu peça do almoxarifado para a OM, mas o serviço executado não diz que ela foi trocada.' }
+};
+function nomeMaterial(k) { return separarMaterial(M.consumo.materiais[M.consumo.mat[k]] || ''); }
+// "MOM_0015684-ESCOVA CARV…", "ND00-2383A-OLEO EP GEAR…" -> código e descrição
+function separarMaterial(n) {
+  var m = /^([A-Z0-9_.]+(?:-\d{3,5}[A-Z]?)?)-(.*)$/.exec(n);
+  return m ? { cod: m[1], desc: m[2].trim() } : { cod: '', desc: n };
+}
+function fQtd(v, un) { return (Number.isInteger(v) ? fInt(v) : nf1.format(v)) + (un ? ' ' + un : ''); }
 function semSistemaInutil(cols) { return SISTEMA_UTIL ? cols : cols.filter(function (c) { return c.k !== 'sistemaTxt'; }); }
 // A base só traz OMs criadas a partir da primeira data: pendências mais antigas não aparecem no backlog.
 // Homem-hora da OM numa linha só, com os campos que a base traz (o Manusis só traz parte deles).
@@ -1537,6 +1571,70 @@ function cartaoPecas(span, top) {
   });
 }
 
+/* Conferência da troca com o material baixado no Manusis, e as peças mais baixadas. */
+var confSel = 'soTexto';
+function cartoesConsumo(pg, B) {
+  var grupos = { ok: [], soTexto: [], soBaixa: [] };
+  B.forEach(function (i) { var c = conferencia(i); if (c) grupos[c].push(i); });
+  var nTot = grupos.ok.length + grupos.soTexto.length + grupos.soBaixa.length;
+  var itens = ['ok', 'soTexto', 'soBaixa'].map(function (g) { return { k: g, rot: CONF[g].rot, v: grupos[g].length, cor: CONF[g].cor, extra: nTot ? fPct(grupos[g].length / nTot) : '' }; });
+  var corpoT = h('div');
+  function desenharLista() {
+    corpoT.textContent = '';
+    var lista = grupos[confSel].slice().sort(function (a, b) { return O.dAb[b] - O.dAb[a]; }).map(function (i) {
+      var r = linhaOM(i);
+      r.baixado = baixasPeca(i).map(function (k) { return nomeMaterial(k).desc; }).join(', ');
+      r.vBaixa = baixasPeca(i).reduce(function (t, k) { return t + M.consumo.vTot[k]; }, 0);
+      return r;
+    });
+    tabela(corpoT, {
+      cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' },
+        { k: 'pecasTxt', rot: 'Troca no texto', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
+        { k: 'baixado', rot: 'Peça baixada no Manusis', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
+        { k: 'vBaixa', rot: 'Valor baixado', num: true, fmt: function (v, r) { return v ? fCustoLinha(v, r) : '–'; } }],
+      linhas: lista, altura: 420, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
+    });
+  }
+  var subT = h('p', null);
+  function atualizarSub() { subT.textContent = fInt(grupos[confSel].length) + ' OMs · ' + CONF[confSel].dica + ' Clique para ver a OM.'; }
+  var barras = h('div');
+  function desenharBarras() {
+    barras.textContent = '';
+    barrasH(barras, itens, { larguraRotulo: '48%', unidade: 'OMs', ativo: new Set([confSel]), dica: 'Clique para listar estas OMs',
+      onClick: function (k) { confSel = k; desenharBarras(); atualizarSub(); tituloT.textContent = CONF[k].rot; desenharLista(); } });
+  }
+  var tituloT = h('h3', null, CONF[confSel].rot);
+  pg.append(cartao({
+    id: 'conferencia', span: 's6', titulo: 'Troca descrita × material baixado',
+    sub: 'Compara o texto do serviço executado com as peças baixadas no Manusis (sem graxa, trapo e outros consumíveis) · ' + fInt(nTot) + ' OMs com troca ou baixa · clique para listar',
+    desenhar: function (el) { el.append(barras); desenharBarras(); }
+  }));
+  // peças mais baixadas (pelo material do almoxarifado, não pelo texto)
+  var C = M.consumo, porMat = new Map();
+  B.forEach(function (i) {
+    baixasPeca(i).forEach(function (k) {
+      var r = porMat.get(C.mat[k]) || { k: C.mat[k], oms: new Set(), qtd: 0, un: C.un[k], valor: 0 };
+      r.oms.add(i); r.qtd += C.qtd[k]; if (!C.suspeito[k] || estado.atipicos) r.valor += C.vTot[k];
+      porMat.set(C.mat[k], r);
+    });
+  });
+  var mats = Array.from(porMat.values()).map(function (r) {
+    var nm = separarMaterial(C.materiais[r.k]);
+    return { k: r.k, rot: nm.desc, cod: nm.cod, v: r.oms.size, qtd: r.qtd, un: r.un, valor: r.valor, extra: fMoeda(r.valor), cor: 'var(--s3)' };
+  }).sort(function (a, b) { return b.v - a.v || b.valor - a.valor; });
+  pg.append(cartao({
+    id: 'pecas-baixadas', span: 's6', titulo: 'Peças mais baixadas no Manusis',
+    sub: 'Número de OMs com baixa de cada material · ao lado, o valor baixado · top 12 de ' + fInt(mats.length) + ' materiais',
+    desenhar: function (el) { barrasH(el, mats.slice(0, 12), { larguraRotulo: '52%', unidade: 'OMs' }); },
+    dados: { cols: [{ k: 'cod', rot: 'Código' }, { k: 'rot', rot: 'Material' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt },
+      { k: 'qtd', rot: 'Quantidade', num: true, fmt: function (v, r) { return fQtd(v, r.un); } }, { k: 'valor', rot: 'Valor baixado', num: true, fmt: fMoedaCompleta }], linhas: mats }
+  }));
+  pg.append(h('section', { class: 'card s12' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, tituloT, subT)), corpoT));
+  atualizarSub();
+  aposRender.push(desenharLista);
+}
+
 function paginaComponentes(pg) {
   var B = base(), b = baldes();
   var comTexto = contar(B, function (i) { return !!O.exec[i]; });
@@ -1559,6 +1657,8 @@ function paginaComponentes(pg) {
     kpi({ rot: 'Mais trocado', valor: top ? M.componentes[top[0]] : '–', valorTexto: top ? M.componentes[top[0]] : '–', sub: top ? 'em ' + fInt(top[1]) + ' OMs' : 'nenhuma troca identificada' }),
     kpi({ rot: 'Material nessas OMs', valor: fMoeda(custoMat), valorTexto: fMoeda(custoMat), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })
   ));
+
+  if (CONS) cartoesConsumo(pg, B);
 
   pg.append(cartaoPecas('s6', 12));
 
@@ -1634,7 +1734,9 @@ function paginaCustos(pg) {
   var toggle = h('button', { class: 'btn', type: 'button', 'aria-pressed': String(estado.atipicos), onclick: function () { estado.atipicos = !estado.atipicos; salvarHash(); renderPagina(); } },
     icone(estado.atipicos ? 'ok' : 'filtro'), estado.atipicos ? 'Incluindo custos atípicos' : 'Custos atípicos excluídos');
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Custos de manutenção'),
-    h('p', null, nAtip ? fInt(nAtip) + ' OM(s) com custo atípico — acima de R$ 2 mi, ou acima de R$ 300 mil sem troca de componente grande (gearbox, gerador, main bearing…). São valores da origem a validar e ficam fora dos totais.' : 'Nenhuma OM com custo atípico nos filtros atuais.'), nAtip ? toggle : null));
+    h('p', null, nAtip ? fInt(nAtip) + ' OM(s) com custo atípico — ' + (CONS ? 'com baixa de material de preço unitário fora do padrão (veja a lista abaixo) ou, nas OMs sem baixa, ' : '') +
+      'acima de R$ 2 mi, ou acima de R$ 300 mil sem troca de componente grande (gearbox, gerador, main bearing…). São valores da origem a validar e ficam fora dos totais.' : 'Nenhuma OM com custo atípico nos filtros atuais.') +
+      (CONS ? ' O custo de material vem das baixas do Manusis.' : ''), nAtip ? toggle : null));
 
   pg.append(h('div', { class: 'kpis' },
     kpi({ rot: 'Custo total', valor: fMoeda(tot), valorTexto: fMoeda(tot), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos', spark: mesMat.map(function (v, k) { return v + mesMO[k]; }) }),
@@ -1686,6 +1788,31 @@ function paginaCustos(pg) {
         linhas: atip.map(linhaOM), ordem: { k: 'custo', desc: true }, altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); } });
     }
   }));
+
+  // baixas com preço fora do padrão: a causa dos custos atípicos, para corrigir no cadastro do material
+  if (CONS) {
+    var Cs = M.consumo, susp = [];
+    B.forEach(function (i) { (CONS[i] || []).forEach(function (k) { if (Cs.suspeito[k]) susp.push({ i: i, k: k }); }); });
+    if (susp.length) {
+      var porMatS = new Map();
+      susp.forEach(function (x) {
+        var m = Cs.mat[x.k], r = porMatS.get(m) || { mat: m, nm: nomeMaterial(x.k), n: 0, oms: [], qtd: 0, un: Cs.un[x.k], unit: Cs.vUnit[x.k], total: 0 };
+        r.n++; r.oms.push(x.i); r.qtd += Cs.qtd[x.k]; r.total += Cs.vTot[x.k]; porMatS.set(m, r);
+      });
+      var linhasS = Array.from(porMatS.values()).map(function (r) { return { i: r.oms[0], oms: r.oms, cod: r.nm.cod, desc: r.nm.desc, n: r.n, qtd: r.qtd, un: r.un, unit: r.unit, total: r.total }; });
+      pg.append(cartao({
+        id: 'baixa-preco', span: 's12', titulo: 'Baixas de material com preço a validar no cadastro',
+        sub: fInt(susp.length) + ' baixa(s) somando ' + fMoeda(susp.reduce(function (t, x) { return t + Cs.vTot[x.k]; }, 0)) +
+          ' · preço unitário fora do padrão (ex.: óleo cadastrado por litro com o preço do tambor). Ficam fora dos totais até o cadastro ser corrigido · clique para ver as OMs',
+        desenhar: function (el) {
+          tabela(el, { cols: [{ k: 'cod', rot: 'Código', classe: 'forte' }, { k: 'desc', rot: 'Material', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v); } },
+              { k: 'n', rot: 'Baixas', num: true, fmt: fInt }, { k: 'qtd', rot: 'Quantidade', num: true, fmt: function (v, r) { return fQtd(v, r.un); } },
+              { k: 'unit', rot: 'Preço unitário', num: true, fmt: fMoedaCompleta }, { k: 'total', rot: 'Total lançado', num: true, fmt: function (v) { return fMoeda(v); } }],
+            linhas: linhasS, ordem: { k: 'total', desc: true }, altura: 300, onLinha: function (r) { abrirOM(r.oms[0], r.oms); } });
+        }
+      }));
+    }
+  }
 }
 
 /* ---------- Ordens ---------- */
@@ -1925,6 +2052,24 @@ function mostrarUltimaOM() {
   if (r.top < 120 || r.bottom > innerHeight - 80) tr.scrollIntoView({ block: 'center' });
   tr.focus({ preventScroll: true });
 }
+/** Material baixado no Manusis para a OM, com o selo da conferência com o texto. */
+function blocoConsumo(i) {
+  if (!CONS) return null;
+  var ks = CONS[i] || [], cf = conferencia(i), C = M.consumo;
+  var selo = cf ? h('p', { style: 'margin:0 0 8px' }, statusTag(CONF[cf].tipo, CONF[cf].rot), h('span', { class: 'nota', style: 'display:block;margin-top:2px' }, CONF[cf].dica)) : null;
+  if (!ks.length) return [h('h4', null, 'Material baixado no Manusis'), selo, h('p', { class: 'nota', style: 'margin:0 0 14px' }, 'Nenhuma baixa de material lançada nesta OM.')];
+  var ord = ks.slice().sort(function (a, b) { return C.peca[b] - C.peca[a] || C.vTot[b] - C.vTot[a]; });
+  return [h('h4', null, 'Material baixado no Manusis'), selo,
+    h('div', { class: 'baixas-wrap' }, h('table', { class: 'tab baixas' },
+      h('thead', null, h('tr', null, h('th', null, 'Material'), h('th', { class: 'n' }, 'Qtd.'), h('th', { class: 'n' }, 'Valor'))),
+      h('tbody', null, ord.map(function (k) {
+        var nm = nomeMaterial(k);
+        return h('tr', { class: C.peca[k] ? null : 'consumivel' },
+          h('td', null, h('b', null, nm.desc), h('small', null, (nm.cod ? nm.cod + ' · ' : '') + (C.peca[k] ? 'peça' : 'material de consumo') + (C.data[k] ? ' · ' + C.data[k] : ''))),
+          h('td', { class: 'n' }, fQtd(C.qtd[k], C.un[k])),
+          h('td', { class: 'n' }, C.suspeito[k] ? h('span', { class: 'st alerta', title: 'Preço unitário ' + fMoedaCompleta(C.vUnit[k]) + ' fora do padrão: confira o cadastro do material' }, fMoeda(C.vTot[k]) + ' · a validar') : fMoeda(C.vTot[k])));
+      }))))];
+}
 function fichaOM(i, lista, pos, navegar) {
   var nav = lista.length > 1 ? h('div', { class: 'nav-om' },
     h('button', { class: 'btn', type: 'button', disabled: pos === 0 ? true : null, onclick: function () { navegar(-1); } }, '‹ Anterior'),
@@ -1950,6 +2095,7 @@ function fichaOM(i, lista, pos, navegar) {
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
       O.pecasItens[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecasItens[i].map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] }, h('i', { style: 'background:var(--s3)' }), it[1]); })),
         h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas automaticamente no texto do serviço executado.')] : null,
+      blocoConsumo(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
       O.obsEspera && O.obsEspera[i] ? [h('h4', null, 'Observação da espera'), h('p', null, O.obsEspera[i])] : null,
@@ -2292,6 +2438,7 @@ function iniciar(modelo) {
   O.sistema.forEach(function (k) { contaSis[k] = (contaSis[k] || 0) + 1; if (contaSis[k] > maiorSis) maiorSis = contaSis[k]; });
   SISTEMA_UTIL = maiorSis < 0.7 * N;
   origemMs = Date.parse(M.origem + 'T00:00:00Z');
+  montarIndiceConsumo();
   parqueDoWtg = []; posDoWtg = [];
   M.ativos.forEach(function (a) { parqueDoWtg[a.wtg] = a.parque; posDoWtg[a.wtg] = a.pos; });
   // turbinas que aparecem nas OMs mas não no cadastro
@@ -2333,15 +2480,15 @@ function carregarSheetJS() {
 
 /**
  * O Manusis exporta a planilha dentro de um .zip. Se o arquivo for um zip que não é ele mesmo
- * uma planilha (o .xlsx também é zip, mas tem [Content_Types].xml), devolve o primeiro .xlsx de dentro.
+ * uma planilha (o .xlsx também é zip, mas tem [Content_Types].xml), devolve as planilhas .xlsx de dentro.
  */
-function planilhaDoZip(buf) {
+function planilhasDoZip(buf) {
   var u = new Uint8Array(buf), dv = new DataView(buf);
-  if (u.length < 22 || u[0] !== 0x50 || u[1] !== 0x4b) return Promise.resolve(buf);
+  if (u.length < 22 || u[0] !== 0x50 || u[1] !== 0x4b) return Promise.resolve([buf]);
   // fim do diretório central (procura de trás para frente; o comentário do zip tem até 64 KB)
   var fim = -1;
   for (var p = u.length - 22; p >= Math.max(0, u.length - 65557); p--) if (dv.getUint32(p, true) === 0x06054b50) { fim = p; break; }
-  if (fim < 0) return Promise.resolve(buf);
+  if (fim < 0) return Promise.resolve([buf]);
   var n = dv.getUint16(fim + 10, true), q = dv.getUint32(fim + 16, true), dec = new TextDecoder();
   var entradas = [];
   for (var k = 0; k < n && dv.getUint32(q, true) === 0x02014b50; k++) {
@@ -2350,16 +2497,17 @@ function planilhaDoZip(buf) {
       tam: dv.getUint32(q + 20, true), local: dv.getUint32(q + 42, true) });
     q += 46 + lNome + lExtra + lCom;
   }
-  if (entradas.some(function (e) { return e.nome === '[Content_Types].xml'; })) return Promise.resolve(buf); // já é a planilha
-  var x = entradas.filter(function (e) { return /\.xlsx$/i.test(e.nome) && !/(^|\/)(__MACOSX|\.)/.test(e.nome); })[0];
-  if (!x) return Promise.reject(new Error('O arquivo .zip não tem nenhuma planilha .xlsx dentro.'));
-  var ini = x.local + 30 + dv.getUint16(x.local + 26, true) + dv.getUint16(x.local + 28, true);
-  var dados = u.subarray(ini, ini + x.tam);
-  if (x.metodo === 0) return Promise.resolve(dados.slice().buffer);
-  if (x.metodo !== 8 || typeof DecompressionStream === 'undefined')
-    return Promise.reject(new Error('Não consegui abrir o .zip neste aparelho. Extraia a planilha .xlsx e escolha ela.'));
-  var fluxo = new Blob([dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Response(fluxo).arrayBuffer();
+  if (entradas.some(function (e) { return e.nome === '[Content_Types].xml'; })) return Promise.resolve([buf]); // já é a planilha
+  var xs = entradas.filter(function (e) { return /\.xlsx$/i.test(e.nome) && !/(^|\/)(__MACOSX|\.)/.test(e.nome); });
+  if (!xs.length) return Promise.reject(new Error('O arquivo .zip não tem nenhuma planilha .xlsx dentro.'));
+  return Promise.all(xs.map(function (x) {
+    var ini = x.local + 30 + dv.getUint16(x.local + 26, true) + dv.getUint16(x.local + 28, true);
+    var dados = u.subarray(ini, ini + x.tam);
+    if (x.metodo === 0) return dados.slice().buffer;
+    if (x.metodo !== 8 || typeof DecompressionStream === 'undefined')
+      return Promise.reject(new Error('Não consegui abrir o .zip neste aparelho. Extraia a planilha .xlsx e escolha ela.'));
+    return new Response(new Blob([dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+  }));
 }
 
 function lerBytes(arquivo) {
@@ -2418,24 +2566,52 @@ function maisRecente(a, b) {
   return (a.gerado || '') >= (b.gerado || '') ? a : b;
 }
 
-function lerArquivo(arquivo, aoErro) {
-  avisar('Lendo a planilha “' + arquivo.name + '”… Pode levar alguns segundos.', 'info', true);
+/**
+ * Lê uma ou mais planilhas (ou .zip com elas): a exportação de OMs (Manusis ou Base Power BI) e,
+ * opcional, o consumo de materiais do Manusis, que se liga às OMs pelo número.
+ */
+function lerArquivo(arquivos, aoErro) {
+  arquivos = Array.prototype.slice.call(arquivos.length !== undefined ? arquivos : [arquivos]);
+  var nomes = arquivos.map(function (a) { return '“' + a.name + '”'; }).join(' e ');
+  avisar('Lendo ' + nomes + '… Pode levar alguns segundos.', 'info', true);
   // deixa o aviso aparecer antes do processamento pesado
   new Promise(function (ok) { setTimeout(ok, 60); })
     .then(carregarSheetJS)
     .then(function (XLSX) {
-      return lerBytes(arquivo).then(planilhaDoZip).then(function (buf) {
-        var wb;
-        try { wb = XLSX.read(buf, { type: 'array' }); }
-        catch (e) { throw new Error('Não consegui abrir “' + arquivo.name + '” como planilha do Excel (.xlsx).'); }
-        var modelo = ModeloTurbinas.montar(wb, XLSX);
+      return Promise.all(arquivos.map(function (a) {
+        return lerBytes(a).then(planilhasDoZip).then(function (bufs) {
+          return bufs.map(function (buf) {
+            try { return XLSX.read(buf, { type: 'array' }); }
+            catch (e) { throw new Error('Não consegui abrir “' + a.name + '” como planilha do Excel (.xlsx).'); }
+          });
+        });
+      })).then(function (listas) {
+        var wbs = [].concat.apply([], listas);
+        var deOMs = wbs.filter(function (wb) { return !ModeloTurbinas.temConsumo(wb); });
+        var deConsumo = wbs.filter(function (wb) { return ModeloTurbinas.temConsumo(wb); });
+        var modelo = deOMs.length ? ModeloTurbinas.montar(deOMs[deOMs.length - 1], XLSX) : M;
+        if (!modelo) throw new Error('Carregue primeiro a exportação de OMs do Manusis; o consumo de materiais se liga a ela pelo número da OM.');
+        if (deOMs.length && M && M.consumo && !deConsumo.length && modelo.fonte === 'manusis') {
+          // base de OMs nova: o consumo já carregado continua valendo para as OMs que ele cita
+          modelo.ordens.custoOM = modelo.ordens.custoTot.slice();
+          modelo.consumo = M.consumo; ModeloTurbinas.aplicarConsumo(modelo);
+        }
+        var stats = null;
+        if (deConsumo.length) {
+          if (modelo.fonte !== 'manusis') throw new Error('O consumo de materiais só se liga à exportação de OMs do Manusis. Carregue as duas planilhas.');
+          stats = ModeloTurbinas.juntarConsumo(modelo, deConsumo[deConsumo.length - 1], XLSX);
+        }
+        modelo.gerado = new Date().toISOString();
         return guardarBase(modelo).then(function (guardou) {
           fecharTodasCamadas();
           try { location.hash = ''; } catch (e) { /* sem histórico */ }
           iniciar(modelo);
           window.scrollTo(0, 0);
           var msg = '✅ Base atualizada: ' + fInt(N) + ' OMs, dados até ' + fData(diaMax) + '.';
-          if (guardou) avisar(msg, 'ok');
+          if (stats) msg += ' Consumo de materiais: ' + fInt(stats.linhas) + ' baixas em ' + fInt(stats.oms) + ' OMs' +
+            (stats.fora ? ' (' + fInt(stats.fora) + ' OMs do consumo não estão na base de OMs — puxe as duas do mesmo período).' : ', todas ligadas à base.');
+          else if (modelo.consumo) msg += ' O consumo de materiais carregado antes continua ligado.';
+          if (guardou) avisar(msg, stats && stats.fora ? 'alerta' : 'ok', !!stats);
           else avisar(msg + ' Atenção: este aplicativo não guarda dados — ao fechar, volta a base anterior. Abra o painel pelo Chrome para manter a atualização.', 'alerta', true);
         });
       });
@@ -2453,8 +2629,8 @@ function escolherArquivo() {
   var antigo = document.getElementById('escolher-base');
   if (antigo) antigo.remove();
   // Alguns aplicativos de celular ignoram um seletor de arquivo que não está na página.
-  var inp = h('input', { type: 'file', id: 'escolher-base', accept: '.xlsx,.xlsm,.xls,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
-  inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; inp.remove(); if (f) lerArquivo(f); });
+  var inp = h('input', { type: 'file', id: 'escolher-base', multiple: true, accept: '.xlsx,.xlsm,.xls,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
+  inp.addEventListener('change', function () { var fs = inp.files && Array.prototype.slice.call(inp.files); inp.remove(); if (fs && fs.length) lerArquivo(fs); });
   document.body.append(inp);
   inp.click();
 }
@@ -2472,8 +2648,8 @@ function telaCarga(msgErro) {
   ['dragenter', 'dragover'].forEach(function (t) { drop.addEventListener(t, function (ev) { ev.preventDefault(); drop.classList.add('sobre'); }); });
   ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function (ev) { ev.preventDefault(); drop.classList.remove('sobre'); }); });
   drop.addEventListener('drop', function (ev) {
-    var f = ev.dataTransfer.files[0];
-    if (f) { erro.textContent = 'Lendo planilha…'; lerArquivo(f, function (m) { erro.textContent = m; }); }
+    var fs = Array.prototype.slice.call(ev.dataTransfer.files || []);
+    if (fs.length) { erro.textContent = 'Lendo planilha…'; lerArquivo(fs, function (m) { erro.textContent = m; }); }
   });
   raiz.append(h('div', { class: 'boas-vindas' }, drop));
 }

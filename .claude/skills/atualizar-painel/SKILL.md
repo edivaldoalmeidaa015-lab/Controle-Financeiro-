@@ -15,6 +15,8 @@ entregar o arquivo. Responda sempre em português, com frases curtas.
    (`ordens_de_manutencao_*.xlsx`, ou o `.zip` — extraia em uma pasta própria do
    scratchpad) ou a `Base_PowerBI_Ordens*.xlsx`. O `modelo.js` lê os dois formatos.
    Se não houver anexo, peça a planilha e pare.
+   - Se vier também o consumo de materiais do Manusis (`consumo_de_materiais_*.xlsx` ou `.zip`),
+     passe-o com `--consumo=<arquivo.xlsx>` no passo 4.
 2. **Ferramentas.** No scratchpad, rode `npm install xlsx` (uma vez por sessão).
 3. **Símbolo da empresa.** O logo **não** fica no repositório, porque ele é público.
    - Use `Artifact` com `action: "list"` e encontre o artefato "Painel de Turbinas".
@@ -24,7 +26,7 @@ entregar o arquivo. Responda sempre em português, com frases curtas.
 4. **Gerar** com o comando abaixo (rode a partir do scratchpad; `NODE_PATH` apontando para o `node_modules` de lá):
    ```bash
    node turbinas/scripts/gerar-com-dados.js <planilha.xlsx> <scratchpad>/painel-turbinas-asa-branca.html \
-     --logo=<scratchpad>/simbolo.png --logo-nome="Essentia Energia"
+     [--consumo=<consumo_de_materiais.xlsx>] --logo=<scratchpad>/simbolo.png --logo-nome="Essentia Energia"
    ```
    - Se der erro do tipo "A planilha não tem a aba …", explique ao usuário qual aba falta e pare.
 5. **Conferir.** Abra o HTML no Chromium (Playwright, `executablePath: '/opt/pw-browsers/chromium'`).

@@ -669,8 +669,90 @@
     var fx = extrairFalhas(O.desc);
     M.falhas = fx.rotulos; O.falhas = fx.falhas;
     O.atipico = O.custoTot.map(function (c, i) { return custoAtipico(c, O.desc[i], O.exec[i]); });
+    aplicarConsumo(M);
     M.versaoPecas = VERSAO_PECAS;
     return M;
+  }
+
+  /*
+   * Consumo de materiais do Manusis 4 (aba "Consumo de materiais"): cada linha é uma baixa de
+   * material lançada numa OM. Liga-se à base pelo número da OM; confirma as peças trocadas e o custo.
+   */
+  var ABA_CONSUMO = 'Consumo de materiais';
+  // graxa, trapo, abraçadeira…: material de consumo, não peça substituída
+  var FAMILIA_CONSUMIVEL = /MATERIAL DE CONSUMO|CONSUMIVEL/i;
+  // componentes que custam centenas de milhares ou milhões de verdade
+  var MATERIAL_GRANDE = /GERADOR|GEARBOX|MULTIPLICADORA|TRANSFORMADOR|MAIN ?BEARING|ROLAMENTO PRINCIPAL|MAIN ?SHAFT|EIXO PRINCIPAL|\bPAS?\b|BLADE|CONVERSOR|NACELE/i;
+  // unidades de granel: preço de milhares por litro/quilo é preço de tambor cadastrado por litro
+  var UN_GRANEL = /^(L|LT|LTS|LITROS?|ML|KG|G|M|MT|M2|M3)$/i;
+
+  function temConsumo(wb) { return !!wb.Sheets[ABA_CONSUMO]; }
+
+  /** Lê a aba de consumo e devolve as baixas em colunas, com as de preço suspeito marcadas. */
+  function lerConsumo(wb, XLSX) {
+    var brutas = XLSX.utils.sheet_to_json(wb.Sheets[ABA_CONSUMO], { defval: '' });
+    if (!brutas.length) throw new Error('A aba "' + ABA_CONSUMO + '" está vazia.');
+    if (!('Ordem de manutenção' in brutas[0]) || !('Material' in brutas[0]))
+      throw new Error('A aba "' + ABA_CONSUMO + '" não tem as colunas "Ordem de manutenção" e "Material".');
+    var C = { materiais: [], om: [], mat: [], qtd: [], un: [], vUnit: [], vTot: [], data: [], peca: [], suspeito: [] };
+    var idxMat = {};
+    brutas.forEach(function (r) {
+      var om = parseInt(String(r['Ordem de manutenção']).replace(/\D/g, ''), 10);
+      if (!om) return;
+      var nome = String(r['Material'] || '').trim();
+      if (!(nome in idxMat)) { idxMat[nome] = C.materiais.length; C.materiais.push(nome); }
+      var familia = String(r['Família de materiais'] || '') + ' ' + String(r['Complemento'] || '');
+      C.om.push(om); C.mat.push(idxMat[nome]);
+      C.qtd.push(numBR(r['Quantidade']) || 0); C.un.push(String(r['Unidade de medida'] || '').trim());
+      C.vUnit.push(numBR(r['Custo unitário']) || 0); C.vTot.push(numBR(r['Custo total']) || 0);
+      C.data.push(String(r['Utilizado em'] || '').slice(0, 10));
+      C.peca.push(FAMILIA_CONSUMIVEL.test(familia) && !/MERCADORIA|GRANDE COMPONENTE/i.test(familia) ? 0 : 1);
+    });
+    // preço unitário típico de cada material (mediana), para achar o lançamento fora do padrão
+    var precos = {};
+    C.mat.forEach(function (m, k) { if (C.vUnit[k] > 0) (precos[m] = precos[m] || []).push(C.vUnit[k]); });
+    var mediana = {};
+    Object.keys(precos).forEach(function (m) { var a = precos[m].sort(function (x, y) { return x - y; }); mediana[m] = a[Math.floor((a.length - 1) / 2)]; });
+    C.mat.forEach(function (m, k) {
+      var nome = C.materiais[m], tot = C.vTot[k], unit = C.vUnit[k];
+      C.suspeito.push(
+        (tot >= LIMITE_CUSTO_ATIPICO && !MATERIAL_GRANDE.test(nome)) ||               // milhões em material comum
+        (UN_GRANEL.test(C.un[k]) && unit >= 5000) ||                                  // óleo a R$ 84 mil o litro
+        (mediana[m] > 0 && unit > 20 * mediana[m] && tot >= 50000) ? 1 : 0);          // 20x o preço de sempre
+    });
+    return C;
+  }
+
+  /**
+   * Liga o consumo às OMs pelo número: o custo de material da OM passa a ser a soma das baixas,
+   * e a OM com baixa de preço suspeito fica como atípica (fora dos totais).
+   * Devolve quantas OMs do consumo foram achadas na base.
+   */
+  function aplicarConsumo(M) {
+    var O = M.ordens, C = M.consumo;
+    if (!C) return null;
+    var idx = {};
+    O.om.forEach(function (n, i) { idx[n] = i; });
+    var soma = {}, susp = {}, oms = {}, fora = {};
+    C.om.forEach(function (n, k) {
+      oms[n] = 1;
+      if (!(n in idx)) { fora[n] = 1; return; }
+      soma[n] = (soma[n] || 0) + C.vTot[k];
+      if (C.suspeito[k]) susp[n] = 1;
+    });
+    Object.keys(soma).forEach(function (n) {
+      var i = idx[n];
+      O.custoMat[i] = soma[n];
+      O.custoTot[i] = soma[n] + (O.custoMO[i] || 0);
+      O.atipico[i] = susp[n] ? 1 : 0;
+    });
+    return { linhas: C.om.length, oms: Object.keys(oms).length, achadas: Object.keys(soma).length, fora: Object.keys(fora).length };
+  }
+
+  function juntarConsumo(M, wb, XLSX) {
+    M.consumo = lerConsumo(wb, XLSX);
+    if (M.ordens.custoOM === undefined) M.ordens.custoOM = M.ordens.custoTot.slice(); // como veio na OM, antes do consumo
+    return aplicarConsumo(M);
   }
 
   /** Lê o workbook (SheetJS) e devolve o modelo colunar. */
@@ -810,5 +892,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });

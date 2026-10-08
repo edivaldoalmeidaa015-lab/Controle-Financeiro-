@@ -5,16 +5,28 @@ aerogeradores. Funciona direto no navegador, sem servidor, e aceita dois
 formatos de planilha:
 
 - a **exportação de ordens de manutenção do Manusis 4**, como sai do sistema
-  (aba "Ordens de manutenção" + "Especialidades"; o `.zip` baixado deve ser
-  extraído antes). Turbina, parque e complexo vêm do campo Ativo/Localização;
-  vários complexos (ex.: Asa Branca e Chapada do Piauí) ganham o filtro
-  **Complexo**;
+  (aba "Ordens de manutenção" + "Especialidades"; `.xlsx` ou o `.zip` baixado).
+  Turbina, parque e complexo vêm do campo Ativo/Localização; vários complexos
+  (ex.: Asa Branca e Chapada do Piauí) ganham o filtro **Complexo**;
 - a base `Base_PowerBI_Ordens_*.xlsx` (tabelas `fato_*` e `dim_*`).
+
+Opcional, junto com a exportação de OMs do Manusis: o **consumo de materiais**
+do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
+à OM pelo número e o painel passa a mostrar:
+
+- o material baixado em cada OM (código, quantidade e valor) e o selo
+  "troca confirmada", "troca descrita sem baixa" ou "peça baixada sem troca no texto";
+- o custo de material pela soma das baixas;
+- as baixas com preço unitário fora do padrão (ex.: óleo cadastrado por litro
+  com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
+
+Carregue as duas planilhas juntas, ou o consumo depois da base de OMs; ao
+atualizar só as OMs, o consumo já carregado continua ligado.
 
 ## Como usar
 
 1. Abra `turbinas/index.html` no navegador.
-2. Arraste a planilha `.xlsx` (Manusis ou Power BI) para a tela (ou clique em **Escolher planilha**).
+2. Arraste a planilha `.xlsx` ou o `.zip` (Manusis ou Power BI; dá para escolher a de OMs e a de consumo juntas) para a tela (ou clique em **Escolher planilha**).
    A leitura é feita só no seu navegador — nada é enviado.
 
 ### Aplicativo no celular
