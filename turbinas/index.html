@@ -2631,7 +2631,8 @@ function montarApp() {
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0])),
       h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · OMs criadas de ' + fData(diaMin) + ' a ' + fData(diaMax) +
-        (M.fonte === 'manusis' ? (CONS ? ' · consumo de materiais: ' + fInt(M.consumo.om.length) + ' baixas' : ' · sem consumo de materiais') : ''))),
+        (M.fonte === 'manusis' ? (CONS ? ' · consumo de materiais: ' + fInt(M.consumo.om.length) + ' baixas' : ' · sem consumo de materiais') : '') +
+        ' · painel versão ' + fDataVersao())),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
@@ -3000,6 +3001,15 @@ window.addEventListener('beforeinstallprompt', function (ev) {
   var embutido = document.getElementById('dados-embutidos');
   if (embutido && embutido.textContent.trim()) return;
   if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  // "?atualizar" no endereço: apaga a cópia guardada do aplicativo e recarrega a versão publicada
+  // (os dados das OMs ficam no IndexedDB e não são apagados)
+  if (/[?&]atualizar\b/.test(location.search)) {
+    Promise.all([
+      navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }),
+      window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : null
+    ]).catch(function () { /* segue */ }).then(function () { location.replace(location.pathname); });
+    return;
+  }
   try { navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () { /* sem modo offline */ }); } catch (e) { /* idem */ }
 })();
 
