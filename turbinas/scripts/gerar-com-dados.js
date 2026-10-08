@@ -3,7 +3,7 @@
  * Gera uma versão do painel com os dados já embutidos (funciona offline,
  * sem precisar carregar a planilha no navegador).
  *
- * Uso: node gerar-com-dados.js <planilha de OMs.xlsx> <saida.html> [--consumo=consumo_de_materiais.xlsx] [--logo=logo.png] [--logo-nome="Empresa"]
+ * Uso: node gerar-com-dados.js <planilha de OMs.xlsx> <saida.html> [--consumo=consumo_de_materiais.xlsx] [--logo=simbolo.png] [--logo-completo=logo.png] [--logo-nome="Empresa"]
  * Requer o pacote "xlsx" (SheetJS): npm install xlsx
  *
  * Atenção: o HTML gerado contém os dados da operação — não publique em
@@ -53,6 +53,16 @@ if (arquivoLogo) {
   html = html.replace(marcaLogo, function () { return 'var LOGO_URL = ' + JSON.stringify(dataUri) + ';'; })
     .replace(marcaNome, function () { return 'var LOGO_NOME = ' + JSON.stringify(opcao('logo-nome') || 'Logo da empresa') + ';'; })
     .replace(/<link rel="icon" href="[^"]*">/, function () { return '<link rel="icon" href="' + dataUri + '">'; });
+}
+
+// logo completa (símbolo + nome) para o topo em telas largas
+var arquivoLogoCompleto = opcao('logo-completo');
+if (arquivoLogoCompleto) {
+  var extC = path.extname(arquivoLogoCompleto).slice(1).toLowerCase().replace('jpg', 'jpeg').replace('svg', 'svg+xml');
+  var uriC = 'data:image/' + extC + ';base64,' + fs.readFileSync(arquivoLogoCompleto).toString('base64');
+  var marcaC = "var LOGO_COMPLETO_URL = '';";
+  if (html.indexOf(marcaC) < 0) throw new Error('index.html sem o marcador da logo completa.');
+  html = html.replace(marcaC, function () { return 'var LOGO_COMPLETO_URL = ' + JSON.stringify(uriC) + ';'; });
 }
 
 fs.writeFileSync(saida, html);

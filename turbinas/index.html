@@ -90,6 +90,11 @@ button { cursor: pointer; }
 .rail .marca { display: grid; place-items: center; height: 44px; margin-bottom: 10px; }
 .rail .marca svg, .rail .marca img { width: 34px; height: 34px; display: block; }
 .topo .marca-topo { width: 42px; height: 42px; flex-shrink: 0; display: block; }
+.topo .logo-completo { flex-shrink: 0; display: block; border-right: 1px solid var(--border); padding-right: 16px; margin-right: 2px; }
+.topo .logo-completo img { height: 46px; width: auto; display: block; background: #fff; border-radius: 8px; padding: 3px 8px; }
+.topo .marca-topo.so-celular { display: none; }
+/* celular: a logo completa vai numa linha própria, em cima do título */
+@media (max-width: 860px) { .topo .logo-completo { flex-basis: 100%; border-right: 0; padding-right: 0; margin: 0 0 -4px; } .topo .logo-completo img { height: 36px; } }
 .topo .titulo { flex: 1 1 0; min-width: 0; }
 .topo.com-marca h1 { color: var(--titulo-marca); }
 .nav-btn {
@@ -502,6 +507,40 @@ var CHAVE_TEMA = 'painel-turbinas:tema';
 // O script scripts/gerar-com-dados.js preenche com --logo=arquivo.png.
 var LOGO_URL = '';
 var LOGO_NOME = 'Logo da empresa';
+// Logo completa (símbolo + nome), mostrada no topo em telas largas. O repositório é público, então a logo
+// não fica nele: vem embutida no HTML gerado (--logo-completo) ou é escolhida no "Atualizar base" e fica no aparelho.
+var LOGO_COMPLETO_URL = '';
+var CHAVE_LOGO = 'turbinas-logo';
+function carregarLogoGuardado() {
+  if (LOGO_URL || LOGO_COMPLETO_URL) return;
+  try { var j = JSON.parse(localStorage.getItem(CHAVE_LOGO) || 'null'); if (j) { LOGO_URL = j.simbolo || ''; LOGO_COMPLETO_URL = j.completo || ''; LOGO_NOME = j.nome || LOGO_NOME; } } catch (e) { /* sem armazenamento */ }
+}
+/** Imagem escolhida no "Atualizar base" vira a logo: a larga fica no topo, e o símbolo (quadrado da esquerda) no celular. */
+function aplicarLogo(arquivo) {
+  return new Promise(function (ok, erro) {
+    var r = new FileReader();
+    r.onerror = function () { erro(new Error('Não foi possível ler a imagem.')); };
+    r.onload = function () {
+      var img = new Image();
+      img.onerror = function () { erro(new Error('A imagem “' + arquivo.name + '” não abriu.')); };
+      img.onload = function () {
+        var w = img.naturalWidth, hgt = img.naturalHeight, larga = w / hgt > 2;
+        var reduzir = function (sx, sw, alto) {
+          var c = document.createElement('canvas'), esc = Math.min(1, alto / hgt);
+          c.width = Math.round(sw * esc); c.height = Math.round(hgt * esc);
+          c.getContext('2d').drawImage(img, sx, 0, sw, hgt, 0, 0, c.width, c.height);
+          return c.toDataURL('image/png');
+        };
+        var dados = { completo: larga ? reduzir(0, w, 120) : '', simbolo: reduzir(0, larga ? hgt : w, 128), nome: 'Logo da empresa' };
+        try { localStorage.setItem(CHAVE_LOGO, JSON.stringify(dados)); } catch (e) { /* fica só nesta abertura */ }
+        LOGO_URL = dados.simbolo; LOGO_COMPLETO_URL = dados.completo;
+        ok();
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(arquivo);
+  });
+}
 var DIA_MS = 864e5;
 var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 var MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -2571,6 +2610,7 @@ var PAGINAS = {
 var refs = {};
 
 function montarApp() {
+  carregarLogoGuardado();
   var raiz = document.getElementById('raiz');
   raiz.textContent = '';
   var nav = h('nav', { class: 'rail', 'aria-label': 'Páginas do painel' },
@@ -2586,7 +2626,8 @@ function montarApp() {
   M.ativos.forEach(function (x) { if (x.modelo && modelos.indexOf(x.modelo) < 0) modelos.push(x.modelo); });
   var modelo = modelos.join(', ');
   var topo = h('header', { class: 'topo' + (LOGO_URL ? ' com-marca' : '') },
-    LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo'); return l; })() : null,
+    LOGO_COMPLETO_URL ? h('span', { class: 'logo-completo' }, h('img', { src: LOGO_COMPLETO_URL, alt: LOGO_NOME, decoding: 'async' })) : null,
+    LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo' + (LOGO_COMPLETO_URL ? ' so-celular' : '')); return l; })() : null,
     h('div', { class: 'titulo' },
       h('h1', null, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0])),
       h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · OMs criadas de ' + fData(diaMin) + ' a ' + fData(diaMax) +
@@ -2823,6 +2864,17 @@ function maisRecente(a, b) {
  */
 function lerArquivo(arquivos, aoErro) {
   arquivos = Array.prototype.slice.call(arquivos.length !== undefined ? arquivos : [arquivos]);
+  // imagem = logo da empresa
+  var ehImagem = function (a) { return /^image\//.test(a.type || '') || /\.(png|jpe?g|webp|svg)$/i.test(a.name || ''); };
+  var imagens = arquivos.filter(ehImagem);
+  arquivos = arquivos.filter(function (a) { return !ehImagem(a); });
+  if (imagens.length) {
+    aplicarLogo(imagens[0]).then(function () {
+      if (M) montarApp();
+      if (!arquivos.length) avisar('✅ Logo aplicada. Ela fica guardada neste aparelho.', 'ok');
+    }, function (e) { avisar('❌ ' + e.message, 'erro', true); });
+    if (!arquivos.length) return;
+  }
   var nomes = arquivos.map(function (a) { return '“' + a.name + '”'; }).join(' e ');
   avisar('Lendo ' + nomes + '… Pode levar alguns segundos.', 'info', true);
   // deixa o aviso aparecer antes do processamento pesado
@@ -2881,7 +2933,7 @@ function escolherArquivo() {
   var antigo = document.getElementById('escolher-base');
   if (antigo) antigo.remove();
   // Alguns aplicativos de celular ignoram um seletor de arquivo que não está na página.
-  var inp = h('input', { type: 'file', id: 'escolher-base', multiple: true, accept: '.xlsx,.xlsm,.xls,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
+  var inp = h('input', { type: 'file', id: 'escolher-base', multiple: true, accept: '.xlsx,.xlsm,.xls,.zip,.png,.jpg,.jpeg,.webp,.svg,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
   inp.addEventListener('change', function () { var fs = inp.files && Array.prototype.slice.call(inp.files); inp.remove(); if (fs && fs.length) lerArquivo(fs); });
   document.body.append(inp);
   inp.click();
