@@ -520,25 +520,36 @@ function aplicarLogo(arquivo) {
   return new Promise(function (ok, erro) {
     var r = new FileReader();
     r.onerror = function () { erro(new Error('Não foi possível ler a imagem.')); };
-    r.onload = function () {
-      var img = new Image();
-      img.onerror = function () { erro(new Error('A imagem “' + arquivo.name + '” não abriu.')); };
-      img.onload = function () {
-        var w = img.naturalWidth, hgt = img.naturalHeight, larga = w / hgt > 2;
-        var reduzir = function (sx, sw, alto) {
-          var c = document.createElement('canvas'), esc = Math.min(1, alto / hgt);
-          c.width = Math.round(sw * esc); c.height = Math.round(hgt * esc);
-          c.getContext('2d').drawImage(img, sx, 0, sw, hgt, 0, 0, c.width, c.height);
-          return c.toDataURL('image/png');
-        };
-        var dados = { completo: larga ? reduzir(0, w, 120) : '', simbolo: reduzir(0, larga ? hgt : w, 128), nome: 'Logo da empresa' };
-        try { localStorage.setItem(CHAVE_LOGO, JSON.stringify(dados)); } catch (e) { /* fica só nesta abertura */ }
-        LOGO_URL = dados.simbolo; LOGO_COMPLETO_URL = dados.completo;
-        ok();
-      };
-      img.src = r.result;
-    };
+    r.onload = function () { aplicarLogoUrl(r.result, arquivo.name).then(ok, erro); };
     r.readAsDataURL(arquivo);
+  });
+}
+// a base única do painel pode trazer a logo numa aba "Logo" (data URI dividido nas células da coluna A)
+function logoDaPlanilha(wb) {
+  var ws = wb.Sheets.Logo; if (!ws) return '';
+  var partes = [];
+  for (var r = 1; ws['A' + r]; r++) partes.push(String(ws['A' + r].v || ''));
+  var uri = partes.join('');
+  return /^data:image\//.test(uri) ? uri : '';
+}
+function aplicarLogoUrl(url, nome) {
+  return new Promise(function (ok, erro) {
+    var img = new Image();
+    img.onerror = function () { erro(new Error('A imagem ' + (nome ? '“' + nome + '” ' : '') + 'não abriu.')); };
+    img.onload = function () {
+      var w = img.naturalWidth, hgt = img.naturalHeight, larga = w / hgt > 2;
+      var reduzir = function (sx, sw, alto) {
+        var c = document.createElement('canvas'), esc = Math.min(1, alto / hgt);
+        c.width = Math.round(sw * esc); c.height = Math.round(hgt * esc);
+        c.getContext('2d').drawImage(img, sx, 0, sw, hgt, 0, 0, c.width, c.height);
+        return c.toDataURL('image/png');
+      };
+      var dados = { completo: larga ? reduzir(0, w, 120) : '', simbolo: reduzir(0, larga ? hgt : w, 128), nome: 'Logo da empresa' };
+      try { localStorage.setItem(CHAVE_LOGO, JSON.stringify(dados)); } catch (e) { /* fica só nesta abertura */ }
+      LOGO_URL = dados.simbolo; LOGO_COMPLETO_URL = dados.completo;
+      ok();
+    };
+    img.src = url;
   });
 }
 var DIA_MS = 864e5;
@@ -2907,7 +2918,9 @@ function lerArquivo(arquivos, aoErro) {
           stats = ModeloTurbinas.juntarConsumo(modelo, deConsumo[deConsumo.length - 1], XLSX);
         }
         modelo.gerado = new Date().toISOString();
-        return guardarBase(modelo).then(function (guardou) {
+        var uriLogo = wbs.map(logoDaPlanilha).filter(Boolean)[0];
+        var logoPronta = uriLogo ? aplicarLogoUrl(uriLogo).catch(function () { /* segue sem logo */ }) : Promise.resolve();
+        return logoPronta.then(function () { return guardarBase(modelo); }).then(function (guardou) {
           fecharTodasCamadas();
           try { location.hash = ''; } catch (e) { /* sem histórico */ }
           iniciar(modelo);
