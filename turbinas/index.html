@@ -347,6 +347,14 @@ svg text { font-family: inherit; }
 .pecas { display: flex; flex-wrap: wrap; gap: 6px; }
 .baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
 .tab.baixas td:first-child { white-space: normal; min-width: 180px; }
+.mat-filtros { flex-basis: 100%; width: 100%; }
+.mat-busca { position: relative; max-width: 520px; margin-top: 10px; }
+.mat-busca .campo { width: 100%; }
+.mat-sugest { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.mat-sugest:empty { display: none; }
+.mat-sugest .opc { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 12px; font: inherit; color: var(--ink); }
+.mat-sugest .opc:hover { background: var(--hover); }
+.mat-sugest small { color: var(--muted); }
 .tab.baixas td small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
 .tab.baixas tr.consumivel b { font-weight: 500; color: var(--ink-2); }
 .pag { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 18px 0; font-size: 12.5px; color: var(--ink-2); }
@@ -434,7 +442,8 @@ svg text { font-family: inherit; }
     padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); overflow-x: auto; gap: 2px;
   }
   .rail .marca, .rail .rodape { display: none; }
-  .nav-btn { flex: 1 0 64px; padding: 6px 2px; font-size: 10.5px; }
+  .nav-btn { flex: 1 1 0; min-width: 0; padding: 6px 1px; font-size: 10px; letter-spacing: -.01em; }
+  .nav-btn svg { width: 20px; height: 20px; }
   .nav-btn[aria-current="page"]::before { left: 14px; right: 14px; top: -4px; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
   .main { padding-bottom: 68px; }
   .topo { padding: 12px 16px 8px; flex-wrap: wrap; }
@@ -466,6 +475,7 @@ svg text { font-family: inherit; }
   .filtros { position: static; }
   .card { break-inside: avoid; }
 }
+@media (max-width: 360px) { .nav-btn { font-size: 8.5px; letter-spacing: -.03em; } }
 </style>
 </head>
 <body>
@@ -523,6 +533,7 @@ function sv(tag, attrs) {
   return e;
 }
 var ICONES = {
+  caixa: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
   visao: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z"/>',
   turbinas: '<path d="M12 12v10M9 22h6"/><circle cx="12" cy="11" r="1.6"/><path d="M12 9.4 11 2.5c2.6.4 3.3 3.8 1 6.9M13.4 11.8l6.5 2.6c-1.6 2-4.9 1-6.5-2.6M10.6 11.8 4.1 14.4c.2-2.6 3.3-4 6.5-2.6"/>',
   backlog: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
@@ -611,7 +622,7 @@ function valorDim(dim, i) {
     case 'sistema': return O.sistema[i];
     case 'status': return O.status[i];
     case 'parada': return O.parada[i];
-    case 'peca': return O.pecas[i];
+    case 'peca': return catsTroca(i);
     case 'falha': return O.falhas[i];
   }
 }
@@ -667,7 +678,7 @@ function fCustoLinha(v, r) {
 // peças da OM que contam: com filtro de componente, só as dos componentes escolhidos
 function pecasContadas(i) {
   var f = estado.f.peca;
-  return f.size ? O.pecasItens[i].filter(function (it) { return f.has(it[0]); }) : O.pecasItens[i];
+  return f.size ? itensTroca(i).filter(function (it) { return f.has(it[0]); }) : itensTroca(i);
 }
 function custoValido(i) { return estado.atipicos || !O.atipico[i]; }
 function soma(ix, col, filtro) { var s = 0; for (var k = 0; k < ix.length; k++) { var i = ix[k]; if (filtro && !filtro(i)) continue; var v = col[i]; if (v !== null) s += v; } return s; }
@@ -767,12 +778,46 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 function montarIndiceConsumo() {
-  CONS = null; catMaterial = [];
+  CONS = null; catMaterial = []; TROCA = null;
   var C = M.consumo; if (!C) return;
   var pos = new Map(); for (var i = 0; i < N; i++) pos.set(O.om[i], i);
   CONS = new Array(N);
   C.om.forEach(function (n, k) { var i = pos.get(n); if (i === undefined) return; (CONS[i] = CONS[i] || []).push(k); });
+  montarTrocas();
+  CDIA = C.data.map(function (d) { var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(d || ''); return m ? diaDe(new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]))) : null; });
 }
+var CDIA = null;
+/*
+ * Peças trocadas = texto do serviço executado OU peça baixada no Manusis (com o consumo carregado).
+ * Uma categoria que já está no texto não soma de novo pela baixa; a que só aparece na baixa entra
+ * com o nome do material, marcada como vinda da baixa. Baixa sem tipo reconhecível não entra aqui
+ * (aparece só na ficha da OM, em "Material baixado").
+ */
+var TROCA = null;
+function catsBaixa(k) {
+  var nome = M.consumo.materiais[M.consumo.mat[k]] || '';
+  if (/ESCOVA/i.test(nome)) return [M.componentes.indexOf('Escovas')]; // "KIT ESCOVAS ANEL COLETOR" é escova, não slip ring
+  return catsDoMaterial(M.consumo.mat[k]);
+}
+function montarTrocas() {
+  TROCA = { cats: new Array(N), itens: new Array(N) };
+  for (var i = 0; i < N; i++) {
+    var cats = O.pecas[i].slice(), itens = O.pecasItens[i];
+    var ks = CONS[i] ? CONS[i].filter(function (k) { return M.consumo.peca[k]; }) : [];
+    if (ks.length) {
+      itens = itens.slice();
+      ks.forEach(function (k) {
+        var c = catsBaixa(k)[0];
+        if (c === undefined || O.pecas[i].indexOf(c) >= 0) return;
+        if (cats.indexOf(c) < 0) cats.push(c);
+        itens.push([c, nomeMaterial(k).desc, 1]);
+      });
+    }
+    TROCA.cats[i] = cats; TROCA.itens[i] = itens;
+  }
+}
+function catsTroca(i) { return TROCA ? TROCA.cats[i] : O.pecas[i]; }
+function itensTroca(i) { return TROCA ? TROCA.itens[i] : O.pecasItens[i]; }
 function baixasPeca(i) { return CONS && CONS[i] ? CONS[i].filter(function (k) { return M.consumo.peca[k]; }) : []; }
 var catMaterial = [];
 function catsDoMaterial(m) { return catMaterial[m] || (catMaterial[m] = ModeloTurbinas.categoriasMaterial(M.consumo.materiais[m])); }
@@ -1552,7 +1597,7 @@ function linhaOM(i) {
     parqueTxt: O.wtg[i] >= 0 ? M.parques[parqueDoWtg[O.wtg[i]]] : '–', tipoTxt: M.dic.tipo[O.tipo[i]] || '–', sistemaTxt: M.dic.sistema[O.sistema[i]] || '–',
     status: O.status[i], statusTxt: M.dic.status[O.status[i]], esperaTxt: O.espera[i] >= 0 ? M.dic.espera[O.espera[i]] : '–', abertura: O.dAb[i], fechamento: O.dFe[i],
     idade: O.idadeBkl[i], lead: O.leadH[i] === null ? null : O.leadH[i] / 24, parada: O.parada[i] ? 'Sim' : 'Não', hh: O.hhApont[i], custo: O.custoTot[i], desc: O.desc[i],
-    pecasTxt: O.pecasItens[i].map(function (it) { return it[1]; }).join(', '), falhasTxt: O.falhas[i].map(function (k) { return M.falhas[k]; }).join(' / '), nPecas: O.pecasItens[i].length, custoMat: O.custoMat[i]
+    pecasTxt: itensTroca(i).map(function (it) { return it[1]; }).join(', '), falhasTxt: O.falhas[i].map(function (k) { return M.falhas[k]; }).join(' / '), nPecas: itensTroca(i).length, custoMat: O.custoMat[i]
   };
 }
 
@@ -1578,7 +1623,7 @@ function cartaoFalhas(span, top) {
 /** Ranking das peças mais trocadas (ignora o próprio filtro de componente, que vira destaque). */
 function cartaoPecas(span, top) {
   var Bc = base('peca'), rank = new Map(), totOMs = 0;
-  Bc.forEach(function (i) { if (O.pecas[i].length) totOMs++; O.pecas[i].forEach(function (k) { rank.set(k, (rank.get(k) || 0) + 1); }); });
+  Bc.forEach(function (i) { var cs = catsTroca(i); if (cs.length) totOMs++; cs.forEach(function (k) { rank.set(k, (rank.get(k) || 0) + 1); }); });
   var itens = Array.from(rank.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1], extra: fPct(e[1] / Math.max(1, totOMs)) }; })
     .sort(function (a, c) { return c.v - a.v; });
   var visiveis = itens.slice(0, top);
@@ -1592,6 +1637,152 @@ function cartaoPecas(span, top) {
     dados: { cols: [{ k: 'rot', rot: 'Componente' }, { k: 'v', rot: 'OMs com troca', num: true, fmt: fInt }, { k: 'extra', rot: '% das OMs com troca', num: true }], linhas: itens }
   });
 }
+
+/* =====================================================================
+   Materiais: consumo do Manusis por material, turbina e período (curva ABC)
+   ===================================================================== */
+var matSel = new Set(), matConsumiveis = false, matBusca = '';
+function condicaoMaterial(nome) { return /^MRE_/i.test(nome) ? 'Reparado' : /^MOM_/i.test(nome) ? 'Novo' : '–'; }
+function paginaMateriais(pg) {
+  if (!CONS) { pg.append(h('div', { class: 'vazio' }, 'Carregue o consumo de materiais do Manusis em “Atualizar base”.')); return; }
+  var C = M.consumo, b = baldes();
+  // baixas que passam nos filtros: OM nos filtros do painel, data da baixa no período
+  var todas = [];
+  for (var i = 0; i < N; i++) {
+    if (!CONS[i] || !passaDims(i)) continue;
+    CONS[i].forEach(function (k) {
+      if (!matConsumiveis && !C.peca[k]) return;
+      if (CDIA[k] === null || !noPeriodo(CDIA[k])) return;
+      todas.push({ i: i, k: k });
+    });
+  }
+  var valorK = function (k) { return C.suspeito[k] && !estado.atipicos ? 0 : C.vTot[k]; };
+  // por material (sem a seleção, para a lista e a curva ABC)
+  var porMat = new Map();
+  todas.forEach(function (x) {
+    var m = C.mat[x.k], r = porMat.get(m);
+    if (!r) { var nm = separarMaterial(C.materiais[m]); r = { k: m, cod: nm.cod, rot: nm.desc, cond: condicaoMaterial(C.materiais[m]), qtd: 0, valor: 0, un: C.un[x.k], oms: new Set(), susp: 0 }; porMat.set(m, r); }
+    r.qtd += C.qtd[x.k]; r.valor += valorK(x.k); r.oms.add(x.i); if (C.suspeito[x.k]) r.susp++;
+  });
+  var mats = Array.from(porMat.values());
+  // curva ABC pelo valor
+  var totValor = mats.reduce(function (t, r) { return t + r.valor; }, 0), acum = 0;
+  mats.sort(function (a, c) { return c.valor - a.valor || c.qtd - a.qtd; }).forEach(function (r) {
+    r.part = totValor ? r.valor / totValor : 0; acum += r.part; r.acum = acum;
+    r.classe = acum - r.part < 0.8 ? 'A' : acum - r.part < 0.95 ? 'B' : 'C';
+    r.nOms = r.oms.size;
+  });
+  var sel = todas.filter(function (x) { return !matSel.size || matSel.has(C.mat[x.k]); });
+  var qtdSel = sel.reduce(function (t, x) { return t + C.qtd[x.k]; }, 0), valSel = sel.reduce(function (t, x) { return t + valorK(x.k); }, 0);
+  var omsSel = new Set(sel.map(function (x) { return x.i; })), turbSel = new Set(sel.map(function (x) { return O.wtg[x.i]; }));
+  var nomesSel = Array.from(matSel).map(function (m) { return separarMaterial(C.materiais[m]).desc; });
+
+  // cabeçalho: busca e seleção de material
+  var busca = h('input', { type: 'search', class: 'campo', placeholder: 'Buscar material (nome ou código)…', value: matBusca, 'aria-label': 'Buscar material' });
+  var sugest = h('div', { class: 'mat-sugest' });
+  function mostrarSugest() {
+    sugest.textContent = '';
+    var q = semAcentoTxt(busca.value.trim()); matBusca = busca.value;
+    if (q.length < 2) return;
+    mats.filter(function (r) { return semAcentoTxt(r.cod + ' ' + r.rot).indexOf(q) >= 0; }).sort(function (a, c) { return c.qtd - a.qtd; }).slice(0, 8).forEach(function (r) {
+      sugest.append(h('button', { type: 'button', class: 'opc', onclick: function () { matSel.add(r.k); matBusca = ''; renderPagina(); } },
+        h('b', null, r.rot), h('small', null, ' ' + r.cod + ' · ' + fQtd(r.qtd, r.un) + ' · ' + fMoeda(r.valor))));
+    });
+    if (!sugest.childNodes.length) sugest.append(h('div', { class: 'nota' }, 'Nenhum material com esse nome no período e filtros.'));
+  }
+  busca.addEventListener('input', mostrarSugest);
+  pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Materiais consumidos'),
+    h('p', null, 'Baixas de material do Manusis por material, aerogerador e período. A data é a da baixa; os demais filtros do painel valem. Toque num material para analisar só ele.'),
+    h('div', { class: 'mat-filtros' }, h('div', { class: 'mat-busca' }, busca, sugest),
+    h('div', { class: 'chips', style: 'margin-top:8px' },
+      Array.from(matSel).map(function (m) { return h('button', { type: 'button', class: 'chip', onclick: function () { matSel.delete(m); renderPagina(); } }, separarMaterial(C.materiais[m]).desc, h('span', { 'aria-hidden': 'true' }, ' ×')); }),
+      matSel.size > 1 ? h('button', { type: 'button', class: 'chip', onclick: function () { matSel.clear(); renderPagina(); } }, 'Limpar seleção') : null,
+      h('label', { class: 'chip', style: 'cursor:pointer' }, h('input', { type: 'checkbox', checked: matConsumiveis ? true : null, onchange: function (ev) { matConsumiveis = ev.target.checked; renderPagina(); } }), ' incluir consumíveis (graxa, trapo…)')))));
+
+  // quantidade só se soma na mesma unidade (UN com UN; litro não soma com unidade)
+  var unidades = new Set(sel.map(function (x) { return C.un[x.k]; }));
+  var unSel = unidades.size === 1 ? Array.from(unidades)[0] : '';
+  pg.append(h('div', { class: 'kpis' },
+    unidades.size <= 1
+      ? kpi({ rot: 'Consumo (Qtd)', valor: fQtd(qtdSel, unSel), valorTexto: fQtd(qtdSel, unSel), sub: matSel.size ? nomesSel.join(', ') : fInt(mats.length) + ' materiais' })
+      : kpi({ rot: 'Materiais baixados', valor: fInt(matSel.size || mats.length), valorTexto: fInt(matSel.size || mats.length),
+          sub: 'unidades diferentes (' + Array.from(unidades).slice(0, 4).join(', ') + '): escolha um material para ver a quantidade', tip: 'Quantidades em unidades diferentes (peça, litro, metro…) não se somam.' }),
+    kpi({ rot: 'Consumo (R$)', valor: fMoeda(valSel), valorTexto: fMoeda(valSel), sub: estado.atipicos ? 'inclui preços a validar' : 'sem baixas de preço a validar',
+      tip: 'Soma das baixas pela data da baixa. A página Custos soma por OM (data de fechamento) e deixa de fora a OM inteira quando ela tem baixa de preço a validar; aqui sai só a baixa com o preço errado. Por isso os totais podem diferir um pouco.' }),
+    kpi({ rot: 'OMs com baixa', valor: fInt(omsSel.size), valorTexto: fInt(omsSel.size), sub: fInt(sel.length) + ' baixas' }),
+    kpi({ rot: 'Aerogeradores', valor: fInt(turbSel.size), valorTexto: fInt(turbSel.size), sub: 'com baixa no período' })));
+
+  // materiais por consumo (Qtd)
+  var itMat = mats.slice().sort(function (a, c) { return c.qtd - a.qtd; }).map(function (r) {
+    return { k: r.k, rot: r.rot, v: r.qtd, extra: r.un, nota: r.cod + ' · ' + r.cond + ' · ' + fMoeda(r.valor), cor: 'var(--s1)', un: r.un };
+  });
+  pg.append(cartao({
+    id: 'mat-qtd', span: 's6', titulo: 'Materiais por consumo (Qtd)', sub: 'Top 15 de ' + fInt(itMat.length) + ' · toque para analisar o material',
+    desenhar: function (el) {
+      barrasH(el, itMat.slice(0, 15).concat(itMat.filter(function (d, j) { return j >= 15 && matSel.has(d.k); })),
+        { larguraRotulo: '56%', fmt: function (v) { return Number.isInteger(v) ? fInt(v) : nf1.format(v); }, unidade: 'baixados', ativo: matSel, dica: 'Clique para analisar este material',
+          onClick: function (k) { if (matSel.has(k)) matSel.delete(k); else matSel.add(k); renderPagina(); } });
+    },
+    dados: { cols: [{ k: 'nota', rot: 'Código · condição · valor' }, { k: 'rot', rot: 'Material' }, { k: 'v', rot: 'Quantidade', num: true, fmt: function (v, r) { return fQtd(v, r.un); } }], linhas: itMat }
+  }));
+
+  // local de aplicação: aerogerador
+  var porW = new Map();
+  sel.forEach(function (x) { var w = O.wtg[x.i]; if (w < 0) return; var r = porW.get(w) || { k: w, v: 0, valor: 0, oms: new Set() }; r.v += C.qtd[x.k]; r.valor += valorK(x.k); r.oms.add(x.i); porW.set(w, r); });
+  var misto = unidades.size > 1; // unidades diferentes: compara as turbinas pelo valor, não pela quantidade
+  var itW = Array.from(porW.values()).sort(function (a, c) { return misto ? c.valor - a.valor : c.v - a.v || c.valor - a.valor; }).map(function (r) {
+    return { k: r.k, rot: M.dic.wtg[r.k], v: misto ? r.valor : r.v, qtd: r.v, nota: M.parques[parqueDoWtg[r.k]] + ' · ' + fInt(r.oms.size) + (r.oms.size === 1 ? ' OM' : ' OMs') + (misto ? '' : ' · ' + fMoeda(r.valor)), cor: 'var(--s2)', valor: r.valor, oms: r.oms.size };
+  });
+  pg.append(cartao({
+    id: 'mat-wtg', span: 's6', titulo: 'Local de aplicação — aerogerador (' + (misto ? 'R$' : 'Qtd') + ')',
+    sub: (matSel.size ? nomesSel.join(', ') : 'Todos os materiais') + ' · ' + fInt(itW.length) + ' aerogeradores' +
+      (misto ? ' · em R$ porque os materiais têm unidades diferentes; escolha um material para ver a quantidade' : '') + ' · toque para ver a turbina',
+    desenhar: function (el) {
+      if (!itW.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma baixa nos filtros atuais.')); return; }
+      var caixa = h('div', { style: 'max-height:520px;overflow:auto' }); el.append(caixa);
+      barrasH(caixa, itW, { larguraRotulo: '46%', fmt: misto ? function (v) { return fMoeda(v); } : function (v) { return Number.isInteger(v) ? fInt(v) : nf1.format(v); }, unidade: misto ? '' : 'baixados', onClick: function (k) { abrirTurbina(k); }, dica: 'Clique para ver a turbina' });
+    },
+    dados: { cols: [{ k: 'rot', rot: 'Aerogerador' }].concat(misto ? [] : [{ k: 'qtd', rot: 'Quantidade', num: true, fmt: fInt }]).concat([ { k: 'oms', rot: 'OMs', num: true, fmt: fInt }, { k: 'valor', rot: 'Valor', num: true, fmt: fMoedaCompleta }]), linhas: itW }
+  }));
+
+  // curva ABC
+  var linhasABC = (matSel.size ? mats.filter(function (r) { return matSel.has(r.k); }) : mats);
+  pg.append(cartao({
+    id: 'mat-abc', span: 's12', titulo: 'Curva ABC de materiais',
+    sub: 'Pelo valor consumido: A = materiais que somam os primeiros 80% do valor, B = até 95%, C = o resto · condição pelo código (MRE = reparado, MOM = novo) · toque para analisar',
+    desenhar: function (el) {
+      tabela(el, { cols: [{ k: 'classe', rot: 'Classe', classe: 'forte' }, { k: 'cod', rot: 'Código' },
+          { k: 'rot', rot: 'Material', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v); } },
+          { k: 'cond', rot: 'Condição' }, { k: 'qtd', rot: 'Consumo (Qtd)', num: true, fmt: function (v, r) { return fQtd(v, r.un); } },
+          { k: 'valor', rot: 'Consumo (R$)', num: true, fmt: function (v, r) { return r.susp && !estado.atipicos ? h('span', { title: 'Há baixas com preço a validar fora deste valor' }, fMoeda(v) + ' *') : fMoeda(v); } },
+          { k: 'part', rot: 'Participação', num: true, fmt: fPct }, { k: 'acum', rot: 'Acumulado', num: true, fmt: fPct }, { k: 'nOms', rot: 'OMs', num: true, fmt: fInt }],
+        linhas: linhasABC, ordem: { k: 'valor', desc: true }, altura: 420, onLinha: function (r) { matSel.clear(); matSel.add(r.k); renderPagina(); window.scrollTo(0, 0); } });
+    }
+  }));
+
+  // quantidade por material e período
+  var matsMatriz = matSel.size ? Array.from(matSel) : mats.slice().sort(function (a, c) { return c.qtd - a.qtd; }).slice(0, 15).map(function (r) { return r.k; });
+  var linhasM = matsMatriz.map(function (m) {
+    var r = porMat.get(m), lin = { k: m, rot: r ? r.rot : separarMaterial(C.materiais[m]).desc, tot: 0, un: r ? r.un : '' };
+    b.forEach(function (_, j) { lin['p' + j] = 0; });
+    return lin;
+  });
+  var idxM = new Map(linhasM.map(function (l, j) { return [l.k, j]; }));
+  var totPer = b.map(function () { return 0; });
+  sel.forEach(function (x) { var j = idxM.get(C.mat[x.k]); var p = b.de(CDIA[x.k]); if (j === undefined || p < 0) return; linhasM[j]['p' + p] += C.qtd[x.k]; linhasM[j].tot += C.qtd[x.k]; totPer[p] += C.qtd[x.k]; });
+  var fmtQ = function (v) { return v ? (Number.isInteger(v) ? fInt(v) : nf1.format(v)) : ''; };
+  var colsM = [{ k: 'rot', rot: 'Material', classe: 'forte' }].concat(b.map(function (x, j) { return { k: 'p' + j, rot: x.rot, num: true, fmt: fmtQ }; }), [{ k: 'tot', rot: 'Total', num: true, fmt: fmtQ }]);
+  var linhaTot = { rot: 'Total', tot: totPer.reduce(function (t, v) { return t + v; }, 0) }; totPer.forEach(function (v, j) { linhaTot['p' + j] = v; });
+  // total da coluna só quando todos os materiais da tabela têm a mesma unidade
+  var mesmaUn = new Set(linhasM.map(function (l) { return l.un; })).size <= 1;
+  linhasM.forEach(function (l) { l.rot = l.rot + (l.un && !mesmaUn ? ' (' + l.un + ')' : ''); });
+  pg.append(cartao({
+    id: 'mat-periodo', span: 's12', titulo: 'Quantidade consumida por material e ' + b.tipo,
+    sub: (matSel.size ? 'Materiais escolhidos' : 'Os 15 materiais mais consumidos') + ' · data da baixa no Manusis · role para o lado no celular',
+    desenhar: function (el) { tabela(el, { cols: colsM, linhas: mesmaUn ? linhasM.concat([linhaTot]) : linhasM, altura: 460 }); }
+  }));
+}
+function semAcentoTxt(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
 /* Conferência da troca com o material baixado no Manusis, e as peças mais baixadas. */
 var confSel = 'soTexto';
@@ -1662,11 +1853,11 @@ function cartoesConsumo(pg, B) {
 function paginaComponentes(pg) {
   var B = base(), b = baldes();
   var comTexto = contar(B, function (i) { return !!O.exec[i]; });
-  var comPeca = B.filter(function (i) { return O.pecas[i].length; });
+  var comPeca = B.filter(function (i) { return catsTroca(i).length; });
   var trocas = 0, porComp = new Map(), mes = new Array(b.length).fill(0);
   comPeca.forEach(function (i) {
     trocas += pecasContadas(i).length;
-    O.pecas[i].forEach(function (k) { porComp.set(k, (porComp.get(k) || 0) + 1); });
+    catsTroca(i).forEach(function (k) { porComp.set(k, (porComp.get(k) || 0) + 1); });
     var m = b.de(O.dAb[i]); if (m >= 0) mes[m] += pecasContadas(i).length;
   });
   var top = Array.from(porComp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
@@ -1674,10 +1865,11 @@ function paginaComponentes(pg) {
 
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Componentes substituídos'),
     h('p', null, 'Peças identificadas automaticamente no texto do “Serviço executado” (frases como “realizado a substituição da placa AEPA”). Confira a frase de origem na tabela abaixo.' +
-      (CONS ? ' Com o consumo de materiais carregado, cada troca é conferida com a peça baixada no Manusis.' : ''))));
+      (CONS ? ' Com o consumo de materiais carregado, contam também as peças baixadas no Manusis (troca que o texto não descreve), e cada troca é conferida com a baixa.' : ''))));
 
   pg.append(h('div', { class: 'kpis' },
-    kpi({ rot: 'OMs com peça trocada', valor: fInt(comPeca.length), valorTexto: fInt(comPeca.length), sub: comTexto ? fPct(comPeca.length / comTexto) + ' das OMs com serviço executado' : '' }),
+    kpi({ rot: 'OMs com peça trocada', valor: fInt(comPeca.length), valorTexto: fInt(comPeca.length),
+      sub: TROCA ? (B.length ? fPct(comPeca.length / B.length) + ' das OMs do período · texto ou baixa' : '') : comTexto ? fPct(comPeca.length / comTexto) + ' das OMs com serviço executado' : '' }),
     kpi({ rot: 'Peças trocadas', valor: fInt(trocas), valorTexto: fInt(trocas), sub: 'trocas identificadas', spark: mes, corSpark: 'var(--s3)' }),
     kpi({ rot: 'Mais trocado', valor: top ? M.componentes[top[0]] : '–', valorTexto: top ? M.componentes[top[0]] : '–', sub: top ? 'em ' + fInt(top[1]) + ' OMs' : 'nenhuma troca identificada' }),
     kpi({ rot: 'Material nessas OMs', valor: fMoeda(custoMat), valorTexto: fMoeda(custoMat), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })
@@ -1718,6 +1910,8 @@ function paginaComponentes(pg) {
   var linhas = comPeca.map(function (i) {
     var r = linhaOM(i);
     r.trecho = O.pecasTrecho[i].filter(function (t, j, a) { return a.indexOf(t) === j; }).join(' … ');
+    var soBaixa = itensTroca(i).filter(function (it) { return it[2]; });
+    if (soBaixa.length) r.trecho = (r.trecho ? r.trecho + ' … ' : '') + 'Baixa no Manusis: ' + soBaixa.map(function (it) { return it[1]; }).join(', ');
     return r;
   });
   var corpo = h('div');
@@ -1974,7 +2168,7 @@ function abrirTurbina(w) {
   var bodyS = h('div', { class: 'card-b' }); cardS.append(bodyS);
   var cardF = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Falhas'), h('p', null, 'Códigos citados na descrição das OMs'))));
   var bodyF = h('div', { class: 'card-b' }); cardF.append(bodyF);
-  var cardP = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Peças trocadas'), h('p', null, 'Identificadas no texto do serviço executado'))));
+  var cardP = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Peças trocadas'), h('p', null, TROCA ? 'No texto do serviço executado ou na baixa do Manusis' : 'Identificadas no texto do serviço executado'))));
   var bodyP = h('div', { class: 'card-b' }); cardP.append(bodyP);
   var subL = h('p', null), cardL = h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Ordens'), subL)));
   var bodyL = h('div', { class: 'card-b' }); cardL.append(bodyL);
@@ -1994,7 +2188,7 @@ function abrirTurbina(w) {
     ix.forEach(function (i) { O.falhas[i].forEach(function (k) { porF.set(k, (porF.get(k) || 0) + 1); }); });
     var itF = Array.from(porF.entries()).map(function (e) { return { k: e[0], rot: M.falhas[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
     var porP = new Map();
-    ix.forEach(function (i) { O.pecas[i].forEach(function (k) { porP.set(k, (porP.get(k) || 0) + 1); }); });
+    ix.forEach(function (i) { catsTroca(i).forEach(function (k) { porP.set(k, (porP.get(k) || 0) + 1); }); });
     var itP = Array.from(porP.entries()).map(function (e) { return { k: e[0], rot: M.componentes[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; });
 
     // tocar numa barra mostra, na lista de Ordens, só as OMs daquela barra; tocar de novo volta a todas
@@ -2002,7 +2196,7 @@ function abrirTurbina(w) {
     var GRUPOS = {
       s: { nome: 'sistema', tem: function (i, k) { return O.sistema[i] === k; } },
       f: { nome: 'falha', tem: function (i, k) { return O.falhas[i].indexOf(k) >= 0; } },
-      p: { nome: 'troca de', tem: function (i, k) { return O.pecas[i].indexOf(k) >= 0; } }
+      p: { nome: 'troca de', tem: function (i, k) { return catsTroca(i).indexOf(k) >= 0; } }
     };
     function escolher(g, itens) {
       return function (k) {
@@ -2119,8 +2313,8 @@ function fichaOM(i, lista, pos, navegar) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
-      O.pecasItens[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecasItens[i].map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] }, h('i', { style: 'background:var(--s3)' }), it[1]); })),
-        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas automaticamente no texto do serviço executado.')] : null,
+      itensTroca(i).length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, itensTroca(i).map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] + (it[2] ? ' · vem da baixa de material no Manusis' : '') }, h('i', { style: 'background:' + (it[2] ? 'var(--s1)' : 'var(--s3)') }), it[1], it[2] ? h('small', { style: 'color:var(--muted);font-weight:500' }, ' (baixa no Manusis)') : null); })),
+        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, TROCA ? 'Identificadas no texto do serviço executado ou na baixa de material do Manusis.' : 'Identificadas automaticamente no texto do serviço executado.')] : null,
       blocoConsumo(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
@@ -2317,7 +2511,7 @@ function salvarHash() {
 }
 function lerHash() {
   var p; try { p = new URLSearchParams((location.hash || '').slice(1)); } catch (e) { p = new URLSearchParams(); }
-  if (PAGINAS[p.get('p')]) estado.pagina = p.get('p');
+  if (PAGINAS[p.get('p')] && (!PAGINAS[p.get('p')].soComConsumo || CONS)) estado.pagina = p.get('p');
   var per = p.get('per');
   estado.per = { chave: 'tudo', ini: diaMin, fim: diaMax };
   if (per) {
@@ -2339,12 +2533,13 @@ function lerHash() {
    Montagem da aplicação
    ===================================================================== */
 var PAGINAS = {
-  visao: { rot: 'Visão geral', icone: 'visao', fn: paginaVisao },
+  visao: { rot: 'Visão geral', curto: 'Visão', icone: 'visao', fn: paginaVisao },
   turbinas: { rot: 'Turbinas', icone: 'turbinas', fn: paginaTurbinas },
   backlog: { rot: 'Backlog', icone: 'backlog', fn: paginaBacklog },
   componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
   custos: { rot: 'Custos', icone: 'custos', fn: paginaCustos },
-  ordens: { rot: 'Ordens', icone: 'ordens', fn: paginaOrdens }
+  ordens: { rot: 'Ordens', icone: 'ordens', fn: paginaOrdens },
+  materiais: { rot: 'Materiais', icone: 'caixa', fn: paginaMateriais, soComConsumo: true }
 };
 var refs = {};
 
@@ -2354,7 +2549,8 @@ function montarApp() {
   var nav = h('nav', { class: 'rail', 'aria-label': 'Páginas do painel' },
     LOGO_URL ? null : h('div', { class: 'marca', 'aria-hidden': 'true' }, logo()));
   Object.keys(PAGINAS).forEach(function (k) {
-    nav.append(h('button', { type: 'button', class: 'nav-btn', 'data-p': k, onclick: function () { irPara(k); } }, icone(PAGINAS[k].icone), PAGINAS[k].rot));
+    if (PAGINAS[k].soComConsumo && !CONS) return;
+    nav.append(h('button', { type: 'button', class: 'nav-btn', 'data-p': k, onclick: function () { irPara(k); } }, icone(PAGINAS[k].icone), innerWidth < 700 && PAGINAS[k].curto ? PAGINAS[k].curto : PAGINAS[k].rot));
   });
   nav.append(h('div', { class: 'rodape' },
     h('button', { type: 'button', class: 'nav-btn', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'), 'Tema')));
