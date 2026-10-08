@@ -353,6 +353,9 @@ svg text { font-family: inherit; }
 .baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
 .tab.baixas td:first-child { white-space: normal; min-width: 180px; }
 .mat-filtros { flex-basis: 100%; width: 100%; }
+.so-impressao { display: none; align-items: center; gap: 14px; padding: 12px 20px 0; font-size: 12px; color: var(--ink-2); }
+.so-impressao img { height: 34px; width: auto; }
+@media (max-width: 700px) { .drawer-h .ferr .btn .txt { display: none; } }
 .sem-consumo { padding: 22px; max-width: 720px; }
 .sem-consumo h3 { margin: 0 0 8px; font-size: 16px; }
 .sem-consumo p { margin: 0 0 10px; color: var(--ink-2); line-height: 1.5; }
@@ -480,6 +483,14 @@ svg text { font-family: inherit; }
 }
 @media print {
   .rail, .filtros .limpar, .topo .acoes, .mini-btn { display: none !important; }
+  /* "Imprimir" na ficha da OM: só a ficha */
+  body.imprimindo-om #raiz, body.imprimindo-om .veu, body.imprimindo-om .drawer, body.imprimindo-om .tip, body.imprimindo-om .aviso-base { display: none !important; }
+  body.imprimindo-om .modal { position: static; transform: none; opacity: 1; width: auto; max-height: none; overflow: visible; box-shadow: none; border-radius: 0; }
+  body.imprimindo-om .modal .ferr .btn, body.imprimindo-om .nav-om { display: none !important; }
+  body.imprimindo-om .modal .drawer-h { position: static; }
+  body.imprimindo-om .baixas-wrap { overflow: visible; }
+  body.imprimindo-om .so-impressao { display: flex !important; }
+  body.imprimindo-om .campos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .app { grid-template-columns: 1fr; }
   .filtros { position: static; }
   .card { break-inside: avoid; }
@@ -2367,6 +2378,13 @@ function blocoConsumo(i) {
           h('td', { class: 'n' }, C.suspeito[k] ? h('span', { class: 'st alerta', title: 'Preço unitário ' + fMoedaCompleta(C.vUnit[k]) + ' fora do padrão: confira o cadastro do material' }, fMoeda(C.vTot[k]) + ' · a validar') : fMoeda(C.vTot[k])));
       }))))];
 }
+/** Imprime (ou salva em PDF) só a ficha da OM aberta, sem o painel atrás. */
+function imprimirOM() {
+  var fim = function () { document.body.classList.remove('imprimindo-om'); window.removeEventListener('afterprint', fim); };
+  document.body.classList.add('imprimindo-om');
+  window.addEventListener('afterprint', fim);
+  window.print();
+}
 function fichaOM(i, lista, pos, navegar) {
   var nav = lista.length > 1 ? h('div', { class: 'nav-om' },
     h('button', { class: 'btn', type: 'button', disabled: pos === 0 ? true : null, onclick: function () { navegar(-1); } }, '‹ Anterior'),
@@ -2377,7 +2395,11 @@ function fichaOM(i, lista, pos, navegar) {
   return [
     h('div', { class: 'drawer-h' },
       h('div', null, h('h2', { id: 'om-tit' }, r.omTxt), h('p', null, r.wtgTxt + ' · ' + r.tipoTxt + (SISTEMA_UTIL ? ' · ' + r.sistemaTxt : ''))),
-      h('div', { class: 'ferr' }, pillStatus(r.status), h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', 'data-foco': '', onclick: fecharCamada }, icone('fechar')))),
+      h('div', { class: 'ferr' }, pillStatus(r.status),
+        h('button', { class: 'btn', type: 'button', title: 'Imprimir ou salvar em PDF só esta OM', onclick: imprimirOM }, icone('imprimir'), h('span', { class: 'txt' }, 'Imprimir')),
+        h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', 'data-foco': '', onclick: fecharCamada }, icone('fechar')))),
+    h('div', { class: 'so-impressao' }, LOGO_COMPLETO_URL ? h('img', { src: LOGO_COMPLETO_URL, alt: LOGO_NOME }) : LOGO_URL ? h('img', { src: LOGO_URL, alt: LOGO_NOME }) : null,
+      h('span', null, 'Manutenção de Aerogeradores · resumo da OM · impresso em ' + new Date().toLocaleDateString('pt-BR'))),
     nav,
     h('div', { class: 'campos' },
       campo('Abertura', fData(O.dAb[i])), campo('Fechamento', O.dFe[i] === null ? '–' : fData(O.dFe[i])), campo('Natureza', M.dic.natureza[O.natureza[i]]),
