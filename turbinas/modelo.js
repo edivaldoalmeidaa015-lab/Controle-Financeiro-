@@ -681,12 +681,28 @@
   var ABA_CONSUMO = 'Consumo de materiais';
   // graxa, trapo, abraçadeira…: material de consumo, não peça substituída
   var FAMILIA_CONSUMIVEL = /MATERIAL DE CONSUMO|CONSUMIVEL/i;
+  // consumível pelo nome, mesmo cadastrado como mercadoria (Loctite, fita, spray, lacre de arame…)
+  var NOME_CONSUMIVEL = /LOCTITE|ADESIVO|\bFITA\b|SPRAY|COMPOSTO|\bARAME\b|SILICONE|DESENGRIP|TRAPO|GRAXA|[AÁ]LCOOL|LIMPA|\bCOLA\b|\bTINTA\b|\bLUVAS?\b/i;
   // componentes que custam centenas de milhares ou milhões de verdade
   var MATERIAL_GRANDE = /GERADOR|GEARBOX|MULTIPLICADORA|TRANSFORMADOR|MAIN ?BEARING|ROLAMENTO PRINCIPAL|MAIN ?SHAFT|EIXO PRINCIPAL|\bPAS?\b|BLADE|CONVERSOR|NACELE/i;
   // unidades de granel: preço de milhares por litro/quilo é preço de tambor cadastrado por litro
   var UN_GRANEL = /^(L|LT|LTS|LITROS?|ML|KG|G|M|MT|M2|M3)$/i;
 
   function temConsumo(wb) { return !!wb.Sheets[ABA_CONSUMO]; }
+
+  /** Categorias de peça (índices de COMPONENTES) citadas no nome do material: "CONJUNTO PLACA 1S215 WEPA" -> Placa eletrônica. */
+  // nomes do almoxarifado que o texto chama de outro jeito: "ANEL COLETOR" é o slip ring, "CABO … CONTRA QUEDA" é a linha de vida
+  var MATERIAL_EXTRA = [[/^coletor$/, 'Slip ring'], [/^queda$/, 'Linha de vida'], [/^acoplador(es)?$/, 'Acoplamento']];
+  function categoriasMaterial(nome) {
+    var r = [];
+    var add = function (x) { if (r.indexOf(x) < 0) r.push(x); };
+    semAcento(String(nome || '')).replace(/^[a-z0-9_.]+(?:-\d{3,5}[a-z]?)?-/, '').split(/[^a-z0-9\-]+/).forEach(function (w) {
+      if (!w) return;
+      for (var e = 0; e < MATERIAL_EXTRA.length; e++) if (MATERIAL_EXTRA[e][0].test(w)) { add(componenteIdx(MATERIAL_EXTRA[e][1])); return; }
+      for (var x = 0; x < OUTRAS; x++) if (COMPONENTES[x][1].test(w)) { add(x); break; }
+    });
+    return r;
+  }
 
   /** Lê a aba de consumo e devolve as baixas em colunas, com as de preço suspeito marcadas. */
   function lerConsumo(wb, XLSX) {
@@ -706,7 +722,7 @@
       C.qtd.push(numBR(r['Quantidade']) || 0); C.un.push(String(r['Unidade de medida'] || '').trim());
       C.vUnit.push(numBR(r['Custo unitário']) || 0); C.vTot.push(numBR(r['Custo total']) || 0);
       C.data.push(String(r['Utilizado em'] || '').slice(0, 10));
-      C.peca.push(FAMILIA_CONSUMIVEL.test(familia) && !/MERCADORIA|GRANDE COMPONENTE/i.test(familia) ? 0 : 1);
+      C.peca.push((FAMILIA_CONSUMIVEL.test(familia) && !/MERCADORIA|GRANDE COMPONENTE/i.test(familia)) || NOME_CONSUMIVEL.test(nome) ? 0 : 1);
     });
     // preço unitário típico de cada material (mediana), para achar o lançamento fora do padrão
     var precos = {};
@@ -892,5 +908,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });
