@@ -694,12 +694,15 @@
 
   /** Categorias de peça (índices de COMPONENTES) citadas no nome do material: "CONJUNTO PLACA 1S215 WEPA" -> Placa eletrônica. */
   // nomes do almoxarifado que o texto chama de outro jeito: "ANEL COLETOR" é o slip ring, "CABO … CONTRA QUEDA" é a linha de vida
-  var MATERIAL_EXTRA = [[/^coletor$/, 'Slip ring'], [/^queda$/, 'Linha de vida'], [/^acoplador(es)?$/, 'Acoplamento']];
+  var MATERIAL_EXTRA = [[/^coletor$/, 'Slip ring'], [/^queda$/, 'Linha de vida'], [/^acoplador(es)?$/, 'Acoplamento'],
+    [/^(renolin|unisyn|amsoil|mobilgear)$/, 'Óleo / graxa']];
   function categoriasMaterial(nome) {
     var r = [];
     var add = function (x) { if (r.indexOf(x) < 0) r.push(x); };
-    semAcento(String(nome || '')).replace(/^[a-z0-9_.]+(?:-\d{3,5}[a-z]?)?-/, '').split(/[^a-z0-9\-]+/).forEach(function (w) {
-      if (!w) return;
+    var n = semAcento(String(nome || '')).replace(/^[a-z0-9_.]+(?:-\d{3,5}[a-z]?)?-/, '');
+    var oleo = /\b(oleo|renolin|unisyn|amsoil|mobilgear)\b/.test(n); // "FUCHS RENOLIN UNISYN CLP 320": CLP é a norma do óleo, não a placa
+    n.split(/[^a-z0-9\-]+/).forEach(function (w) {
+      if (!w || (oleo && w === 'clp')) return;
       for (var e = 0; e < MATERIAL_EXTRA.length; e++) if (MATERIAL_EXTRA[e][0].test(w)) { add(componenteIdx(MATERIAL_EXTRA[e][1])); return; }
       for (var x = 0; x < OUTRAS; x++) if (COMPONENTES[x][1].test(w)) { add(x); break; }
     });
