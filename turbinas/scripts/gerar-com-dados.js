@@ -3,7 +3,7 @@
  * Gera uma versão do painel com os dados já embutidos (funciona offline,
  * sem precisar carregar a planilha no navegador).
  *
- * Uso: node gerar-com-dados.js <Base_PowerBI_Ordens.xlsx> <saida.html> [--logo=logo.png] [--logo-nome="Empresa"]
+ * Uso: node gerar-com-dados.js <planilha de OMs.xlsx> <saida.html> [--consumo=consumo_de_materiais.xlsx] [--logo=logo.png] [--logo-nome="Empresa"]
  * Requer o pacote "xlsx" (SheetJS): npm install xlsx
  *
  * Atenção: o HTML gerado contém os dados da operação — não publique em
@@ -28,6 +28,11 @@ var raiz = path.join(__dirname, '..');
 var html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 var modeloJs = fs.readFileSync(path.join(raiz, 'modelo.js'), 'utf8');
 var modelo = Modelo.montar(XLSX.readFile(entrada), XLSX);
+// consumo de materiais do Manusis (opcional): liga as baixas às OMs pelo número
+if (opcao('consumo')) {
+  var st = Modelo.juntarConsumo(modelo, XLSX.readFile(opcao('consumo')), XLSX);
+  console.log('Consumo: ' + st.linhas + ' baixas em ' + st.oms + ' OMs (' + st.fora + ' fora da base)');
+}
 // Leitor de Excel (SheetJS, versão enxuta) embutido: o botão "Atualizar base" funciona sem internet.
 var leitorExcel = fs.readFileSync(require.resolve('xlsx/dist/xlsx.mini.min.js'), 'utf8').replace(/<\/script/gi, '<\\/script');
 // "</" dentro de JSON embutido fecharia a tag <script>
