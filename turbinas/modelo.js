@@ -689,6 +689,8 @@
   var UN_GRANEL = /^(L|LT|LTS|LITROS?|ML|KG|G|M|MT|M2|M3)$/i;
 
   function temConsumo(wb) { return !!wb.Sheets[ABA_CONSUMO]; }
+  // planilha com as ordens (Manusis ou Base Power BI); a base única do painel tem ordens e consumo na mesma planilha
+  function temOrdens(wb) { return !!(wb.Sheets[ABA_MANUSIS] || wb.Sheets['fato_ordens']); }
 
   /** Categorias de peça (índices de COMPONENTES) citadas no nome do material: "CONJUNTO PLACA 1S215 WEPA" -> Placa eletrônica. */
   // nomes do almoxarifado que o texto chama de outro jeito: "ANEL COLETOR" é o slip ring, "CABO … CONTRA QUEDA" é a linha de vida
@@ -908,5 +910,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });

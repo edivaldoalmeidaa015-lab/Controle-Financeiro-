@@ -2838,7 +2838,8 @@ function lerArquivo(arquivos, aoErro) {
         });
       })).then(function (listas) {
         var wbs = [].concat.apply([], listas);
-        var deOMs = wbs.filter(function (wb) { return !ModeloTurbinas.temConsumo(wb); });
+        // a mesma planilha pode trazer as ordens e o consumo (base única do painel)
+        var deOMs = wbs.filter(function (wb) { return ModeloTurbinas.temOrdens(wb) || !ModeloTurbinas.temConsumo(wb); });
         var deConsumo = wbs.filter(function (wb) { return ModeloTurbinas.temConsumo(wb); });
         var modelo = deOMs.length ? ModeloTurbinas.montar(deOMs[deOMs.length - 1], XLSX) : M;
         if (!modelo) throw new Error('Carregue primeiro a exportação de OMs do Manusis; o consumo de materiais se liga a ela pelo número da OM.');

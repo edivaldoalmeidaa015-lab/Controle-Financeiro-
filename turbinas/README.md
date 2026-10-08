@@ -21,7 +21,8 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
   com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
 
 Carregue as duas planilhas juntas, ou o consumo depois da base de OMs; ao
-atualizar só as OMs, o consumo já carregado continua ligado.
+atualizar só as OMs, o consumo já carregado continua ligado. Também vale uma planilha única com as abas
+de ordens e de consumo: `node turbinas/scripts/juntar-bases.js ordens.xlsx consumo.xlsx base.xlsx`.
 
 ## Como usar
 
