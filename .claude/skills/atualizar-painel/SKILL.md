@@ -17,6 +17,9 @@ entregar o arquivo. Responda sempre em português, com frases curtas.
    Se não houver anexo, peça a planilha e pare.
    - Se vier também o consumo de materiais do Manusis (`consumo_de_materiais_*.xlsx` ou `.zip`),
      passe-o com `--consumo=<arquivo.xlsx>` no passo 4.
+   - Para o usuário carregar no app, entregue uma **base única**: junte as duas com
+     `node turbinas/scripts/juntar-bases.js <ordens.xlsx> <consumo.xlsx> <scratchpad>/Base_Painel_Turbinas_<data>.xlsx`
+     e recomprima o .xlsx com Python (`zipfile`, `ZIP_DEFLATED`, nível 9) — a gravação do SheetJS sai com uns 13 MB.
 2. **Ferramentas.** No scratchpad, rode `npm install xlsx` (uma vez por sessão).
 3. **Símbolo da empresa.** O logo **não** fica no repositório, porque ele é público.
    - Use `Artifact` com `action: "list"` e encontre o artefato "Painel de Turbinas".
