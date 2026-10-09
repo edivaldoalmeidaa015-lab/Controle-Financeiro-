@@ -355,7 +355,6 @@ svg text { font-family: inherit; }
 small .mc { display: inline; }
 .pend-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 22px; margin-bottom: 14px; }
 .pend-bloco h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.resumo-conf { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
 .baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
 .tab.baixas td:first-child { white-space: normal; min-width: 180px; }
 .mat-filtros { flex-basis: 100%; width: 100%; }
@@ -848,7 +847,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-08.2'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2445,7 +2444,6 @@ function mostrarUltimaOM() {
   if (r.top < 120 || r.bottom > innerHeight - 80) tr.scrollIntoView({ block: 'center' });
   tr.focus({ preventScroll: true });
 }
-/** Material baixado no Manusis para a OM, com o selo da conferência com o texto. */
 /* Marca de conferência de cada peça na ficha: [classe, texto, dica]. */
 var MARCA = {
   ok: ['bom', '✓ baixada', 'Há baixa de peça do mesmo tipo no Manusis.'],
@@ -2473,24 +2471,13 @@ function marcaBaixa(i, k) {
   var r = conferirPecas(i);
   return r.semTexto.indexOf(k) >= 0 ? marca('semTexto') : r.semTipo.indexOf(k) >= 0 && r.conferir.length ? marca('conferir') : r.baixaOk.indexOf(k) >= 0 ? marca('okTexto') : null;
 }
-/** "1 peça confere · Placa (AEPA) descrita sem baixa · 1 baixa sem troca descrita" */
-function resumoConferencia(i) {
-  var r = conferirPecas(i), p = [];
-  if (r.batem.length) p.push(fInt(r.batem.length) + (r.batem.length === 1 ? ' peça confere com a baixa' : ' peças conferem com a baixa'));
-  if (r.semBaixa.length && r.fechada) p.push(r.semBaixa.map(function (it) { return it[1]; }).join(', ') + ' descrita' + (r.semBaixa.length > 1 ? 's' : '') + ' sem baixa');
-  if (r.semTexto.length) p.push(r.semTexto.map(function (k) { return nomeMaterial(k).desc; }).join(', ') + ' baixada' + (r.semTexto.length > 1 ? 's' : '') + ' sem troca descrita');
-  if (r.conferir.length) p.push(r.conferir.map(function (it) { return it[1]; }).join(', ') + ': conferir com a baixa sem tipo');
-  return p.join(' · ');
-}
+/** Material baixado no Manusis para a OM; cada peça marcada pela conferência com o texto. */
 function blocoConsumo(i) {
   if (!CONS) return null;
-  var ks = CONS[i] || [], cf = conferencia(i), C = M.consumo, res = cf && cf !== 'ok' ? resumoConferencia(i) : '';
-  var selo = cf ? h('p', { style: 'margin:0 0 8px' }, statusTag(CONF[cf].tipo, CONF[cf].rot), h('span', { class: 'nota', style: 'display:block;margin-top:2px' }, CONF[cf].dica),
-      res ? h('span', { class: 'resumo-conf' }, res) : null)
-    : O.pecas[i].length && !ehFechada(i) && !baixasPeca(i).length ? h('p', { class: 'nota', style: 'margin:0 0 8px' }, 'OM em aberto: a baixa da peça pode ser lançada até o encerramento.') : null;
-  if (!ks.length) return [h('h4', null, 'Material baixado no Manusis'), selo, h('p', { class: 'nota', style: 'margin:0 0 14px' }, 'Nenhuma baixa de material lançada nesta OM.')];
+  var ks = CONS[i] || [], C = M.consumo;
+  if (!ks.length) return [h('h4', null, 'Material baixado no Manusis'), h('p', { class: 'nota', style: 'margin:0 0 14px' }, 'Nenhuma baixa de material lançada nesta OM.')];
   var ord = ks.slice().sort(function (a, b) { return C.peca[b] - C.peca[a] || C.vTot[b] - C.vTot[a]; });
-  return [h('h4', null, 'Material baixado no Manusis'), selo,
+  return [h('h4', null, 'Material baixado no Manusis'),
     h('div', { class: 'baixas-wrap' }, h('table', { class: 'tab baixas' },
       h('thead', null, h('tr', null, h('th', null, 'Material'), h('th', { class: 'n' }, 'Qtd.'), h('th', { class: 'n' }, 'Valor'))),
       h('tbody', null, ord.map(function (k) {
@@ -2536,7 +2523,7 @@ function fichaOM(i, lista, pos, navegar) {
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
       itensTroca(i).length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, itensTroca(i).map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] + (it[2] ? ' · vem da baixa de material no Manusis' : '') }, h('i', { style: 'background:' + (it[2] ? 'var(--s1)' : 'var(--s3)') }), it[1], it[2] ? h('small', { style: 'color:var(--muted);font-weight:500' }, ' (baixa no Manusis)') : null, marcaItem(i, it)); })),
-        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, TROCA ? 'Identificadas no texto do serviço executado ou na baixa de material do Manusis.' : 'Identificadas automaticamente no texto do serviço executado.')] : null,
+        h('div', { style: 'height:14px' })] : null,
       blocoConsumo(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
