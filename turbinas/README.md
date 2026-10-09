@@ -26,18 +26,11 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
   com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
 
 Também opcional: as **pendências** do Manusis 4 (aba "Pendências", abertas e fechadas; pode ser
-um período maior que o das OMs, ex.: 2 anos). Cada pendência se liga às OMs de origem e de execução
-e o painel ganha a aba **Pendências**: status no Manusis, turbinas e usuários com mais pendências,
-há quanto tempo as abertas estão abertas, concluídas por mês, lista com CSV e a situação de controle de cada uma
-(tocar numa barra filtra a página inteira):
-
-- concluída com a OM de execução ainda não fechada;
-- concluída, mas a OM de execução não cita a peça ou o item da pendência;
-- cancelada junto com a OM, ou cancelada sem nenhuma OM;
-- em execução com a OM já com apontamentos concluídos (pronta para concluir);
-- pendente que talvez já foi resolvida por outra OM fechada na mesma turbina que trocou peça do
-  mesmo tipo (parafuso, óleo, filtro e o-ring não bastam para sugerir);
-- há quanto tempo cada pendente está aberta, por turbina, com lista e exportação em CSV.
+um período maior que o das OMs, ex.: 2 anos). A aba **Pendências** usa só esse arquivo, no estilo
+Power BI: filtros de data de abertura, status (Aberta, Em andamento, Fechada, Cancelada) e descrição;
+cartões; rosca de status; idade das abertas; as pendências que mais se repetem; barras por turbina,
+quem abriu e parque divididas por status; fechadas por mês; lista com CSV. Tocar em qualquer visual
+filtra a página inteira.
 
 Na ficha da OM aparecem, numa linha cada, as pendências abertas ou executadas nela.
 
