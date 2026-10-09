@@ -23,7 +23,7 @@
   var CAMPOS = ['om', 'status', 'grupo', 'tipo', 'natureza', 'wtg', 'sistema', 'parada', 'dAb', 'dFe',
     'dCa', 'leadH', 'idadeBkl', 'faixa', 'entrega', 'hhPrev', 'hhReal', 'hhApont', 'hhProd', 'custoMO',
     'custoMat', 'custoTot', 'espera', 'cancel', 'resp', 'reprog', 'ckItens', 'ckResp', 'durH',
-    'ateInicioH', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasItens', 'pecasTrecho', 'falhas'];
+    'ateInicioH', 'dProg', 'eAbertas', 'eProg', 'eEspera', 'eApont', 'desc', 'exec', 'atipico', 'tecnicos', 'obsEspera', 'obsCancel', 'pecas', 'pecasItens', 'pecasTrecho', 'falhas'];
   var CAMPOS_AP = ['ordem', 'pessoa', 'tipoAp', 'dia', 'horas'];
 
   /*
@@ -583,6 +583,7 @@
         Motivo_Espera: r['Motivo de espera'] || null, Obs_Motivo_Espera: r['Observação do motivo de espera'],
         Motivo_Cancelamento: r['Motivo do cancelamento'] || null, Obs_Cancelamento: r['Observação do motivo de cancelamento'],
         Mantenedor_Responsavel: r['Mantenedor responsável'] || null, Reprogramada: r['Motivo de Reprogramação'] ? 'Sim' : 'Não',
+        Data_Programacao: dataBR(r['Data de início da programação'], r['Hora de início da programação']),
         Descricao: r['Descrição'], Servico_Executado: textoManusis(r['Serviço executado'])
       });
     });
@@ -651,6 +652,33 @@
       for (var j = col.pecasItens[i].length - 1; j >= 0; j--) if (col.pecasItens[i][j][0] === c) { col.pecasItens[i].splice(j, 1); col.pecasTrecho[i].splice(j, 1); }
       col.pecas[i] = col.pecas[i].filter(function (x) { return x !== c; });
     });
+  }
+
+  /*
+   * Atividades programadas de manutenção (aba Programação), reconhecidas pela descrição da OM
+   * (padrões dos planos do Manusis). Corretivas de falha ficam de fora.
+   */
+  var ATIVIDADES = [
+    ['Preventiva', 'Semianual', /semi-?ann?ual|semi anual/],
+    ['Preventiva', 'Anual – Torque', /annual-\w+-\d+-day1|anual\b.*\bdia 1\b/],
+    ['Preventiva', 'Anual – Lubrificação', /anual-\w+-\d+-day2|anual\b.*\bdia 2\b/],
+    ['Preventiva', 'CRT – Segurança', /cycle-crt-(ch|ab)-seguranca/],
+    ['Preventiva', 'CRT – Assistente de subida', /cycle-crt-(chapada|asa)-crt/],
+    ['Preventiva', 'Tensionamento + DTA', /tensionamento/],
+    ['UPG', 'Filtro secundário', /\bupg\b|filtro (secund|segund)/],
+    ['UPG', 'Óleo GBX', /flushing-troca de oleo|^troca d[eo] oleo da (gearbox|gbx)/],
+    ['UPG', 'Mangueiras GBX', /^troca de mangueiras da (gearbox|gbx)/],
+    ['BRM', 'Pastilhas Yaw (pucks)', /yaw pucks|pastilhas.{0,20}yaw/],
+    ['BRM', 'BRMs (Yaw, Pitch, HPU)', /cycle-brm|^brm\b/],
+    ['Inspeção', 'Inspeção externa de pás', /wtg-blades/],
+    ['Inspeção', 'Inspeção interna de pás', /^inspecao interna de blades/],
+    ['Inspeção', 'Coleta de óleo GBX', /coleta de oleo/]
+  ];
+  function atividadeManut(desc) {
+    var t = semAcento(String(desc || '')).replace(/\s+/g, ' ').trim();
+    if (!t || /^(corretiv|gostaria|solicit|apenas para)/.test(t)) return -1; // corretivas e pedidos em texto livre
+    for (var k = 0; k < ATIVIDADES.length; k++) if (ATIVIDADES[k][2].test(t)) return k;
+    return -1;
   }
 
   /**
@@ -887,7 +915,7 @@
         custoMat: num(r.Custo_Material), custoTot: custo, espera: d.espera.id(r.Motivo_Espera),
         cancel: d.cancel.id(r.Motivo_Cancelamento), resp: d.pessoa.id(r.Mantenedor_Responsavel),
         reprog: r.Reprogramada === 'Sim' ? 1 : 0, ckItens: num(r.Checklist_Itens, 0), ckResp: num(r.Checklist_Respondidos, 0),
-        durH: num(r.Duracao_Servico_h), ateInicioH: num(r.Tempo_Ate_Inicio_h, 1),
+        durH: num(r.Duracao_Servico_h), ateInicioH: num(r.Tempo_Ate_Inicio_h, 1), dProg: dia(r.Data_Programacao),
         eAbertas: num(e[0], 1), eProg: num(e[1], 1), eEspera: num(e[2], 1), eApont: num(e[3], 1),
         desc: texto(r.Descricao), exec: texto(r.Servico_Executado),
         obsEspera: texto(r.Obs_Motivo_Espera), obsCancel: texto(r.Obs_Cancelamento),
@@ -947,5 +975,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, temPendencias: temPendencias, juntarPendencias: juntarPendencias, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, temPendencias: temPendencias, juntarPendencias: juntarPendencias, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, atividadeManut: atividadeManut, ATIVIDADES: ATIVIDADES.map(function (a) { return [a[0], a[1]]; }), COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });

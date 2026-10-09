@@ -98,12 +98,32 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 | Backlog | Envelhecimento, motivos de espera e OMs mais antigas |
 | Custos | Custo por mês e por tipo de serviço e OMs de maior custo; custos atípicos (≥ R$ 10 mi) excluídos por padrão |
 | Ordens | Tabela com busca, ordenação, paginação e exportação CSV |
+| Materiais | Consumo de materiais do Manusis (quando carregado) |
+| Pendências | Pendências do Manusis (quando carregadas) |
+| Programação | Programado × Realizado das atividades programadas (Curva S) |
 
 **Filtros** (valem para todas as páginas): período, parque, turbina, tipo de
 serviço, falha, componente trocado e status. Clicar numa barra ou num parque
 também filtra (cross-filter). Clique numa turbina para abrir o detalhe e numa
 OM para ver a ficha completa. O estado fica na URL, então o link pode ser
 compartilhado já filtrado. Todo gráfico tem o botão de **visão em tabela**.
+
+## Programação × Realizado
+
+A aba **Programação** mostra as atividades programadas de manutenção, reconhecidas pela descrição da OM
+(`atividadeManut` em `modelo.js`): Preventiva (Semianual, Anual – Torque/Dia 1, Anual – Lubrificação/Dia 2,
+CRT – Segurança, CRT – Assistente de subida, Tensionamento + DTA), UPG (filtro secundário, óleo GBX,
+mangueiras GBX), BRM (BRMs Yaw/Pitch/HPU, pastilhas Yaw) e Inspeção (pás externa/interna, coleta de óleo GBX).
+Corretivas de falha e pedidos em texto livre ficam de fora.
+
+- **Programado** = OMs com a *data de início da programação* do Manusis no período (sem as canceladas)
+- **Realizado** = OMs fechadas no período
+- **Aderência** = programadas no período que já foram fechadas ÷ programadas
+- **Atrasada** = programada há mais de 30 dias e ainda não fechada
+- **Curva S** = programado e realizado acumulados, em % do programado (eixo da direita)
+
+Filtros: complexo, grupo, atividade, ano e mês; tocar num mês, atividade, parque ou turbina filtra a página.
+A base guardada antes dessa versão não tem a data de programação: atualize a base de OMs do Manusis.
 
 ## Definições dos indicadores
 
