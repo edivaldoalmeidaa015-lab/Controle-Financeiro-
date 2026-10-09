@@ -770,6 +770,40 @@
     return { linhas: C.om.length, oms: Object.keys(oms).length, achadas: Object.keys(soma).length, fora: Object.keys(fora).length };
   }
 
+  /* ---------- Pendências do Manusis 4 (aba "Pendências") ---------- */
+  var ABA_PENDENCIAS = 'Pendências';
+  function temPendencias(wb) { return !!wb.Sheets[ABA_PENDENCIAS]; }
+  /** Lê a aba de pendências em colunas: número, datas (dd/mm/aaaa), status, descrição, OMs de origem e execução, turbina e quem abriu. */
+  function lerPendencias(wb, XLSX) {
+    var brutas = XLSX.utils.sheet_to_json(wb.Sheets[ABA_PENDENCIAS], { defval: '' });
+    if (!brutas.length) throw new Error('A aba "' + ABA_PENDENCIAS + '" está vazia.');
+    if (!('Número' in brutas[0]) || !('Status' in brutas[0]) || !('OM de execução' in brutas[0]))
+      throw new Error('A aba "' + ABA_PENDENCIAS + '" não tem as colunas "Número", "Status" e "OM de execução".');
+    var P = { num: [], abre: [], fecha: [], status: [], desc: [], omOrig: [], omExec: [], wtg: [], usuario: [] };
+    var data = function (v) {
+      if (v instanceof Date) return ('0' + v.getDate()).slice(-2) + '/' + ('0' + (v.getMonth() + 1)).slice(-2) + '/' + v.getFullYear();
+      var m = /^(\d{2}\/\d{2}\/\d{4})/.exec(String(v || '').trim()); return m ? m[1] : '';
+    };
+    var om = function (v) { var n = parseInt(String(v || '').replace(/\D/g, ''), 10); return n || 0; };
+    brutas.forEach(function (r) {
+      var num = om(r['Número']); if (!num) return;
+      P.num.push(num); P.abre.push(data(r['Data de abertura'])); P.fecha.push(data(r['Data de conclusão']));
+      P.status.push(String(r.Status || '').trim()); P.desc.push(String(r['Descrição'] || '').trim());
+      P.omOrig.push(om(r['OM de origem'])); P.omExec.push(om(r['OM de execução']));
+      // "WTG0-0028-ASA-Aerogerador AB-V08" -> "AB-V08"
+      var at = String(r['Ativo'] || ''), i = at.indexOf('Aerogerador ');
+      P.wtg.push(i >= 0 ? at.slice(i + 12).trim() : at.trim());
+      P.usuario.push(String(r['Usuário'] || '').trim());
+    });
+    return P;
+  }
+  function juntarPendencias(M, wb, XLSX) {
+    var P = M.pendencias = lerPendencias(wb, XLSX);
+    var oms = {}; M.ordens.om.forEach(function (n) { oms[n] = 1; });
+    var ligadas = 0; P.num.forEach(function (_, k) { if (oms[P.omExec[k]] || oms[P.omOrig[k]]) ligadas++; });
+    return { linhas: P.num.length, ligadas: ligadas };
+  }
+
   function juntarConsumo(M, wb, XLSX) {
     M.consumo = lerConsumo(wb, XLSX);
     if (M.ordens.custoOM === undefined) M.ordens.custoOM = M.ordens.custoTot.slice(); // como veio na OM, antes do consumo
@@ -913,5 +947,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, temPendencias: temPendencias, juntarPendencias: juntarPendencias, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });
