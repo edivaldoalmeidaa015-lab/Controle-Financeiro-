@@ -847,7 +847,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2446,7 +2446,7 @@ function mostrarUltimaOM() {
 }
 /* Marca de conferência de cada peça na ficha: [classe, texto, dica]. */
 var MARCA = {
-  ok: ['bom', '✓ baixada', 'Há baixa de peça do mesmo tipo no Manusis.'],
+  ok: ['bom', '✓ dado baixa', 'Há baixa de peça do mesmo tipo no Manusis.'],
   okTexto: ['bom', '✓ troca descrita', 'A troca desta peça está descrita no serviço executado.'],
   semBaixa: ['ruim', '⚠ sem baixa', 'O texto diz que trocou, mas não há baixa desta peça no Manusis.'],
   aguarda: ['neutro', 'aguardando baixa', 'OM em aberto: a baixa pode ser lançada até o encerramento.'],
