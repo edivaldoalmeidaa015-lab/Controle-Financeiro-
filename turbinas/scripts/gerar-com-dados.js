@@ -3,7 +3,7 @@
  * Gera uma versão do painel com os dados já embutidos (funciona offline,
  * sem precisar carregar a planilha no navegador).
  *
- * Uso: node gerar-com-dados.js <planilha de OMs.xlsx> <saida.html> [--consumo=consumo_de_materiais.xlsx] [--logo=simbolo.png] [--logo-completo=logo.png] [--logo-nome="Empresa"]
+ * Uso: node gerar-com-dados.js <planilha de OMs.xlsx> <saida.html> [--consumo=consumo_de_materiais.xlsx] [--pendencias=pendencias.xlsx] [--logo=simbolo.png] [--logo-completo=logo.png] [--logo-nome="Empresa"]
  * Requer o pacote "xlsx" (SheetJS): npm install xlsx
  *
  * Atenção: o HTML gerado contém os dados da operação — não publique em
@@ -32,6 +32,11 @@ var modelo = Modelo.montar(XLSX.readFile(entrada), XLSX);
 if (opcao('consumo')) {
   var st = Modelo.juntarConsumo(modelo, XLSX.readFile(opcao('consumo')), XLSX);
   console.log('Consumo: ' + st.linhas + ' baixas em ' + st.oms + ' OMs (' + st.fora + ' fora da base)');
+}
+// pendências do Manusis (opcional): ligadas às OMs de origem e de execução
+if (opcao('pendencias')) {
+  var sp = Modelo.juntarPendencias(modelo, XLSX.readFile(opcao('pendencias')), XLSX);
+  console.log('Pendências: ' + sp.linhas + ' (' + sp.ligadas + ' ligadas a OMs da base)');
 }
 // Leitor de Excel (SheetJS, versão enxuta) embutido: o botão "Atualizar base" funciona sem internet.
 var leitorExcel = fs.readFileSync(require.resolve('xlsx/dist/xlsx.mini.min.js'), 'utf8').replace(/<\/script/gi, '<\\/script');

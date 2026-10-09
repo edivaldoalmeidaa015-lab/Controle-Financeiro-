@@ -25,9 +25,23 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
 - as baixas com preço unitário fora do padrão (ex.: óleo cadastrado por litro
   com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
 
-Carregue as duas planilhas juntas, ou o consumo depois da base de OMs; ao
-atualizar só as OMs, o consumo já carregado continua ligado. Também vale uma planilha única com as abas
-de ordens e de consumo: `node turbinas/scripts/juntar-bases.js ordens.xlsx consumo.xlsx base.xlsx`.
+Também opcional: as **pendências** do Manusis 4 (aba "Pendências", abertas e fechadas; pode ser
+um período maior que o das OMs, ex.: 2 anos). Cada pendência se liga às OMs de origem e de execução
+e a página Peças ganha o quadro **Pendências do Manusis: controle**, com a situação de cada uma:
+
+- concluída com a OM de execução ainda não fechada;
+- concluída, mas a OM de execução não cita a peça ou o item da pendência;
+- cancelada junto com a OM, ou cancelada sem nenhuma OM;
+- em execução com a OM já com apontamentos concluídos (pronta para concluir);
+- pendente que talvez já foi resolvida por outra OM fechada na mesma turbina que trocou peça do
+  mesmo tipo (parafuso, óleo, filtro e o-ring não bastam para sugerir);
+- há quanto tempo cada pendente está aberta, por turbina, com lista e exportação em CSV.
+
+Na ficha da OM aparecem, numa linha cada, as pendências abertas ou executadas nela.
+
+Carregue as planilhas juntas, ou o consumo e as pendências depois da base de OMs; ao
+atualizar só as OMs, o consumo e as pendências já carregados continuam ligados. Também vale uma planilha única com as abas
+de ordens, consumo e pendências: `node turbinas/scripts/juntar-bases.js ordens.xlsx consumo.xlsx base.xlsx [--pendencias=pendencias.xlsx]`.
 
 ## Como usar
 
