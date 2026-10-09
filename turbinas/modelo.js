@@ -663,7 +663,7 @@
     ['Preventiva', 'Anual – Torque', /annual-\w+-\d+-day1|anual\b.*\bdia 1\b/],
     ['Preventiva', 'Anual – Lubrificação', /anual-\w+-\d+-day2|anual\b.*\bdia 2\b/],
     ['Preventiva', 'CRT – Segurança', /cycle-crt-(ch|ab)-seguranca/],
-    ['Preventiva', 'CRT – Assistente de subida', /cycle-crt-(chapada|asa)-crt/],
+    ['Preventiva', 'Certificação Climb System', /cycle-crt-(chapada|asa)-crt/], // CRT – assistente de subida
     ['Preventiva', 'Tensionamento + DTA', /tensionamento/],
     ['UPG', 'Filtro secundário', /\bupg\b|filtro (secund|segund)/],
     ['UPG', 'Óleo GBX', /flushing-troca de oleo|^troca d[eo] oleo da (gearbox|gbx)/],

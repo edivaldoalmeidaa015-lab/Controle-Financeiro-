@@ -112,7 +112,7 @@ compartilhado já filtrado. Todo gráfico tem o botão de **visão em tabela**.
 
 A aba **Programação** mostra as atividades programadas de manutenção, reconhecidas pela descrição da OM
 (`atividadeManut` em `modelo.js`): Preventiva (Semianual, Anual – Torque/Dia 1, Anual – Lubrificação/Dia 2,
-CRT – Segurança, CRT – Assistente de subida, Tensionamento + DTA), UPG (filtro secundário, óleo GBX,
+CRT – Segurança, Certificação Climb System (CRT – assistente de subida), Tensionamento + DTA), UPG (filtro secundário, óleo GBX,
 mangueiras GBX), BRM (BRMs Yaw/Pitch/HPU, pastilhas Yaw) e Inspeção (pás externa/interna, coleta de óleo GBX).
 Corretivas de falha e pedidos em texto livre ficam de fora.
 
@@ -121,6 +121,7 @@ Corretivas de falha e pedidos em texto livre ficam de fora.
 - **Aderência** = programadas no período que já foram fechadas ÷ programadas
 - **Atrasada** = programada há mais de 30 dias e ainda não fechada
 - **Curva S** = programado e realizado acumulados, em % do programado (eixo da direita)
+- **Situação dos ciclos** = para cada ciclo (atividade + ano, ex.: Semianual 2026, BRMs 2025), com o status de hoje: feitas (fechadas), executadas aguardando fechar (apontamentos concluídos) e em aberto, por complexo
 
 Filtros: complexo, grupo, atividade, ano e mês; tocar num mês, atividade, parque ou turbina filtra a página.
 A base guardada antes dessa versão não tem a data de programação: atualize a base de OMs do Manusis.

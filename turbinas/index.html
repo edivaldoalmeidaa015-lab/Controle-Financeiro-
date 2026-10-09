@@ -297,6 +297,7 @@ button.bh-row:hover, .bh-row.foco { background: var(--hover); }
 .bh-row.dim .bh-bar { opacity: .28; }
 .bh-row.dim .bh-lab, .bh-row.dim .bh-val { color: var(--muted); }
 .bh-row.sel .bh-lab { font-weight: 650; }
+@media (max-width: 700px) { .bh-cima .bh-row { grid-template-columns: 1fr auto; row-gap: 3px; } .bh-cima .bh-lab { grid-column: 1 / -1; white-space: normal; } .bh-cima .bh-lab small { white-space: normal; } }
 
 .legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin: -2px 0 10px; }
 .legenda span { display: inline-flex; align-items: center; gap: 6px; }
@@ -886,7 +887,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.16'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.17'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -1170,7 +1171,7 @@ function barrasH(el, itens, o) {
   var max = o.max || Math.max.apply(null, itens.map(function (d) { return d.v; })) || 1;
   // coluna do valor com a mesma largura em todas as linhas: a barra tem o mesmo comprimento máximo em todas
   var maiorVal = Math.max.apply(null, itens.map(function (d) { return (fmt(d.v) + (d.extra ? ' ' + d.extra : '')).length; }));
-  var lista = h('div', { class: 'bh', style: (o.larguraRotulo ? '--rot:' + o.larguraRotulo + ';' : '') + '--val:' + Math.min(22, maiorVal * 0.68 + 1).toFixed(1) + 'em' });
+  var lista = h('div', { class: 'bh' + (o.rotuloEmCima ? ' bh-cima' : ''), style: (o.larguraRotulo ? '--rot:' + o.larguraRotulo + ';' : '') + '--val:' + Math.min(22, maiorVal * 0.68 + 1).toFixed(1) + 'em' });
   var ativo = o.ativo;
   itens.forEach(function (d) {
     var sel = ativo && ativo.has(d.k), dim = ativo && ativo.size && !sel;
@@ -2575,7 +2576,7 @@ function cartaoListaPend(pg, sel, idadeDe) {
    ===================================================================== */
 var GRUPOS_PROG = ['Preventiva', 'UPG', 'BRM', 'Inspeção'];
 var COR_PROG = 'var(--s1)', COR_REAL = 'var(--good)', COR_PEND = 'var(--s4)', COR_ATRASO = 'var(--critical)';
-var PROG_F0 = function () { return { complexo: null, grupo: null, ativ: null, ano: undefined, mes: null, parque: null, wtg: null, lista: 'pend' }; };
+var PROG_F0 = function () { return { complexo: null, grupo: null, ativ: null, ciclo: null, ano: undefined, mes: null, parque: null, wtg: null, lista: 'pend' }; };
 var progF = PROG_F0();
 var PROG = null; // atividade programada de cada OM (índice em ATIVIDADES ou -1)
 function atividadesOM() {
@@ -2605,6 +2606,11 @@ function paginaProgramacao(pg) {
   var cancelada = function (i) { return O.grupo[i] === IDX.grupo['Cancelada']; };
   var parqueDe = function (i) { return O.wtg[i] >= 0 ? parqueDoWtg[O.wtg[i]] : -1; };
   var complexoDe = function (i) { var p = parqueDe(i); return p >= 0 ? M.parqueComplexo[p] : -1; };
+  // ciclo = atividade + ano do ciclo (o ano vem da descrição, ex.: "…SEMIANNUAL-2026…"; senão, da data programada)
+  var anoCiclo = function (i) { var m = /20\d\d/.exec(O.desc[i] || ''); return m ? +m[0] : O.dProg[i] !== null && O.dProg[i] !== undefined ? anoDe(O.dProg[i]) : null; };
+  var cicloDe = function (i) { return at[i] + '|' + anoCiclo(i); };
+  var nomeCiclo = function (c) { var p = c.split('|'); return AT[+p[0]][1] + (p[1] !== 'null' ? ' ' + p[1] : ''); };
+  var aguardando = function (i) { return M.dic.status[O.status[i]] === 'Apontamentos concluídos'; };
   // anos com programação; o padrão é o ano mais recente (como a "Curva S 2026")
   var anos = [];
   var todas = []; for (var i0 = 0; i0 < at.length; i0++) if (at[i0] >= 0) {
@@ -2619,6 +2625,7 @@ function paginaProgramacao(pg) {
     return (ignorar === 'complexo' || f.complexo === null || complexoDe(i) === f.complexo) &&
       (ignorar === 'grupo' || f.grupo === null || AT[k][0] === f.grupo) &&
       (ignorar === 'ativ' || f.ativ === null || k === f.ativ) &&
+      (ignorar === 'ciclo' || f.ciclo === null || cicloDe(i) === f.ciclo) &&
       (ignorar === 'parque' || f.parque === null || parqueDe(i) === f.parque) &&
       (ignorar === 'wtg' || f.wtg === null || O.wtg[i] === f.wtg);
   };
@@ -2653,10 +2660,11 @@ function paginaProgramacao(pg) {
   segs.append(h('label', { class: 'pseg seg-sel' }, h('span', { class: 'seg-tit' }, 'Mês'),
     h('select', { id: 'prog-mes', onchange: function (ev) { progF.mes = ev.target.value === '' ? null : +ev.target.value; renderProg(); } },
       [h('option', { value: '' }, 'Todos')].concat(MESES_LONGO.map(function (m, j) { return h('option', { value: String(j), selected: f.mes === j ? true : null }, m.charAt(0).toUpperCase() + m.slice(1)); })))));
-  var algum = f.complexo !== null || f.grupo !== null || f.ativ !== null || f.mes !== null || f.parque !== null || f.wtg !== null;
+  var algum = f.complexo !== null || f.grupo !== null || f.ativ !== null || f.ciclo !== null || f.mes !== null || f.parque !== null || f.wtg !== null;
   if (algum) segs.append(h('button', { type: 'button', class: 'btn seg-limpar', onclick: function () { var a = progF.ano; progF = PROG_F0(); progF.ano = a; renderProg(); } }, icone('fechar'), 'Limpar filtros'));
   var chips = [];
   var chip = function (rot, campo) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarProg(campo, f[campo]); } }, rot, h('span', { 'aria-hidden': 'true' }, ' ×'))); };
+  if (f.ciclo !== null) chip('Ciclo: ' + nomeCiclo(f.ciclo), 'ciclo');
   if (f.parque !== null) chip(M.parques[f.parque] || 'Parque', 'parque');
   if (f.wtg !== null) chip('Turbina ' + M.dic.wtg[f.wtg], 'wtg');
   if (f.mes !== null) chip(MESES_LONGO[f.mes] + (f.ano !== null ? ' de ' + f.ano : ''), 'mes');
@@ -2666,21 +2674,57 @@ function paginaProgramacao(pg) {
 
   /* ---------- cartões ---------- */
   var sel = todas.filter(function (i) { return passa(i); });
-  var nProg = 0, nReal = 0, nConc = 0, nPend = 0, nAtr = 0, nCanc = 0;
+  var nProg = 0, nReal = 0, nConc = 0, nPend = 0, nAtr = 0, nCanc = 0, nAg = 0;
   sel.forEach(function (i) {
     if (cancelada(i) && dentro(O.dProg[i])) nCanc++;
     if (realizada(i)) nReal++;
     if (!programada(i)) return;
     nProg++;
-    if (ehFechada(i)) nConc++; else { nPend++; if (atrasada(i)) nAtr++; }
+    if (ehFechada(i)) nConc++; else { nPend++; if (atrasada(i)) nAtr++; if (aguardando(i)) nAg++; }
   });
   var periodo = f.ano === null ? 'em todo o período' : f.mes !== null ? 'em ' + MESES_LONGO[f.mes] + ' de ' + f.ano : 'em ' + f.ano;
   pg.append(h('div', { class: 'kpis k5' },
     kpi({ rot: 'Programado', valor: fInt(nProg), valorTexto: fInt(nProg), sub: 'OMs ' + periodo + (nCanc ? ' · ' + fInt(nCanc) + ' canceladas fora' : ''), tip: 'OMs das atividades programadas com a data de início da programação no período. As canceladas não contam.' }),
     kpi({ rot: 'Realizado', valor: fInt(nReal), valorTexto: fInt(nReal), sub: 'OMs fechadas ' + periodo, tip: 'OMs das atividades programadas fechadas no período (pode incluir OM programada antes).' }),
     kpi({ rot: 'Aderência', valor: nProg ? fPct(nConc / nProg) : '–', valorTexto: pct(nConc, nProg), sub: fInt(nConc) + ' de ' + fInt(nProg) + ' programadas já fechadas', tip: 'Das OMs programadas no período, quantas já foram fechadas.' }),
-    kpi({ rot: 'Pendentes', valor: fInt(nPend), valorTexto: fInt(nPend), sub: 'programadas e ainda não fechadas', tip: 'Programadas no período e sem fechamento até ' + fData(hoje) + '.' }),
+    kpi({ rot: 'Pendentes', valor: fInt(nPend), valorTexto: fInt(nPend), sub: 'ainda não fechadas' + (nAg ? ' · ' + fInt(nAg) + ' executadas, aguardando fechar' : ''), tip: 'Programadas no período e sem fechamento até ' + fData(hoje) + '.' }),
     kpi({ rot: 'Atrasadas', valor: fInt(nAtr), valorTexto: fInt(nAtr), sub: pct(nAtr, nPend) + ' das pendentes · programadas há mais de 30 dias', tip: 'Pendentes com a data de início da programação há mais de 30 dias (antes de ' + fData(hoje - PRAZO) + ').' })));
+
+  /* ---------- situação de cada ciclo (status atual, sem o filtro de mês) ---------- */
+  var porComplexo = M.complexos.length > 1 && f.complexo === null;
+  var mc = new Map();
+  todas.forEach(function (i) {
+    if (!passa(i, 'ciclo')) return;
+    var c = cicloDe(i), cx = porComplexo ? complexoDe(i) : -1, ch = c + '#' + cx;
+    var x = mc.get(ch); if (!x) { x = { c: c, cx: cx, feitas: 0, ag: 0, ab: 0, canc: 0 }; mc.set(ch, x); }
+    if (cancelada(i)) x.canc++; else if (ehFechada(i)) x.feitas++; else if (aguardando(i)) x.ag++; else x.ab++;
+  });
+  var COR_AG = 'var(--s3)';
+  var itC = Array.from(mc.values()).filter(function (x) { return x.feitas + x.ag + x.ab; }).map(function (x) {
+    var tot = x.feitas + x.ag + x.ab, k = +x.c.split('|')[0];
+    return { k: x.c + '#' + x.cx, rot: nomeCiclo(x.c) + (x.cx >= 0 ? ' · ' + M.complexos[x.cx] : ''), v: tot, grupo: AT[k][0], ab: x.ab + x.ag,
+      partes: [{ v: x.feitas, cor: COR_REAL, rot: 'Feitas (fechadas)' }, { v: x.ag, cor: COR_AG, rot: 'Executadas, aguardando fechar' }, { v: x.ab, cor: COR_PEND, rot: 'Em aberto' }],
+      nota: fInt(x.feitas) + (x.feitas === 1 ? ' feita' : ' feitas') + (x.ag ? ' · ' + fInt(x.ag) + ' aguardando fechar' : '') + ' · ' + fInt(x.ab) + ' em aberto · ' + fPct(x.feitas / tot),
+      tip: x.canc ? [{ valor: fInt(x.canc), rotulo: 'canceladas (fora da conta)' }] : null,
+      t: { rot: nomeCiclo(x.c) + (x.cx >= 0 ? ' · ' + M.complexos[x.cx] : ''), grupo: AT[k][0], tot: tot, feitas: x.feitas, ag: x.ag, ab: x.ab, canc: x.canc, pct: x.feitas / tot } };
+  }).sort(function (a, b) { return (b.ab > 0) - (a.ab > 0) || GRUPOS_PROG.indexOf(a.grupo) - GRUPOS_PROG.indexOf(b.grupo) || (a.k < b.k ? 1 : a.k > b.k ? -1 : 0) || a.rot.localeCompare(b.rot); });
+  var andamento = itC.filter(function (d) { return d.ab > 0; }).length;
+  pg.append(cartao({ id: 'prog-ciclos', span: 's12', titulo: 'Situação dos ciclos',
+    sub: 'Cada ciclo abre as OMs de uma vez e elas vão fechando conforme a equipe executa · status de hoje (' + fData(hoje) + '), sem o filtro de ano e mês · ' + fInt(andamento) + ' ciclos em andamento · toque para ver as OMs do ciclo',
+    desenhar: function (el) {
+      el.append(legenda([{ nome: 'Feitas (fechadas)', cor: COR_REAL }, { nome: 'Executadas, aguardando fechar', cor: COR_AG }, { nome: 'Em aberto', cor: COR_PEND }]));
+      if (!itC.length) { el.append(h('div', { class: 'vazio' }, 'Nenhum ciclo com os filtros atuais.')); return; }
+      barrasH(el, itC, { rotuloEmCima: true, larguraRotulo: '48%', unidade: 'OMs', ativo: f.ciclo === null ? null : new Set(itC.filter(function (d) { var p = d.k.split('#'); return p[0] === f.ciclo && (f.complexo === null || +p[1] === f.complexo || +p[1] < 0); }).map(function (d) { return d.k; })), dica: 'Toque para ver as OMs deste ciclo',
+        onClick: function (kc) {
+          var p = kc.split('#'), c = p[0], cx = +p[1];
+          if (progF.ciclo === c && (cx < 0 || progF.complexo === cx)) progF.ciclo = null;
+          else { progF.ciclo = c; if (cx >= 0) progF.complexo = cx; progF.ano = null; progF.mes = null; progF.lista = 'pend'; }
+          renderProg();
+          if (progF.ciclo !== null) setTimeout(function () { var l = document.getElementById('prog-lista'); if (l) l.scrollIntoView({ block: 'start' }); }, 60);
+        } });
+    },
+    dados: { cols: [{ k: 'rot', rot: 'Ciclo' }, { k: 'grupo', rot: 'Grupo' }, { k: 'tot', rot: 'OMs', num: true, fmt: fInt }, { k: 'feitas', rot: 'Feitas', num: true, fmt: fInt }, { k: 'ag', rot: 'Aguardando fechar', num: true, fmt: fInt },
+      { k: 'ab', rot: 'Em aberto', num: true, fmt: fInt }, { k: 'canc', rot: 'Canceladas (fora)', num: true, fmt: fInt }, { k: 'pct', rot: '% feito', num: true, fmt: fPct }], linhas: itC.map(function (d) { return d.t; }) } }));
 
   /* ---------- meses do gráfico ---------- */
   var dias = []; todas.forEach(function (i) { if (!passa(i)) return; if (programada(i, true)) dias.push(O.dProg[i]); if (realizada(i, true)) dias.push(O.dFe[i]); });
@@ -2773,7 +2817,7 @@ function paginaProgramacao(pg) {
     var vis = itens.slice(0, top);
     if (f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
     if (!vis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma OM programada com os filtros atuais.')); return; }
-    barrasH(el, vis, { larguraRotulo: '46%', unidade: 'OMs', ativo: f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página', onClick: function (x) { filtrarProg(campo, x); } });
+    barrasH(el, vis, { rotuloEmCima: true, larguraRotulo: '46%', unidade: 'OMs', ativo: f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página', onClick: function (x) { filtrarProg(campo, x); } });
     if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
   };
   var itA = empilhar('ativ', function (i) { return at[i]; }, function (k) { return AT[k][1]; })
