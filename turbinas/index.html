@@ -848,7 +848,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.6'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.7'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2261,6 +2261,12 @@ function paginaComponentes(pg) {
 
   if (CONS) cartoesConsumo(pg, B);
   if (PEND) { cartaoPendMes(pg); cartaoPendManusis(pg); }
+  else pg.append(h('section', { class: 'card s12 sem-consumo', id: 'sem-pendencias' },
+    h('h3', null, 'Falta carregar as pendências do Manusis'),
+    h('p', null, 'Aqui aparecem o gráfico de pendências concluídas por mês e o quadro de controle das pendências (concluída sem comprovar, cancelada com a OM, pronta para concluir, há quanto tempo está aberta…). ',
+      'Para isso, o painel precisa da exportação de ', h('b', null, 'pendências do Manusis'), ' (abertas e fechadas, até 2 anos).'),
+    h('p', null, 'Toque no botão e escolha o arquivo ', h('b', null, 'pendencias_….zip'), ' (ou a base pronta com tudo junto). As OMs e o consumo já carregados continuam.'),
+    h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar pendências')));
 
   pg.append(cartaoPecas('s6', 12));
 
