@@ -848,12 +848,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.3'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.4'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): novo quadro “Pendências do Manusis” na página Peças (carregue a exportação de pendências em “Atualizar base”).' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): quadro “Pendências do Manusis” e gráfico de pendências concluídas por mês na página Peças (carregue a exportação de pendências em “Atualizar base”).' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -1245,7 +1245,7 @@ function serieTempo(el, c) {
         svg.append(sv('path', { d: d, fill: p.cor, opacity: c.baldes[i].parcial ? .55 : 1 }));
       });
     });
-    if (c.series.length === 1 && n <= 14 && banda > 34) {
+    if ((c.series.length === 1 && n <= 14 && banda > 34) || (c.rotularTotais && banda > 20)) {
       totais.forEach(function (v, i) {
         if (v > 0) svg.append(sv('text', { x: x(i), y: y(v) - 6, 'text-anchor': 'middle', class: 'eixo', style: 'fill:var(--ink-2);font-weight:600' }, c.fmtCurto ? c.fmtCurto(v) : fEixo(v, c.eixo)));
       });
@@ -1290,12 +1290,20 @@ function serieTempo(el, c) {
     mostrar(i, ev.clientX, ev.clientY);
   });
   capa.addEventListener('pointerleave', limpar);
+  if (c.onClick) {
+    capa.style.cursor = 'pointer';
+    capa.addEventListener('click', function (ev) {
+      var r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      c.onClick(Math.max(0, Math.min(n - 1, Math.floor((px - m.l) / banda))));
+    });
+  }
   var caixa = h('div', { class: 'grafico', tabindex: '0', 'aria-label': (c.titulo || 'Gráfico') + '. Use as setas para navegar.' });
   caixa.addEventListener('keydown', function (ev) {
     if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
     ev.preventDefault();
     mostrar(Math.max(0, Math.min(n - 1, (atual < 0 ? 0 : atual) + (ev.key === 'ArrowRight' ? 1 : -1))));
   });
+  if (c.onClick) caixa.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && atual >= 0) c.onClick(atual); });
   caixa.addEventListener('blur', limpar);
   caixa.append(svg);
   if (c.legenda !== false && (!mostraRotDir || c.series.length > 1)) {
@@ -2094,26 +2102,72 @@ function cartaoPendencias(pg, B) {
  * pronta para concluir, talvez já resolvida…), idade das abertas e turbinas. Vale todo o arquivo de pendências
  * (pode ser maior que o período das OMs); os filtros de complexo, parque e turbina se aplicam.
  */
-var pendMSel = { sit: 'alertas', idade: null, wtg: null };
+var pendMSel = { sit: 'alertas', idade: null, wtg: null, mes: null }; // mes: {ini, fim, rot} = concluídas naquele mês
+function pendNoLocal(k) {
+  var f = estado.f, w = PEND.w[k], pq = w >= 0 ? parqueDoWtg[w] : -1;
+  return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
+}
+var CONC_ALERTA = ['concOMAberta', 'concNaoCita', 'concSemOM'];
+/** Pendências concluídas por mês (data de conclusão), comprovadas × com ponto de controle, com as abertas no mês por cima. */
+function cartaoPendMes(pg) {
+  var P = M.pendencias, n = P.num.length, ks = [];
+  for (var k = 0; k < n; k++) if (pendNoLocal(k)) ks.push(k);
+  var dias = []; ks.forEach(function (k) { if (PEND.dAb[k] !== null) dias.push(PEND.dAb[k]); if (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null) dias.push(PEND.dFe[k]); });
+  if (!dias.length) return;
+  var ini = dataDe(Math.min.apply(null, dias)), fim = dataDe(Math.max.apply(null, dias)), b = [];
+  for (var ano = ini.getUTCFullYear(), mes = ini.getUTCMonth(); ano < fim.getUTCFullYear() || (ano === fim.getUTCFullYear() && mes <= fim.getUTCMonth()); mes = (mes + 1) % 12, ano += mes === 0 ? 1 : 0) {
+    b.push({ ini: diaDe(new Date(Date.UTC(ano, mes, 1))), fim: diaDe(new Date(Date.UTC(ano, mes + 1, 1))) - 1, rot: rotuloMes(ano, mes, mes === 0 || !b.length), longo: MESES_LONGO[mes] + ' de ' + ano });
+  }
+  b.tipo = 'mês';
+  var de = function (d) { for (var j = 0; j < b.length; j++) if (d >= b[j].ini && d <= b[j].fim) return j; return -1; };
+  var ok = b.map(function () { return 0; }), al = ok.slice(), ant = ok.slice(), abertas = ok.slice(), canc = ok.slice();
+  ks.forEach(function (k) {
+    var sit = PEND.sit[k];
+    if (PEND.dAb[k] !== null) { var ja = de(PEND.dAb[k]); if (ja >= 0) abertas[ja]++; }
+    if (PEND.dFe[k] === null) return;
+    var j = de(PEND.dFe[k]); if (j < 0) return;
+    if (sit === 'concOk') ok[j]++; else if (CONC_ALERTA.indexOf(sit) >= 0) al[j]++; else if (sit === 'concFora') ant[j]++; else if (/^canc/.test(sit)) canc[j]++;
+  });
+  var tot = ok.map(function (v, j) { return v + al[j] + ant[j]; });
+  var top = tot.map(function (v, j) { return j; }).sort(function (x, y) { return tot[y] - tot[x]; }).filter(function (j) { return tot[j] > 0; }).slice(0, 3);
+  var soma = tot.reduce(function (a, v) { return a + v; }, 0);
+  pg.append(cartao({
+    id: 'pend-mes', span: 's12', titulo: 'Pendências concluídas por mês',
+    sub: fInt(soma) + ' concluídas no Manusis, pelo mês da conclusão' + (top.length ? ' · meses com mais conclusões: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
+      '. Toque num mês para ver também quantas foram abertas e para listar as concluídas nele.',
+    desenhar: function (el) {
+      serieTempo(el, { baldes: b, modo: 'colunas', altura: 260, titulo: 'Pendências concluídas por mês',
+        series: [{ nome: 'Concluída e comprovada pela OM', cor: 'var(--good)', valores: ok }, { nome: 'Concluída com ponto de controle', cor: 'var(--critical)', valores: al },
+          { nome: 'Concluída com OM de antes do período', cor: 'var(--neutral)', valores: ant }],
+        rotularTotais: true,
+        tipExtra: function (j) { return [{ valor: fInt(abertas[j]), rotulo: 'Abertas no mês' }].concat(canc[j] ? [{ valor: fInt(canc[j]), rotulo: 'Canceladas no mês' }] : []); },
+        onClick: function (j) {
+          pendMSel = { sit: 'todas', idade: null, wtg: null, mes: { ini: b[j].ini, fim: b[j].fim, rot: b[j].longo } };
+          renderPagina();
+          setTimeout(function () { var c = document.getElementById('pend-manusis'); if (c) c.scrollIntoView({ block: 'start' }); }, 60);
+        } });
+    },
+    dados: { cols: [{ k: 'p', rot: 'Mês' }, { k: 'ok', rot: 'Comprovadas', num: true, fmt: fInt }, { k: 'al', rot: 'Com ponto de controle', num: true, fmt: fInt },
+      { k: 'ant', rot: 'OM antiga', num: true, fmt: fInt }, { k: 't', rot: 'Total concluídas', num: true, fmt: fInt }, { k: 'ab', rot: 'Abertas no mês', num: true, fmt: fInt }, { k: 'c', rot: 'Canceladas', num: true, fmt: fInt }],
+      linhas: b.map(function (x, j) { return { p: x.longo, ok: ok[j], al: al[j], ant: ant[j], t: tot[j], ab: abertas[j], c: canc[j] }; }) }
+  }));
+}
 var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', max: 30 }, { k: 1, rot: '30 a 90 dias', max: 90 }, { k: 2, rot: '3 a 6 meses', max: 180 }, { k: 3, rot: '6 meses a 1 ano', max: 365 }, { k: 4, rot: 'Mais de 1 ano', max: Infinity }];
 function cartaoPendManusis(pg) {
   var P = M.pendencias, n = P.num.length, hoje = diaMax;
   for (var k0 = 0; k0 < n; k0++) if (PEND.dAb[k0] !== null && PEND.dAb[k0] > hoje) hoje = PEND.dAb[k0];
-  var f = estado.f, aberta = function (k) { return /^(pend|exec)/.test(PEND.sit[k]); };
+  var aberta = function (k) { return /^(pend|exec)/.test(PEND.sit[k]); };
   var idadeDe = function (k) { return aberta(k) && PEND.dAb[k] !== null ? hoje - PEND.dAb[k] : null; };
   var faixa = function (k) { var d = idadeDe(k); if (d === null) return -1; for (var j = 0; j < IDADES_PEND.length; j++) if (d < IDADES_PEND[j].max) return j; return -1; };
-  var noLocal = function (k) {
-    var w = PEND.w[k], pq = w >= 0 ? parqueDoWtg[w] : -1;
-    return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
-  };
-  var todas = []; for (var k = 0; k < n; k++) if (noLocal(k)) todas.push(k);
+  var todas = []; for (var k = 0; k < n; k++) if (pendNoLocal(k)) todas.push(k);
+  var noMes = function (k) { var x = pendMSel.mes; return !x || (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null && PEND.dFe[k] >= x.ini && PEND.dFe[k] <= x.fim); };
   var ordemSit = Object.keys(SIT_PEND);
   // escolher uma faixa de idade lista todas as abertas daquela idade, não só as com ponto de controle
   var sitEf = function () { return pendMSel.sit === 'alertas' && pendMSel.idade !== null ? 'todas' : pendMSel.sit; };
   var passa = function (k, ignorar) {
     var sit = PEND.sit[k], se = sitEf();
     return (ignorar === 'sit' || (se === 'alertas' ? SIT_PEND[sit].alerta : se === 'todas' || sit === se)) &&
-      (ignorar === 'idade' || pendMSel.idade === null || faixa(k) === pendMSel.idade) && (ignorar === 'wtg' || pendMSel.wtg === null || PEND.w[k] === pendMSel.wtg);
+      (ignorar === 'idade' || pendMSel.idade === null || faixa(k) === pendMSel.idade) && (ignorar === 'wtg' || pendMSel.wtg === null || PEND.w[k] === pendMSel.wtg) && noMes(k);
   };
   var corpo = h('div', { class: 'pend-grade' }), lista = h('div'), subP = h('p', null), limpar = h('button', { class: 'btn', type: 'button' }, 'Ver todas as pendências');
   function bloco(titulo, itens, ativo, onClick, top) {
@@ -2152,9 +2206,10 @@ function cartaoPendManusis(pg) {
     var se = sitEf(), oQue = se === 'alertas' ? 'com ponto de controle' : se === 'todas' ? '' : '“' + SIT_PEND[se].curto + '”';
     if (pendMSel.idade !== null) oQue += (oQue ? ', ' : '') + 'abertas há ' + IDADES_PEND[pendMSel.idade].rot.toLowerCase();
     if (pendMSel.wtg !== null) oQue += (oQue ? ', ' : '') + 'na ' + M.dic.wtg[pendMSel.wtg];
+    if (pendMSel.mes) oQue += (oQue ? ', ' : '') + 'concluídas em ' + pendMSel.mes.rot;
     subP.textContent = fInt(todas.length) + ' pendências no arquivo, ' + fInt(nAl) + ' com ponto de controle. Listando ' + fInt(ls.length) + (oQue ? ' ' + oQue : '') + '.' +
       (se !== 'alertas' && se !== 'todas' ? ' ' + SIT_PEND[se].dica : '') + ' Toque numa barra para filtrar e numa linha para abrir a OM.';
-    limpar.textContent = pendMSel.sit === 'todas' ? 'Só pontos de controle' : 'Ver todas as pendências';
+    limpar.textContent = pendMSel.mes ? 'Limpar mês' : pendMSel.sit === 'todas' ? 'Só pontos de controle' : 'Ver todas as pendências';
     var clamp = function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); };
     tabela(lista, {
       cols: [{ k: 'num', rot: 'Nº', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: function (v) { return v === null ? '–' : fData(v); } }, { k: 'wtgTxt', rot: 'Turbina' },
@@ -2164,7 +2219,7 @@ function cartaoPendManusis(pg) {
       linhas: ls, altura: 420, onLinha: function (r, ts) { if (r.i === undefined) return; var is = ts.filter(function (x) { return x.i !== undefined; }).map(function (x) { return x.i; }); abrirOM(r.i, is); }
     });
   }
-  limpar.addEventListener('click', function () { pendMSel = { sit: pendMSel.sit === 'todas' ? 'alertas' : 'todas', idade: null, wtg: null }; desenhar(); });
+  limpar.addEventListener('click', function () { pendMSel = { sit: pendMSel.mes || pendMSel.sit === 'todas' ? 'alertas' : 'todas', idade: null, wtg: null, mes: null }; desenhar(); });
   function exportar() {
     baixarCSV('pendencias-manusis-controle.csv', ['Número', 'Abertura', 'Conclusão', 'Turbina', 'Status no Manusis', 'Situação de controle', 'Pendência', 'OM de origem', 'OM de execução', 'OM que talvez resolveu', 'Dias aberta', 'Aberta por', 'Descrição completa'],
       linhas().map(function (r) { return [r.num, r.abertura === null ? '' : fData(r.abertura), r.conclusao === null ? '' : fData(r.conclusao), r.wtgTxt, r.statusTxt, SIT_PEND[PEND.sit[r.k]].rot, r.item, r.omOrig, r.omExec, r.omSug, r.idade === null ? '' : r.idade, r.usuario, P.desc[r.k]]; }));
@@ -2205,7 +2260,7 @@ function paginaComponentes(pg) {
   ));
 
   if (CONS) cartoesConsumo(pg, B);
-  if (PEND) cartaoPendManusis(pg);
+  if (PEND) { cartaoPendMes(pg); cartaoPendManusis(pg); }
 
   pg.append(cartaoPecas('s6', 12));
 
