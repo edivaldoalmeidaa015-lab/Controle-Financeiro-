@@ -384,7 +384,11 @@ small .mc { display: inline; }
 .st-btn i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .st-btn small { color: var(--muted); font-weight: 500; }
 .st-btn.on { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-ink); }
-.pend-om { margin: 0 0 14px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.pend-om { margin: 0 0 6px; padding: 0; list-style: none; font-size: 13.5px; line-height: 1.45; }
+.pend-om li { display: grid; grid-template-columns: 28px 1fr; gap: 2px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.pend-om li small { display: block; font-size: 11.5px; color: var(--muted); }
+.pend-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pend-total { margin: 4px 0 14px; font-size: 13px; }
 .pend-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 22px; margin-bottom: 14px; }
 .pend-bloco h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
@@ -879,7 +883,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.12'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.13'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2946,15 +2950,20 @@ function blocoConsumo(i) {
 /** Pendências do Manusis abertas ou executadas nesta OM, uma linha cada, com a situação pendência × OM. */
 function blocoPendOM(i) {
   if (!PEND || !PEND.porOM[i]) return null;
-  var P = M.pendencias;
-  var lin = PEND.porOM[i].slice().sort(function (a, b) { return P.num[a] - P.num[b]; }).map(function (k) {
-    var st = SIT_PEND[PEND.sit[k]], ok = PEND.sit[k] === 'concOk';
-    var papel = PEND.iExec[k] === i ? 'executada nesta OM' : 'aberta nesta OM';
-    return h('li', null, h('b', null, 'Nº ' + P.num[k]), ' · ' + textoPendencia(P.desc[k]) + ' ',
-      h('small', { style: 'color:var(--muted)' }, '(' + papel + ') '),
-      h('span', { class: 'mc ' + (st.alerta ? 'ruim' : ok ? 'bom' : 'neutro'), title: st.dica }, (st.alerta ? '⚠ ' : ok ? '✓ ' : '') + st.curto.toLowerCase()));
+  var P = M.pendencias, ks = PEND.porOM[i].slice().sort(function (a, b) { return P.num[a] - P.num[b]; });
+  var porSt = {};
+  var lin = ks.map(function (k, j) {
+    var sit = SIT_PEND[PEND.sit[k]], st = stBI(k);
+    porSt[st] = (porSt[st] || 0) + 1;
+    var papel = PEND.iExec[k] === i ? 'executada nesta OM' : 'gerada nesta OM';
+    return h('li', null, h('span', { class: 'pend-n' }, (j + 1) + ' -'),
+      h('span', null, textoPendencia(P.desc[k]),
+        h('small', null, ' ', h('span', { class: 'mc ' + (sit.alerta ? 'ruim' : st === 'Fechada' ? 'bom' : 'neutro'), title: sit.dica }, (sit.alerta ? '⚠ ' + sit.curto : st).toLowerCase()),
+          ' · ' + papel + ' · nº ' + P.num[k] + ' no Manusis')));
   });
-  return [h('h4', null, 'Pendências do Manusis'), h('ul', { class: 'pend-om' }, lin)];
+  var resumo = Object.keys(STATUS_PEND).filter(function (x) { return porSt[x]; }).map(function (x) { return fInt(porSt[x]) + ' ' + x.toLowerCase() + (porSt[x] > 1 ? 's' : ''); }).join(' · ');
+  return [h('h4', null, 'Pendências do Manusis'), h('ol', { class: 'pend-om' }, lin),
+    h('p', { class: 'pend-total' }, h('b', null, 'Total: ' + fInt(ks.length) + (ks.length === 1 ? ' pendência' : ' pendências')), resumo ? ' (' + resumo + ')' : '')];
 }
 /** Imprime (ou salva em PDF) só a ficha da OM aberta, sem o painel atrás. */
 function imprimirOM() {
