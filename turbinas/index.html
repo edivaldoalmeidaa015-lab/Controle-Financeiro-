@@ -350,6 +350,11 @@ svg text { font-family: inherit; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 550; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
 .pill i { width: 7px; height: 7px; border-radius: 50%; }
 .pecas { display: flex; flex-wrap: wrap; gap: 6px; }
+.mc { font-size: 11px; font-weight: 700; white-space: nowrap; margin-left: 2px; }
+.mc.bom { color: var(--good-ink); } .mc.ruim { color: var(--critical-ink); } .mc.neutro { color: var(--muted); }
+small .mc { display: inline; }
+.pend-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 22px; margin-bottom: 14px; }
+.pend-bloco h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .baixas-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
 .tab.baixas td:first-child { white-space: normal; min-width: 180px; }
 .mat-filtros { flex-basis: 100%; width: 100%; }
@@ -842,21 +847,22 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-08';
-function fDataVersao() { var p = VERSAO_PAINEL.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+var VERSAO_PAINEL = '2026-10-09.2'; // data, e .N quando sai mais de uma no mesmo dia
+function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): nova página Materiais e peças conferidas com o consumo do Manusis.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): peças conferidas uma a uma com a baixa do Manusis e novo quadro “Pendências de controle” na página Peças.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
-  CONS = null; catMaterial = []; TROCA = null;
+  CONS = null; catMaterial = []; TROCA = null; CONF_CACHE = null;
   var C = M.consumo; if (!C) return;
   var pos = new Map(); for (var i = 0; i < N; i++) pos.set(O.om[i], i);
   CONS = new Array(N);
   C.om.forEach(function (n, k) { var i = pos.get(n); if (i === undefined) return; (CONS[i] = CONS[i] || []).push(k); });
   montarTrocas();
+  CONF_CACHE = new Array(N); ACESSORIOS = [M.componentes.indexOf('Parafusos / fixação'), M.componentes.indexOf('Óleo / graxa')];
   CDIA = C.data.map(function (d) { var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(d || ''); return m ? diaDe(new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]))) : null; });
 }
 var CDIA = null;
@@ -896,33 +902,87 @@ var catMaterial = [];
 function catsDoMaterial(m) { return catMaterial[m] || (catMaterial[m] = ModeloTurbinas.categoriasMaterial(M.consumo.materiais[m])); }
 var TIPOS_JUNTOS = [['Slip ring', 'Escovas'], ['Bateria', 'Carregador / fonte', 'UPS / nobreak'], ['Linha de vida', 'Cabo / conector']];
 function ehFechada(i) { return O.grupo[i] === IDX.grupo['Concluída']; }
+// tipos que andam juntos contam como o mesmo (escova do slip ring, banco de baterias e carregador…)
+function junto(a, c) { return a === c || TIPOS_JUNTOS.some(function (g) { return g.indexOf(M.componentes[a]) >= 0 && g.indexOf(M.componentes[c]) >= 0; }); }
 /*
- * Conferência da troca com o material baixado:
- *  'ok'      troca descrita e peça do mesmo tipo baixada (ou tipo da baixa não identificável pelo nome);
- *  'diverge' troca descrita e peça baixada, mas de tipos diferentes (texto: pastilha de freio; baixa: mangueira);
+ * Conferência peça a peça entre a troca descrita e as peças baixadas no Manusis:
+ *  batem     peças do texto com baixa do mesmo tipo;
+ *  semBaixa  peças do texto sem baixa do mesmo tipo;
+ *  baixaOk   baixas que batem com o texto (ou a troca do texto não tem tipo: "Substituição de GERADOR");
+ *  semTexto  baixas cujo tipo não aparece no texto;
+ *  semTipo   baixas de tipo não reconhecível pelo nome: não acusam nada, mas aí as peças do texto
+ *            sem par ficam em "conferir" em vez de "sem baixa" (a baixa sem tipo pode ser a peça).
+ */
+var CONF_CACHE = null, ACESSORIOS = [];
+function conferirPecas(i) {
+  if (CONF_CACHE && CONF_CACHE[i]) return CONF_CACHE[i];
+  var ks = baixasPeca(i), outras = M.componentes.length - 1, itens = O.pecasItens[i];
+  var r = { batem: [], semBaixa: [], conferir: [], baixaOk: [], semTexto: [], semTipo: [], acessorio: [], fechada: ehFechada(i), texto: itens.length > 0, peloTitulo: false };
+  // com peça baixada, a própria descrição da OM pode ser a troca ("Substituição de GERADOR")
+  if (!r.texto && ks.length && /substitui|\btroca|\btrocad/i.test(O.desc[i] || '')) r.texto = r.peloTitulo = true;
+  if (!ks.length) r.semBaixa = itens.slice();
+  else {
+    var tipados = itens.filter(function (it) { return it[0] !== outras; }), achados = [];
+    var geral = r.peloTitulo || (r.texto && !tipados.length);
+    ks.forEach(function (k) {
+      var cb = catsBaixa(k).filter(function (c) { return c >= 0; });
+      // parafuso, porca, óleo: acompanham o serviço e não são peça trocada, a não ser que o texto diga que trocou
+      var acess = cb.length && cb.every(function (c) { return ACESSORIOS.indexOf(c) >= 0; });
+      if (!r.texto) { (acess ? r.acessorio : r.semTexto).push(k); return; }
+      if (geral) { r.baixaOk.push(k); return; }
+      if (!cb.length) { r.semTipo.push(k); return; }
+      var bate = false;
+      tipados.forEach(function (it) { if (cb.some(function (c) { return junto(it[0], c); })) { bate = true; if (achados.indexOf(it[0]) < 0) achados.push(it[0]); } });
+      (bate ? r.baixaOk : acess ? r.acessorio : r.semTexto).push(k);
+    });
+    tipados.forEach(function (it) { (achados.indexOf(it[0]) >= 0 ? r.batem : r.semTipo.length ? r.conferir : r.semBaixa).push(it); });
+  }
+  // só baixas acessórias: para a conferência, é como se não houvesse peça baixada
+  r.nBaixas = ks.length - r.acessorio.length;
+  if (!r.nBaixas) r.semBaixa = itens.slice();
+  if (CONF_CACHE) CONF_CACHE[i] = r;
+  return r;
+}
+/*
+ * Conferência da troca com o material baixado (selo da OM):
+ *  'ok'      cada peça descrita tem baixa do mesmo tipo e cada baixa está descrita;
+ *  'parcial' parte bate, mas sobra peça descrita sem baixa (OM fechada) ou baixa sem troca descrita;
+ *  'diverge' troca descrita e peça baixada, mas nenhum tipo bate (texto: pastilha de freio; baixa: mangueira);
  *  'soTexto' troca descrita, OM fechada e nenhuma peça baixada;
  *  'soBaixa' peça baixada sem troca no texto.
  * OM aberta com troca descrita e sem baixa fica sem selo: a baixa pode vir até o encerramento.
  */
 function conferencia(i) {
   if (!CONS) return null;
-  var ks = baixasPeca(i), t = O.pecas[i].length > 0, b = ks.length > 0, peloTitulo = false;
-  // com peça baixada, a própria descrição da OM pode ser a troca ("Substituição de GERADOR")
-  if (!t && b && /substitui|\btroca|\btrocad/i.test(O.desc[i] || '')) { t = true; peloTitulo = true; }
-  if (t && b) {
-    if (peloTitulo) return 'ok';
-    var outras = M.componentes.length - 1;
-    var ct = O.pecas[i].filter(function (x) { return x !== outras; }), cb = [];
-    ks.forEach(function (k) { catsDoMaterial(M.consumo.mat[k]).forEach(function (x) { if (cb.indexOf(x) < 0) cb.push(x); }); });
-    // tipos que andam juntos contam como o mesmo (escova do slip ring, banco de baterias e carregador…)
-    var junto = function (a, c) { return a === c || TIPOS_JUNTOS.some(function (g) { return g.indexOf(M.componentes[a]) >= 0 && g.indexOf(M.componentes[c]) >= 0; }); };
-    return ct.length && cb.length && !ct.some(function (x) { return cb.some(function (y) { return junto(x, y); }); }) ? 'diverge' : 'ok';
+  var r = conferirPecas(i), nb = r.nBaixas;
+  if (!r.texto) return nb ? 'soBaixa' : null;
+  if (!nb) return r.fechada ? 'soTexto' : null;
+  if (!r.batem.length && !r.baixaOk.length && r.semTexto.length) return 'diverge';
+  return r.semTexto.length || (r.fechada && r.semBaixa.length) ? 'parcial' : 'ok';
+}
+/**
+ * Técnico que registrou a troca no serviço executado ("[02/10/2026 07:36 - Fulano] Realizado substituição…"):
+ * o autor do registro que fala em troca; sem isso, o do registro mais recente. null se o texto não traz autor.
+ */
+function autorServico(i) {
+  var t = O.exec[i] || '', rx = /\[\d{2}\/\d{2}\/\d{4} \d{2}:\d{2} - ([^\]]+)\]/g, m, partes = [];
+  while ((m = rx.exec(t))) partes.push({ autor: m[1].trim(), ini: rx.lastIndex });
+  if (!partes.length) return null;
+  for (var j = 0; j < partes.length; j++) {
+    var trecho = t.slice(partes[j].ini, j + 1 < partes.length ? partes[j + 1].ini : t.length);
+    if (/substitu|\btroca|\btrocad|instalad/i.test(trecho)) return partes[j].autor;
   }
-  if (t) return ehFechada(i) ? 'soTexto' : null;
-  return b ? 'soBaixa' : null;
+  return partes[0].autor;
+}
+/** Pendências de controle da OM fechada: peças descritas sem baixa e baixas sem troca descrita. */
+function pendencias(i) {
+  if (!CONS || !ehFechada(i)) return null;
+  var r = conferirPecas(i);
+  return r.semBaixa.length || r.semTexto.length ? r : null;
 }
 var CONF = {
-  ok: { rot: 'Troca confirmada pela baixa', curto: 'Confirmada', cor: 'var(--good)', tipo: 'bom', dica: 'O texto diz que trocou e há peça do mesmo tipo baixada no Manusis.' },
+  ok: { rot: 'Troca confirmada pela baixa', curto: 'Confirmada', cor: 'var(--good)', tipo: 'bom', dica: 'Cada peça que o texto diz que trocou tem baixa do mesmo tipo no Manusis.' },
+  parcial: { rot: 'Troca confirmada só em parte', curto: 'Confirmada em parte', cor: 'var(--s4)', tipo: 'alerta', dica: 'Parte das peças bate com a baixa, mas sobra peça descrita sem baixa ou peça baixada sem a troca descrita.' },
   diverge: { rot: 'Troca descrita difere da peça baixada', curto: 'Difere da baixa', cor: 'var(--critical)', tipo: 'ruim', dica: 'O texto cita um tipo de peça e a baixa no Manusis é de outro: confira qual foi trocada de fato.' },
   soTexto: { rot: 'Troca descrita, sem baixa de material', curto: 'Sem baixa (OM fechada)', cor: 'var(--warning)', tipo: 'alerta', dica: 'OM fechada: o texto diz que trocou, mas não há peça baixada. Falta lançar o consumo ou a troca não aconteceu.' },
   soBaixa: { rot: 'Peça baixada, sem troca no texto', curto: 'Baixa sem troca no texto', cor: 'var(--serious)', tipo: 'alerta', dica: 'Saiu peça do almoxarifado para a OM, mas o serviço executado não diz que ela foi trocada.' }
@@ -1798,10 +1858,10 @@ function semAcentoTxt(s) { return String(s || '').normalize('NFD').replace(/[\u0
 /* Conferência da troca com o material baixado no Manusis, e as peças mais baixadas. */
 var confSel = 'soTexto';
 function cartoesConsumo(pg, B) {
-  var grupos = { ok: [], diverge: [], soTexto: [], soBaixa: [] };
+  var grupos = { ok: [], parcial: [], diverge: [], soTexto: [], soBaixa: [] }, ordemConf = ['ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
   B.forEach(function (i) { var c = conferencia(i); if (c) grupos[c].push(i); });
-  var nTot = grupos.ok.length + grupos.diverge.length + grupos.soTexto.length + grupos.soBaixa.length;
-  var itens = ['ok', 'diverge', 'soTexto', 'soBaixa'].map(function (g) { return { k: g, rot: innerWidth < 700 ? CONF[g].curto : CONF[g].rot, v: grupos[g].length, cor: CONF[g].cor, extra: nTot ? fPct(grupos[g].length / nTot) : '' }; });
+  var nTot = ordemConf.reduce(function (t, g) { return t + grupos[g].length; }, 0);
+  var itens = ordemConf.map(function (g) { return { k: g, rot: innerWidth < 700 ? CONF[g].curto : CONF[g].rot, v: grupos[g].length, cor: CONF[g].cor, extra: nTot ? fPct(grupos[g].length / nTot) : '' }; });
   var corpoT = h('div');
   function desenharLista() {
     corpoT.textContent = '';
@@ -1809,14 +1869,20 @@ function cartoesConsumo(pg, B) {
       var r = linhaOM(i);
       r.baixado = baixasPeca(i).map(function (k) { return nomeMaterial(k).desc; }).join(', ');
       r.vBaixa = baixasPeca(i).reduce(function (t, k) { return t + M.consumo.vTot[k]; }, 0);
+      var cp = conferirPecas(i);
+      r.semBaixaTxt = cp.fechada ? cp.semBaixa.map(function (it) { return it[1]; }).join(', ') : '';
+      r.semTextoTxt = cp.semTexto.map(function (k) { return nomeMaterial(k).desc; }).join(', ');
       return r;
     });
+    var clamp = function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); };
+    var pend = confSel === 'ok' ? [] : [{ k: 'semBaixaTxt', rot: 'Descrita sem baixa', classe: 'txt', ordenavel: false, fmt: clamp },
+      { k: 'semTextoTxt', rot: 'Baixada sem troca descrita', classe: 'txt', ordenavel: false, fmt: clamp }];
     tabela(corpoT, {
       cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: fData }, { k: 'wtgTxt', rot: 'Turbina' },
         { k: 'status', rot: 'Status', fmt: function (v) { return pillStatus(v); } },
         { k: 'pecasTxt', rot: 'Troca no texto', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
         { k: 'baixado', rot: 'Peça baixada no Manusis', classe: 'txt', ordenavel: false, fmt: function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); } },
-        { k: 'vBaixa', rot: 'Valor baixado', num: true, fmt: function (v, r) { return v ? fCustoLinha(v, r) : '–'; } }],
+        { k: 'vBaixa', rot: 'Valor baixado', num: true, fmt: function (v, r) { return v ? fCustoLinha(v, r) : '–'; } }].concat(pend),
       linhas: lista, altura: 420, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   }
@@ -1832,7 +1898,7 @@ function cartoesConsumo(pg, B) {
   pg.append(cartao({
     id: 'conferencia', span: 's6', titulo: 'Troca descrita × material baixado',
     sub: 'Compara a troca descrita no serviço executado com as peças baixadas no Manusis, pelo tipo de peça (graxa, trapo e outros consumíveis não contam). ' +
-      '“Sem baixa” considera só OMs fechadas. ' + fInt(nTot) + ' OMs · clique para listar',
+      'Cada peça é conferida: “em parte” é quando uma bate e outra não. “Sem baixa” considera só OMs fechadas. ' + fInt(nTot) + ' OMs · clique para listar',
     desenhar: function (el) { el.append(barras); desenharBarras(); }
   }));
   // peças mais baixadas (pelo material do almoxarifado, não pelo texto)
@@ -1859,6 +1925,96 @@ function cartoesConsumo(pg, B) {
     h('div', { class: 'card-h' }, h('div', { class: 'tt' }, tituloT, subT)), corpoT));
   atualizarSub();
   aposRender.push(desenharLista);
+  cartaoPendencias(pg, B);
+}
+
+/*
+ * Pendências de controle: OMs fechadas em que o texto diz que trocou e a peça não foi baixada,
+ * ou a peça foi baixada e o texto não diz que trocou. Conta peça a peça, por técnico (quem registrou o serviço) e por turbina.
+ */
+var pendSel = { lado: null, tec: null, wtg: null };
+function cartaoPendencias(pg, B) {
+  var todas = [];
+  B.forEach(function (i) { var r = pendencias(i); if (r) todas.push({ i: i, r: r, tec: autorServico(i) || '(sem registro do técnico)', wtg: O.wtg[i] }); });
+  var nomeResp = function (i) { return O.resp[i] >= 0 ? M.dic.pessoa[O.resp[i]] : '–'; };
+  var nomeTec = function (k) { return k; };
+  var nomeWtg = function (k) { return k >= 0 ? M.dic.wtg[k] : '–'; };
+  // quantas pendências a OM tem do lado escolhido (ou dos dois)
+  var conta = function (x, lado) { lado = lado || pendSel.lado; return (lado !== 'semTexto' ? x.r.semBaixa.length : 0) + (lado !== 'semBaixa' ? x.r.semTexto.length : 0); };
+  var passa = function (x, ignorar) {
+    return conta(x) > 0 && (ignorar === 'tec' || pendSel.tec === null || x.tec === pendSel.tec) && (ignorar === 'wtg' || pendSel.wtg === null || x.wtg === pendSel.wtg);
+  };
+  // filtros guardados de outro período que não existem mais aqui
+  if (pendSel.tec !== null && !todas.some(function (x) { return x.tec === pendSel.tec; })) pendSel.tec = null;
+  if (pendSel.wtg !== null && !todas.some(function (x) { return x.wtg === pendSel.wtg; })) pendSel.wtg = null;
+
+  var corpo = h('div', { class: 'pend-grade' }), lista = h('div'), subP = h('p', null), limpar = h('button', { class: 'btn', type: 'button' }, 'Limpar seleção');
+  function ranking(campo, nome) {
+    var m = new Map();
+    todas.forEach(function (x) { if (passa(x, campo)) m.set(x[campo], (m.get(x[campo]) || 0) + conta(x)); });
+    return Array.from(m.entries()).map(function (e) { return { k: e[0], rot: nome(e[0]), v: e[1], cor: 'var(--s4)' }; })
+      .sort(function (a, b) { return b.v - a.v || a.rot.localeCompare(b.rot, 'pt-BR'); });
+  }
+  function bloco(titulo, itens, ativo, onClick, top) {
+    var el = h('div', { class: 'pend-bloco' }, h('h4', null, titulo));
+    var vis = itens.slice(0, top);
+    if (ativo !== null && !vis.some(function (d) { return d.k === ativo; })) vis = vis.concat(itens.filter(function (d) { return d.k === ativo; }));
+    if (!vis.length) el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência.'));
+    else barrasH(el, vis, { larguraRotulo: '52%', unidade: 'pendências', ativo: ativo === null ? null : new Set([ativo]), dica: 'Clique para filtrar a lista', onClick: onClick,
+      fmt: function (v) { return fInt(v); } });
+    if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:4px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
+    return el;
+  }
+  function linhas() {
+    return todas.filter(function (x) { return passa(x); }).sort(function (a, b) { return (O.dFe[b.i] || 0) - (O.dFe[a.i] || 0); }).map(function (x) {
+      var r = linhaOM(x.i);
+      r.respTxt = nomeResp(x.i); r.tecTxt = x.tec;
+      r.semBaixaTxt = pendSel.lado === 'semTexto' ? '' : x.r.semBaixa.map(function (it) { return it[1]; }).join(', ');
+      r.semTextoTxt = pendSel.lado === 'semBaixa' ? '' : x.r.semTexto.map(function (k) { return nomeMaterial(k).desc; }).join(', ');
+      r.selo = CONF[conferencia(x.i)].curto;
+      return r;
+    });
+  }
+  function desenhar() {
+    corpo.textContent = ''; lista.textContent = '';
+    var nSB = 0, nST = 0, nOM = 0;
+    todas.forEach(function (x) { if (!passa(x)) return; nOM++; if (pendSel.lado !== 'semTexto') nSB += x.r.semBaixa.length; if (pendSel.lado !== 'semBaixa') nST += x.r.semTexto.length; });
+    var lados = [
+      { k: 'semBaixa', rot: innerWidth < 700 ? 'Descrita, sem baixa' : 'Peça descrita como trocada, sem baixa', v: 0, cor: 'var(--critical)' },
+      { k: 'semTexto', rot: innerWidth < 700 ? 'Baixada, sem descrição' : 'Peça baixada, troca não descrita', v: 0, cor: 'var(--serious)' }];
+    todas.forEach(function (x) { if ((pendSel.tec === null || x.tec === pendSel.tec) && (pendSel.wtg === null || x.wtg === pendSel.wtg)) { lados[0].v += x.r.semBaixa.length; lados[1].v += x.r.semTexto.length; } });
+    corpo.append(
+      bloco('Tipo de pendência', lados, pendSel.lado, function (k) { pendSel.lado = pendSel.lado === k ? null : k; desenhar(); }, 2),
+      bloco('Por técnico (quem registrou o serviço)', ranking('tec', nomeTec), pendSel.tec, function (k) { pendSel.tec = pendSel.tec === k ? null : k; desenhar(); }, 10),
+      bloco('Por turbina', ranking('wtg', nomeWtg), pendSel.wtg, function (k) { pendSel.wtg = pendSel.wtg === k ? null : k; desenhar(); }, 10));
+    var filtros = [pendSel.lado ? lados.filter(function (d) { return d.k === pendSel.lado; })[0].rot.toLowerCase() : '', pendSel.tec !== null ? pendSel.tec : '', pendSel.wtg !== null ? nomeWtg(pendSel.wtg) : ''].filter(Boolean);
+    subP.textContent = fInt(nOM) + ' OMs fechadas · ' + fInt(nSB) + (nSB === 1 ? ' peça descrita sem baixa' : ' peças descritas sem baixa') + ' · ' +
+      fInt(nST) + (nST === 1 ? ' baixa sem troca descrita' : ' baixas sem troca descrita') + (filtros.length ? ' · filtro: ' + filtros.join(' · ') : '') + '. Clique numa barra para filtrar e numa OM para abrir.';
+    limpar.hidden = !filtros.length;
+    var clamp = function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); };
+    tabela(lista, {
+      cols: [{ k: 'omTxt', rot: 'OM', classe: 'forte' }, { k: 'fechamento', rot: 'Fechamento', fmt: function (v) { return v === null ? '–' : fData(v); } }, { k: 'wtgTxt', rot: 'Turbina' },
+        { k: 'tecTxt', rot: 'Técnico (registro)' }, { k: 'selo', rot: 'Conferência' },
+        { k: 'semBaixaTxt', rot: 'Descrita sem baixa', classe: 'txt', ordenavel: false, fmt: clamp },
+        { k: 'semTextoTxt', rot: 'Baixada sem troca descrita', classe: 'txt', ordenavel: false, fmt: clamp }],
+      linhas: linhas(), altura: 420, onLinha: function (r, ts) { abrirOM(r.i, ts.map(function (x) { return x.i; })); }
+    });
+  }
+  limpar.addEventListener('click', function () { pendSel = { lado: null, tec: null, wtg: null }; desenhar(); });
+  function exportar() {
+    var rows = [];
+    linhas().forEach(function (r) {
+      var cp = conferirPecas(r.i), base = [r.omTxt, fData(r.abertura), r.fechamento === null ? '' : fData(r.fechamento), r.wtgTxt, r.parqueTxt, r.tecTxt, r.respTxt];
+      if (pendSel.lado !== 'semTexto') cp.semBaixa.forEach(function (it) { rows.push(base.concat(['Descrita como trocada, sem baixa', it[1], M.componentes[it[0]], '', '', r.selo, O.exec[r.i] || ''])); });
+      if (pendSel.lado !== 'semBaixa') cp.semTexto.forEach(function (k) { var nm = nomeMaterial(k); rows.push(base.concat(['Baixada, troca não descrita', nm.desc, (catsBaixa(k).map(function (c) { return M.componentes[c]; }).join(', ')), nm.cod, fQtd(M.consumo.qtd[k], M.consumo.un[k]), r.selo, O.exec[r.i] || ''])); });
+    });
+    baixarCSV('pendencias-baixa-de-pecas.csv', ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Técnico (registro do serviço)', 'Responsável da OM', 'Pendência', 'Peça', 'Tipo de peça', 'Código do material', 'Quantidade baixada', 'Conferência da OM', 'Serviço executado'], rows);
+  }
+  pg.append(h('section', { class: 'card s12', id: 'pendencias', 'aria-labelledby': 'h-pendencias' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-pendencias' }, 'Pendências de controle: troca × baixa de peça'), subP),
+      h('div', { class: 'ferr' }, limpar, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'Exportar CSV'))),
+    corpo, lista));
+  aposRender.push(desenhar);
 }
 
 function paginaComponentes(pg) {
@@ -2088,14 +2244,18 @@ function paginaOrdens(pg) {
 
 function exportarCSV(linhas) {
   var cab = ['OM', 'Abertura', 'Fechamento', 'Turbina', 'Parque', 'Tipo', 'Sistema', 'Status', 'Máquina parada', 'Tempo p/ fechar (dias)', 'Hh apontado', 'Custo total', 'Falha (código na descrição)', 'Peças trocadas (identificadas no texto)', 'Descrição'];
-  var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var num = function (v) { return v === null || v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','); };
-  var txt = [cab.join(';')].concat(linhas.map(function (r) {
+  baixarCSV('ordens-turbinas.csv', cab, linhas.map(function (r) {
     return [r.omTxt, fData(r.abertura), r.fechamento === null ? '' : fData(r.fechamento), r.wtgTxt, r.parqueTxt, r.tipoTxt, r.sistemaTxt, r.statusTxt, r.parada,
-      num(r.lead), num(r.hh), num(r.custo), r.falhasTxt, r.pecasTxt, r.desc].map(esc).join(';');
-  })).join('\r\n');
+      num(r.lead), num(r.hh), num(r.custo), r.falhasTxt, r.pecasTxt, r.desc];
+  }));
+}
+/** Baixa um CSV (separador ;, com BOM para o Excel abrir com acento). */
+function baixarCSV(nome, cab, linhas) {
+  var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var txt = [cab.map(esc).join(';')].concat(linhas.map(function (l) { return l.map(esc).join(';'); })).join('\r\n');
   var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
-  var a = h('a', { href: URL.createObjectURL(blob), download: 'ordens-turbinas.csv' });
+  var a = h('a', { href: URL.createObjectURL(blob), download: nome });
   document.body.append(a); a.click(); a.remove();
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
 }
@@ -2284,21 +2444,46 @@ function mostrarUltimaOM() {
   if (r.top < 120 || r.bottom > innerHeight - 80) tr.scrollIntoView({ block: 'center' });
   tr.focus({ preventScroll: true });
 }
-/** Material baixado no Manusis para a OM, com o selo da conferência com o texto. */
+/* Marca de conferência de cada peça na ficha: [classe, texto, dica]. */
+var MARCA = {
+  ok: ['bom', '✓ dado baixa', 'Há baixa de peça do mesmo tipo no Manusis.'],
+  okTexto: ['bom', '✓ troca descrita', 'A troca desta peça está descrita no serviço executado.'],
+  semBaixa: ['ruim', '⚠ sem baixa', 'O texto diz que trocou, mas não há baixa desta peça no Manusis.'],
+  aguarda: ['neutro', 'aguardando baixa', 'OM em aberto: a baixa pode ser lançada até o encerramento.'],
+  semTexto: ['ruim', '⚠ troca não descrita', 'A peça foi baixada no Manusis, mas o serviço executado não diz que ela foi trocada.'],
+  conferir: ['neutro', '• conferir', 'Há baixa de material com tipo não reconhecível pelo nome: confira se é esta peça.']
+};
+function marca(tipo) { var m = MARCA[tipo]; return h('span', { class: 'mc ' + m[0], title: m[2] }, m[1]); }
+/** Marca da peça listada em "Peças trocadas" (item do texto ou vindo da baixa). */
+function marcaItem(i, it) {
+  if (!CONS) return null;
+  var r = conferirPecas(i);
+  if (it[2]) { // veio da baixa: a baixa do mesmo tipo está descrita?
+    var mesma = function (k) { return catsBaixa(k)[0] === it[0]; };
+    return r.semTexto.some(mesma) ? marca('semTexto') : r.baixaOk.some(mesma) ? marca('okTexto') : null;
+  }
+  if (r.batem.indexOf(it) >= 0) return marca('ok');
+  if (r.conferir.indexOf(it) >= 0) return marca('conferir');
+  if (r.semBaixa.indexOf(it) >= 0) return marca(r.fechada ? 'semBaixa' : 'aguarda');
+  return null; // peça genérica ("Outras") com baixa: não dá para conferir o tipo
+}
+function marcaBaixa(i, k) {
+  var r = conferirPecas(i);
+  return r.semTexto.indexOf(k) >= 0 ? marca('semTexto') : r.semTipo.indexOf(k) >= 0 && r.conferir.length ? marca('conferir') : r.baixaOk.indexOf(k) >= 0 ? marca('okTexto') : null;
+}
+/** Material baixado no Manusis para a OM; cada peça marcada pela conferência com o texto. */
 function blocoConsumo(i) {
   if (!CONS) return null;
-  var ks = CONS[i] || [], cf = conferencia(i), C = M.consumo;
-  var selo = cf ? h('p', { style: 'margin:0 0 8px' }, statusTag(CONF[cf].tipo, CONF[cf].rot), h('span', { class: 'nota', style: 'display:block;margin-top:2px' }, CONF[cf].dica))
-    : O.pecas[i].length && !ehFechada(i) && !baixasPeca(i).length ? h('p', { class: 'nota', style: 'margin:0 0 8px' }, 'OM em aberto: a baixa da peça pode ser lançada até o encerramento.') : null;
-  if (!ks.length) return [h('h4', null, 'Material baixado no Manusis'), selo, h('p', { class: 'nota', style: 'margin:0 0 14px' }, 'Nenhuma baixa de material lançada nesta OM.')];
+  var ks = CONS[i] || [], C = M.consumo;
+  if (!ks.length) return [h('h4', null, 'Material baixado no Manusis'), h('p', { class: 'nota', style: 'margin:0 0 14px' }, 'Nenhuma baixa de material lançada nesta OM.')];
   var ord = ks.slice().sort(function (a, b) { return C.peca[b] - C.peca[a] || C.vTot[b] - C.vTot[a]; });
-  return [h('h4', null, 'Material baixado no Manusis'), selo,
+  return [h('h4', null, 'Material baixado no Manusis'),
     h('div', { class: 'baixas-wrap' }, h('table', { class: 'tab baixas' },
       h('thead', null, h('tr', null, h('th', null, 'Material'), h('th', { class: 'n' }, 'Qtd.'), h('th', { class: 'n' }, 'Valor'))),
       h('tbody', null, ord.map(function (k) {
         var nm = nomeMaterial(k);
         return h('tr', { class: C.peca[k] ? null : 'consumivel' },
-          h('td', null, h('b', null, nm.desc), h('small', null, (nm.cod ? nm.cod + ' · ' : '') + (C.peca[k] ? 'peça' : 'material de consumo') + (C.data[k] ? ' · ' + C.data[k] : ''))),
+          h('td', null, h('b', null, nm.desc), h('small', null, (nm.cod ? nm.cod + ' · ' : '') + (C.peca[k] ? 'peça' : 'material de consumo') + (C.data[k] ? ' · ' + C.data[k] : ''), C.peca[k] ? [' ', marcaBaixa(i, k)] : null)),
           h('td', { class: 'n' }, fQtd(C.qtd[k], C.un[k])),
           h('td', { class: 'n' }, C.suspeito[k] ? h('span', { class: 'st alerta', title: 'Preço unitário ' + fMoedaCompleta(C.vUnit[k]) + ' fora do padrão: confira o cadastro do material' }, fMoeda(C.vTot[k]) + ' · a validar') : fMoeda(C.vTot[k])));
       }))))];
@@ -2337,8 +2522,8 @@ function fichaOM(i, lista, pos, navegar) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
-      itensTroca(i).length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, itensTroca(i).map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] + (it[2] ? ' · vem da baixa de material no Manusis' : '') }, h('i', { style: 'background:' + (it[2] ? 'var(--s1)' : 'var(--s3)') }), it[1], it[2] ? h('small', { style: 'color:var(--muted);font-weight:500' }, ' (baixa no Manusis)') : null); })),
-        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, TROCA ? 'Identificadas no texto do serviço executado ou na baixa de material do Manusis.' : 'Identificadas automaticamente no texto do serviço executado.')] : null,
+      itensTroca(i).length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, itensTroca(i).map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] + (it[2] ? ' · vem da baixa de material no Manusis' : '') }, h('i', { style: 'background:' + (it[2] ? 'var(--s1)' : 'var(--s3)') }), it[1], it[2] ? h('small', { style: 'color:var(--muted);font-weight:500' }, ' (baixa no Manusis)') : null, marcaItem(i, it)); })),
+        h('div', { style: 'height:14px' })] : null,
       blocoConsumo(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,

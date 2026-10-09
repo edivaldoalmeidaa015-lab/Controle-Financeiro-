@@ -15,7 +15,12 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
 à OM pelo número e o painel passa a mostrar:
 
 - o material baixado em cada OM (código, quantidade e valor) e o selo
-  "troca confirmada", "troca descrita sem baixa" ou "peça baixada sem troca no texto";
+  "troca confirmada", "confirmada só em parte", "difere da baixa", "troca descrita sem baixa"
+  ou "peça baixada sem troca no texto", com a conferência peça a peça na ficha;
+- o quadro **Pendências de controle** (página Peças): nas OMs fechadas, cada peça descrita
+  como trocada sem baixa e cada peça baixada sem a troca descrita, por técnico (autor do
+  registro no serviço executado) e por turbina, com exportação em CSV. Parafuso, porca e
+  óleo baixados não contam como peça sem descrição;
 - o custo de material pela soma das baixas;
 - as baixas com preço unitário fora do padrão (ex.: óleo cadastrado por litro
   com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
