@@ -354,6 +354,12 @@ svg text { font-family: inherit; }
 .mc { font-size: 11px; font-weight: 700; white-space: nowrap; margin-left: 2px; }
 .mc.bom { color: var(--good-ink); } .mc.ruim { color: var(--critical-ink); } .mc.neutro { color: var(--muted); }
 small .mc { display: inline; }
+.seletor-status { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.seletor-status .rot { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+.st-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.st-btn i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.st-btn small { color: var(--muted); font-weight: 500; }
+.st-btn.on { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-ink); }
 .pend-om { margin: 0 0 14px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
 .pend-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 22px; margin-bottom: 14px; }
 .pend-bloco h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -849,12 +855,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.8'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.9'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): nova aba Pendências, com status, turbinas e quem abriu mais pendências, idade das abertas, pontos de controle e concluídas por mês.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Pendências com o status igual ao Power BI (Aberta, Em andamento, Fechada, Cancelada) e seletor de status no topo.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -926,19 +932,22 @@ function montarIndicePendencias() {
   }
 }
 var SIT_PEND = {
-  concOMAberta: { rot: 'Concluída com a OM ainda não fechada', curto: 'Concluída, OM aberta', cor: 'var(--critical)', alerta: true, dica: 'A pendência foi concluída, mas a OM de execução ainda não foi fechada.' },
-  concNaoCita: { rot: 'Concluída, mas a OM não cita o item', curto: 'Concluída sem comprovar', cor: 'var(--critical)', alerta: true, dica: 'A OM de execução não fala da peça ou do item da pendência: confira se o serviço foi feito ou se a pendência foi ligada à OM errada.' },
-  cancOM: { rot: 'Cancelada junto com a OM', curto: 'Cancelada com a OM', cor: 'var(--serious)', alerta: true, dica: 'A OM de execução foi cancelada e a pendência caiu junto: confira se o serviço foi feito ou se a pendência deve voltar a pendente.' },
+  concOMAberta: { rot: 'Fechada com a OM ainda aberta', curto: 'Fechada, OM aberta', cor: 'var(--critical)', alerta: true, dica: 'A pendência foi fechada, mas a OM de execução ainda não foi fechada.' },
+  concNaoCita: { rot: 'Fechada, mas a OM não cita o item', curto: 'Fechada sem comprovar', cor: 'var(--critical)', alerta: true, dica: 'A OM de execução não fala da peça ou do item da pendência: confira se o serviço foi feito ou se a pendência foi ligada à OM errada.' },
+  cancOM: { rot: 'Cancelada junto com a OM', curto: 'Cancelada com a OM', cor: 'var(--serious)', alerta: true, dica: 'A OM de execução foi cancelada e a pendência caiu junto: confira se o serviço foi feito ou se a pendência deve voltar a aberta.' },
   cancSemOM: { rot: 'Cancelada sem nenhuma OM', curto: 'Cancelada sem OM', cor: 'var(--serious)', alerta: true, dica: 'Cancelada sem OM de execução: confira o motivo.' },
-  execOMFechada: { rot: 'OM fechada, pendência não concluída', curto: 'OM fechada, falta concluir', cor: 'var(--s4)', alerta: true, dica: 'A OM de execução já foi fechada, mas a pendência continua em execução.' },
-  execPronta: { rot: 'Em execução com apontamentos concluídos', curto: 'Pronta para concluir', cor: 'var(--s4)', alerta: true, dica: 'A OM de execução já está com os apontamentos concluídos: a pendência pode ser concluída.' },
-  pendTalvez: { rot: 'Pendente, talvez resolvida por outra OM', curto: 'Talvez já resolvida', cor: 'var(--s1)', alerta: true, dica: 'Depois da abertura, outra OM fechada na mesma turbina trocou peça do mesmo tipo: confira e conclua a pendência se for o caso.' },
-  pend: { rot: 'Pendente', curto: 'Pendente', cor: 'var(--neutral)', dica: 'Aguardando execução.' },
-  exec: { rot: 'Em execução', curto: 'Em execução', cor: 'var(--neutral)', dica: 'Com OM de execução em andamento.' },
-  concOk: { rot: 'Concluída e comprovada pela OM', curto: 'Concluída', cor: 'var(--good)', dica: 'OM de execução fechada e, quando a pendência cita peça, a OM fala dela.' },
-  concFora: { rot: 'Concluída com OM de antes do período', curto: 'Concluída (OM antiga)', cor: 'var(--neutral)', dica: 'A OM de execução é de antes da base de OMs carregada: não dá para conferir.' },
-  concSemOM: { rot: 'Concluída sem OM', curto: 'Concluída sem OM', cor: 'var(--critical)', alerta: true, dica: 'Concluída sem OM de execução.' }
+  execOMFechada: { rot: 'OM fechada, pendência ainda em andamento', curto: 'OM fechada, falta fechar', cor: 'var(--s4)', alerta: true, dica: 'A OM de execução já foi fechada, mas a pendência continua em andamento.' },
+  execPronta: { rot: 'Em andamento com apontamentos concluídos', curto: 'Pronta para fechar', cor: 'var(--s4)', alerta: true, dica: 'A OM de execução já está com os apontamentos concluídos: a pendência pode ser fechada.' },
+  pendTalvez: { rot: 'Aberta, talvez resolvida por outra OM', curto: 'Talvez já resolvida', cor: 'var(--s1)', alerta: true, dica: 'Depois da abertura, outra OM fechada na mesma turbina trocou peça do mesmo tipo: confira e feche a pendência se for o caso.' },
+  pend: { rot: 'Aberta', curto: 'Aberta', cor: 'var(--neutral)', dica: 'Aguardando execução.' },
+  exec: { rot: 'Em andamento', curto: 'Em andamento', cor: 'var(--neutral)', dica: 'Com OM de execução em andamento.' },
+  concOk: { rot: 'Fechada e comprovada pela OM', curto: 'Fechada', cor: 'var(--good)', dica: 'OM de execução fechada e, quando a pendência cita peça, a OM fala dela.' },
+  concFora: { rot: 'Fechada com OM de antes do período', curto: 'Fechada (OM antiga)', cor: 'var(--neutral)', dica: 'A OM de execução é de antes da base de OMs carregada: não dá para conferir.' },
+  concSemOM: { rot: 'Fechada sem OM', curto: 'Fechada sem OM', cor: 'var(--critical)', alerta: true, dica: 'Fechada sem OM de execução.' }
 };
+// status da pendência com os nomes do Power BI ("Status BI"); o original do Manusis fica em M.pendencias.status
+var STATUS_BI = { 'Pendente': 'Aberta', 'Em execução': 'Em andamento', 'Concluído': 'Fechada', 'Cancelado': 'Cancelada' };
+function stBI(k) { var s = M.pendencias.status[k]; return STATUS_BI[s] || s; }
 /*
  * Peças trocadas = texto do serviço executado OU peça baixada no Manusis (com o consumo carregado).
  * Uma categoria que já está no texto não soma de novo pela baixa; a que só aparece na baixa entra
@@ -2100,19 +2109,20 @@ function cartaoPendencias(pg, B) {
 
 /*
  * Página Pendências (Manusis): status, idade das abertas, pontos de controle, turbinas e quem abriu mais,
- * concluídas por mês e a lista. Vale todo o arquivo de pendências (pode ser maior que o período das OMs);
+ * fechadas por mês e a lista. Vale todo o arquivo de pendências (pode ser maior que o período das OMs);
  * os filtros de complexo, parque e turbina do painel se aplicam. Tocar numa barra filtra a página inteira.
  */
-var pendF = { status: null, sit: null, idade: null, wtg: null, usuario: null, mes: null }; // mes: {ini, fim, rot}
+var pendF = { status: new Set(), sit: null, idade: null, wtg: null, usuario: null, mes: null }; // status: Aberta, Em andamento… (vários); mes: {ini, fim, rot}
 function pendNoLocal(k) {
   var f = estado.f, w = PEND.w[k], pq = w >= 0 ? parqueDoWtg[w] : -1;
   return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
 }
 var CONC_ALERTA = ['concOMAberta', 'concNaoCita', 'concSemOM'];
 var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', max: 30 }, { k: 1, rot: '30 a 90 dias', max: 90 }, { k: 2, rot: '3 a 6 meses', max: 180 }, { k: 3, rot: '6 meses a 1 ano', max: 365 }, { k: 4, rot: 'Mais de 1 ano', max: Infinity }];
-var STATUS_PEND = { 'Pendente': 'var(--s4)', 'Em execução': 'var(--s1)', 'Concluído': 'var(--good)', 'Cancelado': 'var(--neutral)' };
+var STATUS_PEND = { 'Aberta': 'var(--s4)', 'Em andamento': 'var(--s1)', 'Fechada': 'var(--good)', 'Cancelada': 'var(--neutral)' };
 function filtrarPend(campo, valor) {
-  pendF[campo] = pendF[campo] === valor ? null : valor;
+  if (campo === 'status') { if (pendF.status.has(valor)) pendF.status.delete(valor); else pendF.status.add(valor); }
+  else pendF[campo] = pendF[campo] === valor ? null : valor;
   var y = window.scrollY; renderPagina(); window.scrollTo(0, y);
 }
 function paginaPendencias(pg) {
@@ -2120,7 +2130,7 @@ function paginaPendencias(pg) {
     pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Pendências do Manusis')));
     pg.append(h('section', { class: 'card s12 sem-consumo', id: 'sem-pendencias' },
       h('h3', null, 'Falta carregar as pendências do Manusis'),
-      h('p', null, 'Esta página mostra as pendências de cada turbina, quem abriu mais, o que está aberto, concluído e cancelado, há quanto tempo estão abertas e os pontos de controle (concluída sem comprovar, cancelada com a OM…). ',
+      h('p', null, 'Esta página mostra as pendências de cada turbina, quem abriu mais, o que está aberto, em andamento, fechado e cancelado, há quanto tempo estão abertas e os pontos de controle (fechada sem comprovar, cancelada com a OM…). ',
         'Para isso, o painel precisa da exportação de ', h('b', null, 'pendências do Manusis'), ' (abertas e fechadas, até 2 anos).'),
       h('p', null, 'Toque no botão e escolha o arquivo ', h('b', null, 'pendencias_….zip'), ' (ou a base pronta com tudo junto). As OMs e o consumo já carregados continuam.'),
       h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar pendências'),
@@ -2137,7 +2147,7 @@ function paginaPendencias(pg) {
   if (f.wtg !== null && !todas.some(function (x) { return PEND.w[x] === f.wtg; })) f.wtg = null;
   // passa em todos os filtros da página, menos o que está sendo desenhado (cada quadro mostra as opções dele)
   var passa = function (k, ignorar) {
-    return (ignorar === 'status' || f.status === null || P.status[k] === f.status) &&
+    return (ignorar === 'status' || !f.status.size || f.status.has(stBI(k))) &&
       (ignorar === 'sit' || f.sit === null || PEND.sit[k] === f.sit) &&
       (ignorar === 'idade' || f.idade === null || faixa(k) === f.idade) &&
       (ignorar === 'wtg' || f.wtg === null || PEND.w[k] === f.wtg) &&
@@ -2149,33 +2159,43 @@ function paginaPendencias(pg) {
   // título e filtros ativos
   var chips = [];
   var chip = function (rot, campo) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarPend(campo, f[campo]); } }, rot, h('span', { 'aria-hidden': 'true' }, ' ×'))); };
-  if (f.status !== null) chip('Status: ' + f.status, 'status');
+  f.status.forEach(function (x) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarPend('status', x); } }, 'Status: ' + x, h('span', { 'aria-hidden': 'true' }, ' ×'))); });
   if (f.sit !== null) chip(SIT_PEND[f.sit].curto, 'sit');
   if (f.idade !== null) chip('Aberta há ' + IDADES_PEND[f.idade].rot.toLowerCase(), 'idade');
   if (f.wtg !== null) chip('Turbina ' + M.dic.wtg[f.wtg], 'wtg');
   if (f.usuario !== null) chip('Aberta por ' + f.usuario, 'usuario');
-  if (f.mes) chip('Concluídas em ' + f.mes.rot, 'mes');
-  if (chips.length > 1) chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { pendF = { status: null, sit: null, idade: null, wtg: null, usuario: null, mes: null }; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } }, 'Limpar tudo'));
+  if (f.mes) chip('Fechadas em ' + f.mes.rot, 'mes');
+  if (chips.length > 1) chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { pendF = { status: new Set(), sit: null, idade: null, wtg: null, usuario: null, mes: null }; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } }, 'Limpar tudo'));
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Pendências do Manusis'),
     h('p', null, 'Todas as pendências do arquivo (abertas e fechadas). Toque numa barra para filtrar a página inteira; toque de novo para tirar o filtro. Os filtros de complexo, parque e turbina do painel valem aqui.'),
+    seletorStatus(),
     chips.length ? h('div', { class: 'chips', style: 'margin-top:8px;width:100%' }, chips) : null));
 
+  function seletorStatus() {
+    var c = new Map(); todas.forEach(function (k) { if (passa(k, 'status')) c.set(stBI(k), (c.get(stBI(k)) || 0) + 1); });
+    return h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Status da pendência' }, h('span', { class: 'rot' }, 'Status'),
+      Object.keys(STATUS_PEND).map(function (x) {
+        var on = f.status.has(x);
+        return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { filtrarPend('status', x); } },
+          h('i', { style: 'background:' + STATUS_PEND[x] }), x, h('small', null, ' (' + fInt(c.get(x) || 0) + ')'));
+      }));
+  }
   // KPIs
-  var nAb = 0, nVelhas = 0, nConc = 0, nConcOk = 0, nCanc = 0, nAl = 0;
+  var nAb = 0, nAnd = 0, nVelhas = 0, nConc = 0, nConcOk = 0, nCanc = 0, nAl = 0;
   sel.forEach(function (k) {
     var sit = PEND.sit[k];
-    if (aberta(k)) { nAb++; if (idadeDe(k) !== null && idadeDe(k) >= 180) nVelhas++; }
+    if (aberta(k)) { nAb++; if (stBI(k) === 'Em andamento') nAnd++; if (idadeDe(k) !== null && idadeDe(k) >= 180) nVelhas++; }
     if (/^conc/.test(sit)) { nConc++; if (sit === 'concOk') nConcOk++; }
     if (/^canc/.test(sit)) nCanc++;
     if (SIT_PEND[sit].alerta) nAl++;
   });
   var pct = function (a, b) { return b ? fPct(a / b) : '–'; };
   pg.append(h('div', { class: 'kpis k5' },
-    kpi({ rot: 'Pendências', valor: fInt(sel.length), valorTexto: fInt(sel.length), sub: f.status || f.sit || f.idade !== null || f.wtg !== null || f.usuario || f.mes ? 'com os filtros da página' : 'no arquivo do Manusis' }),
-    kpi({ rot: 'Abertas', valor: fInt(nAb), valorTexto: fInt(nAb), sub: fInt(nVelhas) + ' há mais de 6 meses', tip: 'Pendente ou em execução no Manusis.' }),
-    kpi({ rot: 'Concluídas', valor: fInt(nConc), valorTexto: fInt(nConc), sub: pct(nConcOk, nConc) + ' comprovadas pela OM' }),
+    kpi({ rot: 'Pendências', valor: fInt(sel.length), valorTexto: fInt(sel.length), sub: f.status.size || f.sit || f.idade !== null || f.wtg !== null || f.usuario || f.mes ? 'com os filtros da página' : 'no arquivo do Manusis' }),
+    kpi({ rot: 'Abertas', valor: fInt(nAb), valorTexto: fInt(nAb), sub: fInt(nAnd) + ' em andamento · ' + fInt(nVelhas) + ' há mais de 6 meses', tip: 'Aberta ou em andamento.' }),
+    kpi({ rot: 'Fechadas', valor: fInt(nConc), valorTexto: fInt(nConc), sub: pct(nConcOk, nConc) + ' comprovadas pela OM' }),
     kpi({ rot: 'Canceladas', valor: fInt(nCanc), valorTexto: fInt(nCanc), sub: pct(nCanc, sel.length) + ' do total' }),
-    kpi({ rot: 'Pontos de controle', valor: fInt(nAl), valorTexto: fInt(nAl), sub: 'para conferir', tip: 'Concluída sem comprovar, concluída com a OM aberta, cancelada com a OM ou sem OM, pronta para concluir, talvez já resolvida.' })));
+    kpi({ rot: 'Pontos de controle', valor: fInt(nAl), valorTexto: fInt(nAl), sub: 'para conferir', tip: 'Fechada sem comprovar, fechada com a OM aberta, cancelada com a OM ou sem OM, pronta para fechar, talvez já resolvida.' })));
 
   // contagens de um campo com os demais filtros
   var contar = function (campo, chave) {
@@ -2185,16 +2205,16 @@ function paginaPendencias(pg) {
     pg.append(cartao({ id: id, span: span, titulo: titulo, sub: sub,
       desenhar: function (el) {
         var vis = itens.slice(0, top);
-        if (f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
+        if (campo !== 'status' && f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
         if (!vis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência com os filtros atuais.')); return; }
-        barrasH(el, vis, Object.assign({ larguraRotulo: '52%', unidade: 'pendências', ativo: f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página',
+        barrasH(el, vis, Object.assign({ larguraRotulo: '52%', unidade: 'pendências', ativo: campo === 'status' ? (f.status.size ? f.status : null) : f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página',
           onClick: function (x) { filtrarPend(campo, x); } }, extra || {}));
         if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:4px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
       } }));
   };
-  // status no Manusis
-  var cSt = contar('status', function (k) { return P.status[k]; });
-  quadro('pend-status', 's4', 'Status no Manusis', 'Situação registrada no Manusis',
+  // status da pendência
+  var cSt = contar('status', stBI);
+  quadro('pend-status', 's4', 'Status da pendência', 'Toque para filtrar; dá para marcar mais de um',
     Object.keys(STATUS_PEND).filter(function (x) { return cSt.get(x); }).map(function (x) { return { k: x, rot: x, v: cSt.get(x), cor: STATUS_PEND[x] }; }), 'status', 6);
   // idade das abertas
   var cId = contar('idade', faixa);
@@ -2209,22 +2229,22 @@ function paginaPendencias(pg) {
     var m = new Map();
     todas.forEach(function (k) {
       if (!passa(k, campo)) return; var v = chave(k); if (v === null || v === undefined || v === -1 || v === '') return;
-      var r = m.get(v) || { v: 0, ab: 0, co: 0, ca: 0 }; r.v++;
-      if (aberta(k)) r.ab++; else if (/^conc/.test(PEND.sit[k])) r.co++; else if (/^canc/.test(PEND.sit[k])) r.ca++;
+      var r = m.get(v) || { v: 0, ab: 0, an: 0, co: 0, ca: 0 }; r.v++;
+      var st = stBI(k); if (st === 'Aberta') r.ab++; else if (st === 'Em andamento') r.an++; else if (st === 'Fechada') r.co++; else if (st === 'Cancelada') r.ca++;
       m.set(v, r);
     });
-    return Array.from(m.entries()).map(function (e) { var r = e[1]; return { k: e[0], v: r.v, nota: innerWidth < 700 ? fInt(r.ab) + ' ab. · ' + fInt(r.co) + ' concl. · ' + fInt(r.ca) + ' canc.' : fInt(r.ab) + ' abertas · ' + fInt(r.co) + ' concluídas · ' + fInt(r.ca) + ' canceladas', cor: 'var(--s4)' }; })
+    return Array.from(m.entries()).map(function (e) { var r = e[1]; return { k: e[0], v: r.v, nota: innerWidth < 700 ? fInt(r.ab) + ' ab. · ' + fInt(r.an) + ' and. · ' + fInt(r.co) + ' fech. · ' + fInt(r.ca) + ' canc.' : fInt(r.ab) + ' abertas · ' + fInt(r.an) + ' em andamento · ' + fInt(r.co) + ' fechadas · ' + fInt(r.ca) + ' canceladas', cor: 'var(--s4)' }; })
       .sort(function (a, b) { return b.v - a.v; });
   };
   var itW = resumo('wtg', function (k) { return PEND.w[k]; }); itW.forEach(function (d) { d.rot = M.dic.wtg[d.k]; });
-  quadro('pend-turbinas', 's6', 'Turbinas com mais pendências', fInt(itW.length) + ' turbinas · embaixo, quantas estão abertas, concluídas e canceladas', itW, 'wtg', 15);
+  quadro('pend-turbinas', 's6', 'Turbinas com mais pendências', fInt(itW.length) + ' turbinas · embaixo, quantas estão abertas, em andamento, fechadas e canceladas', itW, 'wtg', 15);
   var itU = resumo('usuario', function (k) { return P.usuario[k]; }); itU.forEach(function (d) { d.rot = d.k; });
   quadro('pend-usuarios', 's6', 'Quem abriu mais pendências', 'Usuário que registrou a pendência no Manusis', itU, 'usuario', 15);
 
   cartaoPendMes(pg, todas, passa);
   cartaoListaPend(pg, sel, idadeDe);
 }
-/** Pendências concluídas por mês (data de conclusão), comprovadas × com ponto de controle. */
+/** Pendências fechadas por mês (data de conclusão), comprovadas × com ponto de controle. */
 function cartaoPendMes(pg, todas, passa) {
   var ks = todas.filter(function (k) { return passa(k, 'mes'); });
   var dias = []; ks.forEach(function (k) { if (PEND.dAb[k] !== null) dias.push(PEND.dAb[k]); if (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null) dias.push(PEND.dFe[k]); });
@@ -2247,13 +2267,14 @@ function cartaoPendMes(pg, todas, passa) {
   var top = tot.map(function (v, j) { return j; }).sort(function (x, y) { return tot[y] - tot[x]; }).filter(function (j) { return tot[j] > 0; }).slice(0, 3);
   var soma = tot.reduce(function (a, v) { return a + v; }, 0);
   pg.append(cartao({
-    id: 'pend-mes', span: 's12', titulo: 'Pendências concluídas por mês',
-    sub: fInt(soma) + ' concluídas, pelo mês da conclusão' + (top.length ? ' · meses com mais conclusões: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
-      '. Toque num mês para ver também quantas foram abertas e para listar as concluídas nele.',
+    id: 'pend-mes', span: 's12', titulo: 'Pendências fechadas por mês',
+    sub: fInt(soma) + ' fechadas, pelo mês do fechamento' + (top.length ? ' · meses que mais fecharam: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
+      '. Toque num mês para ver também quantas foram abertas e para listar as fechadas nele.',
     desenhar: function (el) {
-      serieTempo(el, { baldes: b, modo: 'colunas', altura: 260, titulo: 'Pendências concluídas por mês',
-        series: [{ nome: 'Concluída e comprovada pela OM', cor: 'var(--good)', valores: ok }, { nome: 'Concluída com ponto de controle', cor: 'var(--critical)', valores: al },
-          { nome: 'Concluída com OM de antes do período', cor: 'var(--neutral)', valores: ant }],
+      if (!soma) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência fechada com os filtros atuais (marque “Fechada” no status ou tire o filtro).')); return; }
+      serieTempo(el, { baldes: b, modo: 'colunas', altura: 260, titulo: 'Pendências fechadas por mês',
+        series: [{ nome: 'Fechada e comprovada pela OM', cor: 'var(--good)', valores: ok }, { nome: 'Fechada com ponto de controle', cor: 'var(--critical)', valores: al },
+          { nome: 'Fechada com OM de antes do período', cor: 'var(--neutral)', valores: ant }],
         rotularTotais: true,
         tipExtra: function (j) { return [{ valor: fInt(abertas[j]), rotulo: 'Abertas no mês' }].concat(canc[j] ? [{ valor: fInt(canc[j]), rotulo: 'Canceladas no mês' }] : []); },
         onClick: function (j) {
@@ -2263,7 +2284,7 @@ function cartaoPendMes(pg, todas, passa) {
         } });
     },
     dados: { cols: [{ k: 'p', rot: 'Mês' }, { k: 'ok', rot: 'Comprovadas', num: true, fmt: fInt }, { k: 'al', rot: 'Com ponto de controle', num: true, fmt: fInt },
-      { k: 'ant', rot: 'OM antiga', num: true, fmt: fInt }, { k: 't', rot: 'Total concluídas', num: true, fmt: fInt }, { k: 'ab', rot: 'Abertas no mês', num: true, fmt: fInt }, { k: 'c', rot: 'Canceladas', num: true, fmt: fInt }],
+      { k: 'ant', rot: 'OM antiga', num: true, fmt: fInt }, { k: 't', rot: 'Total fechadas', num: true, fmt: fInt }, { k: 'ab', rot: 'Abertas no mês', num: true, fmt: fInt }, { k: 'c', rot: 'Canceladas', num: true, fmt: fInt }],
       linhas: b.map(function (x, j) { return { p: x.longo, ok: ok[j], al: al[j], ant: ant[j], t: tot[j], ab: abertas[j], c: canc[j] }; }) }
   }));
 }
@@ -2273,13 +2294,13 @@ function cartaoListaPend(pg, sel, idadeDe) {
   var linhas = sel.slice().sort(function (a, b) { return (PEND.dAb[a] || 0) - (PEND.dAb[b] || 0); }).map(function (k) {
     var ie = PEND.iExec[k], sg = PEND.sug[k];
     return { k: k, i: ie >= 0 ? ie : sg >= 0 ? sg : PEND.iOrig[k] >= 0 ? PEND.iOrig[k] : undefined, num: P.num[k], abertura: PEND.dAb[k], wtgTxt: P.wtg[k] || '–',
-      statusTxt: P.status[k], sitTxt: SIT_PEND[PEND.sit[k]].curto, item: textoPendencia(P.desc[k]), idade: idadeDe(k),
+      statusTxt: stBI(k), sitTxt: SIT_PEND[PEND.sit[k]].curto, item: textoPendencia(P.desc[k]), idade: idadeDe(k),
       omExec: P.omExec[k] ? 'OM ' + String(P.omExec[k]).padStart(5, '0') : '–', omSug: sg >= 0 ? 'OM ' + String(O.om[sg]).padStart(5, '0') + ' (' + itensTroca(sg).map(function (x) { return x[1]; }).join(', ') + ')' : '',
       omOrig: P.omOrig[k] ? 'OM ' + String(P.omOrig[k]).padStart(5, '0') : '–', usuario: P.usuario[k], conclusao: PEND.dFe[k] };
   });
   var exportar = function () {
-    baixarCSV('pendencias-manusis.csv', ['Número', 'Abertura', 'Conclusão', 'Turbina', 'Status no Manusis', 'Situação de controle', 'Pendência', 'OM de origem', 'OM de execução', 'OM que talvez resolveu', 'Dias aberta', 'Aberta por', 'Descrição completa'],
-      linhas.map(function (r) { return [r.num, r.abertura === null ? '' : fData(r.abertura), r.conclusao === null ? '' : fData(r.conclusao), r.wtgTxt, r.statusTxt, SIT_PEND[PEND.sit[r.k]].rot, r.item, r.omOrig, r.omExec, r.omSug, r.idade === null ? '' : r.idade, r.usuario, P.desc[r.k]]; }));
+    baixarCSV('pendencias-manusis.csv', ['Número', 'Abertura', 'Fechamento', 'Turbina', 'Status', 'Status no Manusis', 'Situação de controle', 'Pendência', 'OM de origem', 'OM de execução', 'OM que talvez resolveu', 'Dias aberta', 'Aberta por', 'Descrição completa'],
+      linhas.map(function (r) { return [r.num, r.abertura === null ? '' : fData(r.abertura), r.conclusao === null ? '' : fData(r.conclusao), r.wtgTxt, r.statusTxt, P.status[r.k], SIT_PEND[PEND.sit[r.k]].rot, r.item, r.omOrig, r.omExec, r.omSug, r.idade === null ? '' : r.idade, r.usuario, P.desc[r.k]]; }));
   };
   var corpo = h('div');
   var sitUnica = pendF.sit ? ' ' + SIT_PEND[pendF.sit].dica : '';
