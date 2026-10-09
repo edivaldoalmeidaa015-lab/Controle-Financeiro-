@@ -269,6 +269,17 @@ select.mini {
 
 /* barras horizontais */
 .bh { display: flex; flex-direction: column; gap: 2px; }
+.rosca { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: center; }
+.rosca-svg { width: 170px; height: 170px; flex: none; }
+.rosca-num { font-size: 22px; font-weight: 750; fill: var(--ink); }
+.rosca-rot { font-size: 10.5px; fill: var(--muted); }
+.rosca-leg { display: flex; flex-direction: column; gap: 4px; min-width: 170px; flex: 1; }
+.rosca-item { display: grid; grid-template-columns: 12px 1fr auto 48px; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; }
+button.rosca-item { cursor: pointer; } button.rosca-item:hover { background: var(--hover); }
+.rosca-item i { width: 11px; height: 11px; border-radius: 3px; }
+.rosca-item .nm { font-size: 13px; } .rosca-item b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.rosca-item small { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.rosca-item.sel { background: var(--accent-wash); } .rosca-item.dim { opacity: .45; }
 .bh-row {
   display: grid; grid-template-columns: minmax(84px, var(--rot, 38%)) minmax(0, 1fr) minmax(44px, var(--val, auto)); align-items: center; gap: 10px;
   border: 0; background: transparent; text-align: left; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; width: calc(100% + 12px);
@@ -354,7 +365,20 @@ svg text { font-family: inherit; }
 .mc { font-size: 11px; font-weight: 700; white-space: nowrap; margin-left: 2px; }
 .mc.bom { color: var(--good-ink); } .mc.ruim { color: var(--critical-ink); } .mc.neutro { color: var(--muted); }
 small .mc { display: inline; }
-.seletor-status { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.seletor-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.card.segmentadores { flex-direction: row; flex-wrap: wrap; gap: 14px 26px; align-items: flex-end; padding: 14px 18px; }
+.pseg { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.pseg-st { flex: 0 1 auto; }
+.seg-tit { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.seg-datas { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg-data { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.seg-data input, .seg-busca input { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.seg-busca { flex: 1 1 220px; } .seg-busca input { width: 100%; }
+.seg-limpar { margin-left: auto; }
+.ordem-pend { display: inline-flex; gap: 4px; margin-left: auto; }
+.ordem-pend button { font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.ordem-pend button.on { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.leg-ordem { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; } .leg-ordem .legenda { margin: 0; }
 .seletor-status .rot { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
 .st-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .st-btn i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
@@ -855,12 +879,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.9'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.10'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Pendências com o status igual ao Power BI (Aberta, Em andamento, Fechada, Cancelada) e seletor de status no topo.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Pendências no estilo Power BI, com filtros de data, status e descrição, rosca de status, barras por turbina, parque e quem abriu, e idade das abertas.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -1136,15 +1160,50 @@ function barrasH(el, itens, o) {
       onclick: clic ? function () { o.onClick(d.k); } : null
     },
     h('span', { class: 'bh-lab' }, d.rot, d.nota ? h('small', null, d.nota) : null),
-    h('span', { class: 'bh-track' }, h('span', { class: 'bh-bar', style: 'width:' + (d.v > 0 ? Math.max(d.v / max * 100, .8) : 0) + '%;background:' + (d.cor || o.cor || 'var(--s1)') })),
+    h('span', { class: 'bh-track' }, d.partes
+      ? d.partes.filter(function (p) { return p.v > 0; }).map(function (p) { return h('span', { class: 'bh-bar', style: 'width:' + (p.v / max * 100) + '%;background:' + p.cor }); })
+      : h('span', { class: 'bh-bar', style: 'width:' + (d.v > 0 ? Math.max(d.v / max * 100, .8) : 0) + '%;background:' + (d.cor || o.cor || 'var(--s1)') })),
     h('span', { class: 'bh-val' }, fmt(d.v), d.extra ? h('small', null, d.extra) : null));
     tipEm(row, function () {
-      return [d.rot, [{ cor: d.cor || o.cor || 'var(--s1)', valor: fmt(d.v), rotulo: o.unidade || '' }].concat(d.tip || []),
+      var linhas = d.partes ? d.partes.map(function (p) { return { cor: p.cor, valor: fmt(p.v), rotulo: p.rot }; }).concat([{ valor: fmt(d.v), rotulo: 'Total' }])
+        : [{ cor: d.cor || o.cor || 'var(--s1)', valor: fmt(d.v), rotulo: o.unidade || '' }];
+      return [d.rot, linhas.concat(d.tip || []),
         clic ? (sel ? 'Clique para remover o filtro' : o.dica || 'Clique para filtrar o painel') : null];
     });
     lista.append(row);
   });
   el.append(lista);
+}
+
+/**
+ * Rosca (SVG) com o total no meio e a legenda ao lado com valor e %. itens: {k, rot, v, cor}.
+ * o: {onClick(k), ativo:Set, centro:'pendências'}
+ */
+function rosca(el, itens, o) {
+  o = o || {};
+  var tot = itens.reduce(function (a, d) { return a + d.v; }, 0);
+  if (!tot) { el.append(h('div', { class: 'vazio' }, 'Sem dados para os filtros atuais.')); return; }
+  var R = 70, r = 46, C = 80, ang = -Math.PI / 2, svg = sv('svg', { viewBox: '0 0 160 160', class: 'rosca-svg', role: 'img', 'aria-label': 'Rosca' });
+  var ativo = o.ativo, pt = function (raio, a) { return (C + raio * Math.cos(a)).toFixed(2) + ' ' + (C + raio * Math.sin(a)).toFixed(2); };
+  itens.forEach(function (d) {
+    if (!d.v) return;
+    var fatia = d.v / tot * Math.PI * 2, a0 = ang, a1 = ang + fatia - (itens.length > 1 ? 0.015 : 0); ang += fatia;
+    if (fatia >= Math.PI * 2 - 1e-6) a1 = a0 + Math.PI * 2 - 1e-4;
+    var grande = a1 - a0 > Math.PI ? 1 : 0;
+    var path = sv('path', { d: 'M' + pt(R, a0) + ' A' + R + ' ' + R + ' 0 ' + grande + ' 1 ' + pt(R, a1) + ' L' + pt(r, a1) + ' A' + r + ' ' + r + ' 0 ' + grande + ' 0 ' + pt(r, a0) + ' Z',
+      fill: d.cor, opacity: ativo && ativo.size && !ativo.has(d.k) ? .25 : 1, style: o.onClick ? 'cursor:pointer' : null });
+    if (o.onClick) path.addEventListener('click', function () { o.onClick(d.k); });
+    tipEm(path, function () { return [d.rot, [{ cor: d.cor, valor: fInt(d.v), rotulo: fPct(d.v / tot) + ' do total' }], o.onClick ? 'Toque para filtrar' : null]; });
+    svg.append(path);
+  });
+  svg.append(sv('text', { x: C, y: C + 2, 'text-anchor': 'middle', class: 'rosca-num' }, fInt(tot)));
+  svg.append(sv('text', { x: C, y: C + 20, 'text-anchor': 'middle', class: 'rosca-rot' }, o.centro || 'total'));
+  var leg = h('div', { class: 'rosca-leg' }, itens.map(function (d) {
+    var sel = ativo && ativo.has(d.k), dim = ativo && ativo.size && !sel;
+    return h(o.onClick ? 'button' : 'div', { type: o.onClick ? 'button' : null, class: 'rosca-item' + (sel ? ' sel' : '') + (dim ? ' dim' : ''), onclick: o.onClick ? function () { o.onClick(d.k); } : null },
+      h('i', { style: 'background:' + d.cor }), h('span', { class: 'nm' }, d.rot), h('b', null, fInt(d.v)), h('small', null, fPct(d.v / tot)));
+  }));
+  el.append(h('div', { class: 'rosca' }, svg, leg));
 }
 
 function legenda(series, linha) {
@@ -1286,8 +1345,8 @@ function serieTempo(el, c) {
     var b = c.baldes[i];
     if (linha) { mira.setAttribute('x1', x(i)); mira.setAttribute('x2', x(i)); mira.setAttribute('opacity', 1); }
     else { faixa.setAttribute('x', x(i) - banda / 2); faixa.setAttribute('width', banda); faixa.setAttribute('opacity', 1); }
-    var ls = c.series.map(function (s) { return { cor: s.cor, valor: (c.fmt || fInt)(s.valores[i] || 0), rotulo: s.nome }; });
-    if (!linha && !agrupado && c.series.length > 1) ls.push({ valor: (c.fmt || fInt)(totais[i]), rotulo: 'Total' });
+    var ls = c.series.filter(function (s) { return !c.tipSemZeros || s.valores[i]; }).map(function (s) { return { cor: s.cor, valor: (c.fmt || fInt)(s.valores[i] || 0), rotulo: s.nome }; });
+    if (!linha && !agrupado && c.series.length > 1 && !c.tipSemZeros) ls.push({ valor: (c.fmt || fInt)(totais[i]), rotulo: 'Total' });
     if (c.tipExtra) ls = ls.concat(c.tipExtra(i));
     sobre.forEach(function (s) { ls.push({ cor: s.cor, valor: (c.fmt || fInt)(s.valores[i] || 0), rotulo: s.nome }); });
     var r = svg.getBoundingClientRect();
@@ -2112,18 +2171,21 @@ function cartaoPendencias(pg, B) {
  * fechadas por mês e a lista. Vale todo o arquivo de pendências (pode ser maior que o período das OMs);
  * os filtros de complexo, parque e turbina do painel se aplicam. Tocar numa barra filtra a página inteira.
  */
-var pendF = { status: new Set(), sit: null, idade: null, wtg: null, usuario: null, mes: null }; // status: Aberta, Em andamento… (vários); mes: {ini, fim, rot}
+var PEND_F0 = function () { return { status: new Set(), sit: null, idade: null, wtg: null, parque: null, usuario: null, mes: null, de: null, ate: null, busca: '' }; };
+var pendF = PEND_F0(), pendOrdem = 'total'; // status: Aberta, Em andamento… (vários); mes: {ini, fim, rot}; de/ate: dias da abertura
 function pendNoLocal(k) {
   var f = estado.f, w = PEND.w[k], pq = w >= 0 ? parqueDoWtg[w] : -1;
   return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
 }
 var CONC_ALERTA = ['concOMAberta', 'concNaoCita', 'concSemOM'];
-var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', max: 30 }, { k: 1, rot: '30 a 90 dias', max: 90 }, { k: 2, rot: '3 a 6 meses', max: 180 }, { k: 3, rot: '6 meses a 1 ano', max: 365 }, { k: 4, rot: 'Mais de 1 ano', max: Infinity }];
+var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', curto: '≤30 d', max: 30 }, { k: 1, rot: '30 a 90 dias', curto: '30–90 d', max: 90 }, { k: 2, rot: '3 a 6 meses', curto: '3–6 m', max: 180 },
+  { k: 3, rot: '6 meses a 1 ano', curto: '6–12 m', max: 365 }, { k: 4, rot: 'Mais de 1 ano', curto: '>1 ano', max: Infinity }];
 var STATUS_PEND = { 'Aberta': 'var(--s4)', 'Em andamento': 'var(--s1)', 'Fechada': 'var(--good)', 'Cancelada': 'var(--neutral)' };
+function renderPend() { var y = window.scrollY; renderPagina(); window.scrollTo(0, y); }
 function filtrarPend(campo, valor) {
   if (campo === 'status') { if (pendF.status.has(valor)) pendF.status.delete(valor); else pendF.status.add(valor); }
   else pendF[campo] = pendF[campo] === valor ? null : valor;
-  var y = window.scrollY; renderPagina(); window.scrollTo(0, y);
+  renderPend();
 }
 function paginaPendencias(pg) {
   if (!PEND) {
@@ -2142,110 +2204,157 @@ function paginaPendencias(pg) {
   var aberta = function (k) { return /^(pend|exec)/.test(PEND.sit[k]); };
   var idadeDe = function (k) { return aberta(k) && PEND.dAb[k] !== null ? hoje - PEND.dAb[k] : null; };
   var faixa = function (k) { var d = idadeDe(k); if (d === null) return -1; for (var j = 0; j < IDADES_PEND.length; j++) if (d < IDADES_PEND[j].max) return j; return -1; };
+  var parqueDe = function (k) { return PEND.w[k] >= 0 ? parqueDoWtg[PEND.w[k]] : -1; };
   var todas = []; for (var k = 0; k < n; k++) if (pendNoLocal(k)) todas.push(k);
   var f = pendF;
   if (f.wtg !== null && !todas.some(function (x) { return PEND.w[x] === f.wtg; })) f.wtg = null;
-  // passa em todos os filtros da página, menos o que está sendo desenhado (cada quadro mostra as opções dele)
+  var termo = semAcentoTxt(f.busca.trim());
+  var textoK = function (k) { return PEND.txt ? PEND.txt[k] : (PEND.txt = P.desc.map(function (d) { return semAcentoTxt(d); }))[k]; };
+  // passa em todos os filtros da página, menos o que está sendo desenhado (cada visual mostra as opções dele)
   var passa = function (k, ignorar) {
     return (ignorar === 'status' || !f.status.size || f.status.has(stBI(k))) &&
       (ignorar === 'sit' || f.sit === null || PEND.sit[k] === f.sit) &&
       (ignorar === 'idade' || f.idade === null || faixa(k) === f.idade) &&
       (ignorar === 'wtg' || f.wtg === null || PEND.w[k] === f.wtg) &&
+      (ignorar === 'parque' || f.parque === null || parqueDe(k) === f.parque) &&
       (ignorar === 'usuario' || f.usuario === null || P.usuario[k] === f.usuario) &&
+      (f.de === null || (PEND.dAb[k] !== null && PEND.dAb[k] >= f.de)) && (f.ate === null || (PEND.dAb[k] !== null && PEND.dAb[k] <= f.ate)) &&
+      (!termo || textoK(k).indexOf(termo) >= 0) &&
       (ignorar === 'mes' || !f.mes || (PEND.dFe[k] !== null && /^conc/.test(PEND.sit[k]) && PEND.dFe[k] >= f.mes.ini && PEND.dFe[k] <= f.mes.fim));
   };
   var sel = todas.filter(function (k) { return passa(k); });
 
-  // título e filtros ativos
+  /* ---------- segmentadores (como no Power BI) ---------- */
+  var dMin = Infinity, dMax = -Infinity; todas.forEach(function (k) { var d = PEND.dAb[k]; if (d !== null) { if (d < dMin) dMin = d; if (d > dMax) dMax = d; } });
+  var isoDe = function (d) { var x = dataDe(d); return x.toISOString().slice(0, 10); };
+  var diaIso = function (v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? diaDe(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))) : null; };
+  var campoData = function (rot, campo, padrao) {
+    return h('label', { class: 'seg-data' }, h('span', null, rot),
+      h('input', { type: 'date', value: isoDe(f[campo] === null ? padrao : f[campo]), min: isoDe(dMin), max: isoDe(dMax),
+        onchange: function (ev) { var d = diaIso(ev.target.value); pendF[campo] = d === null || d === padrao ? null : d; renderPend(); } }));
+  };
+  var cSt = new Map(); todas.forEach(function (k) { if (passa(k, 'status')) cSt.set(stBI(k), (cSt.get(stBI(k)) || 0) + 1); });
+  var temporizador = null;
+  var busca = h('input', { type: 'search', id: 'pend-busca', placeholder: 'Ex.: UPS, escotilha, iluminação…', value: f.busca, 'aria-label': 'Buscar na descrição da pendência',
+    oninput: function (ev) { clearTimeout(temporizador); var v = ev.target.value; temporizador = setTimeout(function () { pendF.busca = v; renderPend(); var b = document.getElementById('pend-busca'); if (b) { b.focus(); b.setSelectionRange(v.length, v.length); } }, 450); } });
+  var algumFiltro = f.status.size || f.sit || f.idade !== null || f.wtg !== null || f.parque !== null || f.usuario || f.mes || f.de !== null || f.ate !== null || f.busca;
+  var segs = h('section', { class: 'card s12 segmentadores' },
+    h('div', { class: 'pseg' }, h('div', { class: 'seg-tit' }, 'Data de abertura'), h('div', { class: 'seg-datas' }, campoData('de', 'de', dMin), campoData('até', 'ate', dMax))),
+    h('div', { class: 'pseg pseg-st' }, h('div', { class: 'seg-tit' }, 'Status'),
+      h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Status da pendência' }, Object.keys(STATUS_PEND).map(function (x) {
+        var on = f.status.has(x);
+        return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { filtrarPend('status', x); } },
+          h('i', { style: 'background:' + STATUS_PEND[x] }), x, h('small', null, ' ' + fInt(cSt.get(x) || 0)));
+      }))),
+    h('div', { class: 'pseg seg-busca' }, h('div', { class: 'seg-tit' }, 'Descrição'), busca),
+    algumFiltro ? h('button', { type: 'button', class: 'btn seg-limpar', onclick: function () { pendF = PEND_F0(); renderPend(); } }, icone('fechar'), 'Limpar filtros') : null);
+
+  // filtros vindos dos visuais (turbina, parque, idade…), para saber o que está aplicado
   var chips = [];
   var chip = function (rot, campo) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarPend(campo, f[campo]); } }, rot, h('span', { 'aria-hidden': 'true' }, ' ×'))); };
-  f.status.forEach(function (x) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarPend('status', x); } }, 'Status: ' + x, h('span', { 'aria-hidden': 'true' }, ' ×'))); });
   if (f.sit !== null) chip(SIT_PEND[f.sit].curto, 'sit');
   if (f.idade !== null) chip('Aberta há ' + IDADES_PEND[f.idade].rot.toLowerCase(), 'idade');
+  if (f.parque !== null) chip(M.parques[f.parque] || 'Parque', 'parque');
   if (f.wtg !== null) chip('Turbina ' + M.dic.wtg[f.wtg], 'wtg');
   if (f.usuario !== null) chip('Aberta por ' + f.usuario, 'usuario');
   if (f.mes) chip('Fechadas em ' + f.mes.rot, 'mes');
-  if (chips.length > 1) chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { pendF = { status: new Set(), sit: null, idade: null, wtg: null, usuario: null, mes: null }; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } }, 'Limpar tudo'));
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Pendências do Manusis'),
-    h('p', null, 'Todas as pendências do arquivo (abertas e fechadas). Toque numa barra para filtrar a página inteira; toque de novo para tirar o filtro. Os filtros de complexo, parque e turbina do painel valem aqui.'),
-    seletorStatus(),
-    chips.length ? h('div', { class: 'chips', style: 'margin-top:8px;width:100%' }, chips) : null));
+    h('p', null, 'Toque em qualquer barra, fatia ou coluna para filtrar a página inteira; toque de novo para tirar.'),
+    chips.length ? h('div', { class: 'chips', style: 'margin-top:6px;width:100%' }, chips) : null));
+  pg.append(segs);
 
-  function seletorStatus() {
-    var c = new Map(); todas.forEach(function (k) { if (passa(k, 'status')) c.set(stBI(k), (c.get(stBI(k)) || 0) + 1); });
-    return h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Status da pendência' }, h('span', { class: 'rot' }, 'Status'),
-      Object.keys(STATUS_PEND).map(function (x) {
-        var on = f.status.has(x);
-        return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { filtrarPend('status', x); } },
-          h('i', { style: 'background:' + STATUS_PEND[x] }), x, h('small', null, ' (' + fInt(c.get(x) || 0) + ')'));
-      }));
-  }
-  // KPIs
-  var nAb = 0, nAnd = 0, nVelhas = 0, nConc = 0, nConcOk = 0, nCanc = 0, nAl = 0;
+  /* ---------- cartões ---------- */
+  var nAb = 0, nAnd = 0, nVelhas = 0, nConc = 0, nConcOk = 0, nCanc = 0, nAl = 0, somaIdade = 0, nIdade = 0;
   sel.forEach(function (k) {
     var sit = PEND.sit[k];
-    if (aberta(k)) { nAb++; if (stBI(k) === 'Em andamento') nAnd++; if (idadeDe(k) !== null && idadeDe(k) >= 180) nVelhas++; }
+    if (aberta(k)) { nAb++; if (stBI(k) === 'Em andamento') nAnd++; var d = idadeDe(k); if (d !== null) { somaIdade += d; nIdade++; if (d >= 180) nVelhas++; } }
     if (/^conc/.test(sit)) { nConc++; if (sit === 'concOk') nConcOk++; }
     if (/^canc/.test(sit)) nCanc++;
     if (SIT_PEND[sit].alerta) nAl++;
   });
   var pct = function (a, b) { return b ? fPct(a / b) : '–'; };
   pg.append(h('div', { class: 'kpis k5' },
-    kpi({ rot: 'Pendências', valor: fInt(sel.length), valorTexto: fInt(sel.length), sub: f.status.size || f.sit || f.idade !== null || f.wtg !== null || f.usuario || f.mes ? 'com os filtros da página' : 'no arquivo do Manusis' }),
-    kpi({ rot: 'Abertas', valor: fInt(nAb), valorTexto: fInt(nAb), sub: fInt(nAnd) + ' em andamento · ' + fInt(nVelhas) + ' há mais de 6 meses', tip: 'Aberta ou em andamento.' }),
-    kpi({ rot: 'Fechadas', valor: fInt(nConc), valorTexto: fInt(nConc), sub: pct(nConcOk, nConc) + ' comprovadas pela OM' }),
-    kpi({ rot: 'Canceladas', valor: fInt(nCanc), valorTexto: fInt(nCanc), sub: pct(nCanc, sel.length) + ' do total' }),
-    kpi({ rot: 'Pontos de controle', valor: fInt(nAl), valorTexto: fInt(nAl), sub: 'para conferir', tip: 'Fechada sem comprovar, fechada com a OM aberta, cancelada com a OM ou sem OM, pronta para fechar, talvez já resolvida.' })));
+    kpi({ rot: 'Total de pendências', valor: fInt(sel.length), valorTexto: fInt(sel.length), sub: algumFiltro ? 'com os filtros' : 'no arquivo do Manusis' }),
+    kpi({ rot: 'Abertas', valor: fInt(nAb), valorTexto: fInt(nAb), sub: pct(nAb, sel.length) + ' do total · ' + fInt(nAnd) + ' em andamento', tip: 'Aberta ou em andamento.' }),
+    kpi({ rot: 'Idade média das abertas', valor: nIdade ? fInt(Math.round(somaIdade / nIdade)) : '–', unid: nIdade ? ' dias' : '', valorTexto: nIdade ? fInt(Math.round(somaIdade / nIdade)) + ' dias' : '–', sub: fInt(nVelhas) + ' abertas há mais de 6 meses' }),
+    kpi({ rot: 'Fechadas', valor: fInt(nConc), valorTexto: fInt(nConc), sub: pct(nConc, sel.length) + ' do total · ' + pct(nConcOk, nConc) + ' comprovadas', tip: 'Comprovadas: a OM de execução está fechada e fala do item da pendência.' }),
+    kpi({ rot: 'Pontos de controle', valor: fInt(nAl), valorTexto: fInt(nAl), sub: 'para conferir · ' + fInt(nCanc) + (nCanc === 1 ? ' cancelada' : ' canceladas'), tip: 'Fechada sem comprovar, fechada com a OM aberta, cancelada com a OM ou sem OM, pronta para fechar, talvez já resolvida.' })));
 
-  // contagens de um campo com os demais filtros
-  var contar = function (campo, chave) {
-    var m = new Map(); todas.forEach(function (k) { if (!passa(k, campo)) return; var v = chave(k); if (v === null || v === undefined || v === -1) return; m.set(v, (m.get(v) || 0) + 1); }); return m;
-  };
-  var quadro = function (id, span, titulo, sub, itens, campo, top, extra) {
-    pg.append(cartao({ id: id, span: span, titulo: titulo, sub: sub,
-      desenhar: function (el) {
-        var vis = itens.slice(0, top);
-        if (campo !== 'status' && f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
-        if (!vis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência com os filtros atuais.')); return; }
-        barrasH(el, vis, Object.assign({ larguraRotulo: '52%', unidade: 'pendências', ativo: campo === 'status' ? (f.status.size ? f.status : null) : f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página',
-          onClick: function (x) { filtrarPend(campo, x); } }, extra || {}));
-        if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:4px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
-      } }));
-  };
-  // status da pendência
-  var cSt = contar('status', stBI);
-  quadro('pend-status', 's4', 'Status da pendência', 'Toque para filtrar; dá para marcar mais de um',
-    Object.keys(STATUS_PEND).filter(function (x) { return cSt.get(x); }).map(function (x) { return { k: x, rot: x, v: cSt.get(x), cor: STATUS_PEND[x] }; }), 'status', 6);
-  // idade das abertas
-  var cId = contar('idade', faixa);
-  quadro('pend-idade', 's4', 'Há quanto tempo está aberta', 'Só pendentes e em execução',
-    IDADES_PEND.map(function (d, j) { return { k: j, rot: d.rot, v: cId.get(j) || 0, cor: j >= 3 ? 'var(--critical)' : j === 2 ? 'var(--s4)' : 'var(--neutral)' }; }), 'idade', 5);
-  // pontos de controle
-  var cSi = contar('sit', function (k) { return SIT_PEND[PEND.sit[k]].alerta ? PEND.sit[k] : null; });
-  quadro('pend-controle', 's4', 'Pontos de controle', 'Para conferir: toque para listar e ver o motivo',
-    Object.keys(SIT_PEND).filter(function (x) { return cSi.get(x); }).map(function (x) { return { k: x, rot: SIT_PEND[x].curto, v: cSi.get(x), cor: SIT_PEND[x].cor }; }), 'sit', 10);
-  // turbinas e quem abriu: total, com abertas/concluídas/canceladas embaixo
-  var resumo = function (campo, chave) {
+  /* ---------- visuais ---------- */
+  var legendaStatus = function () { return legenda(Object.keys(STATUS_PEND).map(function (x) { return { nome: x, cor: STATUS_PEND[x] }; })); };
+  // barras empilhadas por status: turbina, parque, quem abriu
+  var empilhado = function (campo, chave, nome) {
     var m = new Map();
     todas.forEach(function (k) {
       if (!passa(k, campo)) return; var v = chave(k); if (v === null || v === undefined || v === -1 || v === '') return;
-      var r = m.get(v) || { v: 0, ab: 0, an: 0, co: 0, ca: 0 }; r.v++;
-      var st = stBI(k); if (st === 'Aberta') r.ab++; else if (st === 'Em andamento') r.an++; else if (st === 'Fechada') r.co++; else if (st === 'Cancelada') r.ca++;
-      m.set(v, r);
+      var r = m.get(v); if (!r) { r = { v: 0 }; Object.keys(STATUS_PEND).forEach(function (x) { r[x] = 0; }); m.set(v, r); }
+      r.v++; r[stBI(k)] = (r[stBI(k)] || 0) + 1;
     });
-    return Array.from(m.entries()).map(function (e) { var r = e[1]; return { k: e[0], v: r.v, nota: innerWidth < 700 ? fInt(r.ab) + ' ab. · ' + fInt(r.an) + ' and. · ' + fInt(r.co) + ' fech. · ' + fInt(r.ca) + ' canc.' : fInt(r.ab) + ' abertas · ' + fInt(r.an) + ' em andamento · ' + fInt(r.co) + ' fechadas · ' + fInt(r.ca) + ' canceladas', cor: 'var(--s4)' }; })
-      .sort(function (a, b) { return b.v - a.v; });
+    return Array.from(m.entries()).map(function (e) {
+      var r = e[1];
+      return { k: e[0], rot: nome(e[0]), v: r.v, partes: Object.keys(STATUS_PEND).map(function (x) { return { v: r[x], cor: STATUS_PEND[x], rot: x }; }),
+        nota: r['Aberta'] + r['Em andamento'] ? fInt(r['Aberta'] + r['Em andamento']) + (innerWidth < 700 ? ' abertas' : ' abertas · ' + pct(r['Aberta'] + r['Em andamento'], r.v)) : null };
+    }).sort(function (a, b) { return pendOrdem === 'abertas' ? (ab(b) - ab(a) || b.v - a.v) : (b.v - a.v || ab(b) - ab(a)); });
   };
-  var itW = resumo('wtg', function (k) { return PEND.w[k]; }); itW.forEach(function (d) { d.rot = M.dic.wtg[d.k]; });
-  quadro('pend-turbinas', 's6', 'Turbinas com mais pendências', fInt(itW.length) + ' turbinas · embaixo, quantas estão abertas, em andamento, fechadas e canceladas', itW, 'wtg', 15);
-  var itU = resumo('usuario', function (k) { return P.usuario[k]; }); itU.forEach(function (d) { d.rot = d.k; });
-  quadro('pend-usuarios', 's6', 'Quem abriu mais pendências', 'Usuário que registrou a pendência no Manusis', itU, 'usuario', 15);
+  var ab = function (d) { return d.partes[0].v + d.partes[1].v; };
+  var ordem = function () {
+    return h('span', { class: 'ordem-pend', role: 'group', 'aria-label': 'Ordenar' }, [['total', 'Mais pendências'], ['abertas', 'Mais abertas']].map(function (o) {
+      return h('button', { type: 'button', class: pendOrdem === o[0] ? 'on' : null, 'aria-pressed': String(pendOrdem === o[0]), onclick: function () { pendOrdem = o[0]; renderPend(); } }, o[1]);
+    }));
+  };
+  var cabEmp = function () { return h('div', { class: 'leg-ordem' }, legendaStatus(), ordem()); };
+  var visual = function (id, span, titulo, sub, desenhar, dados) { pg.append(cartao({ id: id, span: span, titulo: titulo, sub: sub, desenhar: desenhar, dados: dados })); };
+  var barras = function (el, itens, campo, top, o) {
+    var vis = itens.slice(0, top);
+    if (f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
+    if (!vis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência com os filtros atuais.')); return; }
+    barrasH(el, vis, Object.assign({ larguraRotulo: '46%', unidade: 'pendências', ativo: f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página', onClick: function (x) { filtrarPend(campo, x); } }, o || {}));
+    if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
+  };
+  var tabelaDe = function (itens, rotCol) {
+    return { cols: [{ k: 'rot', rot: rotCol }].concat(Object.keys(STATUS_PEND).map(function (x, j) { return { k: 's' + j, rot: x, num: true, fmt: fInt }; })).concat([{ k: 'v', rot: 'Total', num: true, fmt: fInt }]),
+      linhas: itens.map(function (d) { var r = { rot: d.rot, v: d.v }; d.partes.forEach(function (p, j) { r['s' + j] = p.v; }); return r; }) };
+  };
 
-  cartaoPendMes(pg, todas, passa);
+  // 1) status (rosca)
+  var itSt = Object.keys(STATUS_PEND).map(function (x) { return { k: x, rot: x, v: cSt.get(x) || 0, cor: STATUS_PEND[x] }; });
+  visual('pend-status', 's4', 'Pendências por status', 'Toque numa fatia para filtrar (dá para marcar mais de uma)',
+    function (el) { rosca(el, itSt, { centro: 'pendências', ativo: f.status.size ? f.status : null, onClick: function (x) { filtrarPend('status', x); } }); },
+    { cols: [{ k: 'rot', rot: 'Status' }, { k: 'v', rot: 'Pendências', num: true, fmt: fInt }], linhas: itSt });
+  // 2) idade das abertas (colunas)
+  var cId = IDADES_PEND.map(function () { return 0; }); todas.forEach(function (k) { var j = faixa(k); if (j >= 0 && passa(k, 'idade')) cId[j]++; });
+  var corId = function (j) { return j >= 3 ? 'var(--critical)' : j === 2 ? 'var(--s4)' : 'var(--s1)'; };
+  var bId = IDADES_PEND.map(function (d) { return { rot: d.curto, longo: 'Abertas há ' + d.rot.toLowerCase() }; });
+  visual('pend-idade', 's4', 'Há quanto tempo estão abertas', 'Abertas e em andamento, pela data de abertura · em vermelho, mais de 6 meses',
+    function (el) {
+      serieTempo(el, { baldes: bId, modo: 'colunas', altura: 230, titulo: 'Idade das pendências abertas', legenda: false, rotularTotais: true, tipSemZeros: true,
+        series: IDADES_PEND.map(function (d, j) { return { nome: d.rot, cor: corId(j), valores: cId.map(function (v, i) { return i === j ? v : 0; }) }; }),
+        onClick: function (j) { filtrarPend('idade', j); } });
+    },
+    { cols: [{ k: 'rot', rot: 'Idade' }, { k: 'v', rot: 'Pendências abertas', num: true, fmt: fInt }], linhas: IDADES_PEND.map(function (d, j) { return { rot: d.rot, v: cId[j] }; }) });
+  // 3) pontos de controle
+  var cSi = new Map(); todas.forEach(function (k) { if (passa(k, 'sit') && SIT_PEND[PEND.sit[k]].alerta) cSi.set(PEND.sit[k], (cSi.get(PEND.sit[k]) || 0) + 1); });
+  var itSi = Object.keys(SIT_PEND).filter(function (x) { return cSi.get(x); }).map(function (x) { return { k: x, rot: SIT_PEND[x].curto, v: cSi.get(x), cor: SIT_PEND[x].cor, tip: [{ valor: '', rotulo: SIT_PEND[x].dica }] }; });
+  visual('pend-controle', 's4', 'Pontos de controle', 'Para conferir · toque para listar e ver o motivo', function (el) { barras(el, itSi, 'sit', 10, { larguraRotulo: '58%' }); },
+    { cols: [{ k: 'rot', rot: 'Ponto de controle' }, { k: 'v', rot: 'Pendências', num: true, fmt: fInt }], linhas: itSi });
+  // 4) turbinas e 5) quem abriu (barras empilhadas por status)
+  var itW = empilhado('wtg', function (k) { return PEND.w[k]; }, function (w) { return M.dic.wtg[w]; });
+  visual('pend-turbinas', 's6', 'Pendências por turbina', fInt(itW.length) + ' turbinas · barra dividida por status · embaixo, quantas ainda estão abertas',
+    function (el) { el.append(cabEmp()); barras(el, itW, 'wtg', 15); }, tabelaDe(itW, 'Turbina'));
+  var itU = empilhado('usuario', function (k) { return P.usuario[k]; }, function (u) { return u; });
+  visual('pend-usuarios', 's6', 'Pendências por quem abriu', 'Usuário que registrou a pendência no Manusis · barra dividida por status',
+    function (el) { el.append(cabEmp()); barras(el, itU, 'usuario', 15); }, tabelaDe(itU, 'Aberta por'));
+  // 6) parque
+  var itP = empilhado('parque', parqueDe, function (p) { return M.parques[p] || '–'; });
+  visual('pend-parques', 's4', 'Pendências por parque', 'Barra dividida por status', function (el) { el.append(cabEmp()); barras(el, itP, 'parque', 10, { larguraRotulo: '42%' }); }, tabelaDe(itP, 'Parque'));
+  // 7) fechadas por mês
+  cartaoPendMes(pg, todas, passa, 's8');
+  // 8) tabela
   cartaoListaPend(pg, sel, idadeDe);
 }
+function semAcentoTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 /** Pendências fechadas por mês (data de conclusão), comprovadas × com ponto de controle. */
-function cartaoPendMes(pg, todas, passa) {
+function cartaoPendMes(pg, todas, passa, span) {
   var ks = todas.filter(function (k) { return passa(k, 'mes'); });
   var dias = []; ks.forEach(function (k) { if (PEND.dAb[k] !== null) dias.push(PEND.dAb[k]); if (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null) dias.push(PEND.dFe[k]); });
   if (!dias.length) return;
@@ -2267,12 +2376,12 @@ function cartaoPendMes(pg, todas, passa) {
   var top = tot.map(function (v, j) { return j; }).sort(function (x, y) { return tot[y] - tot[x]; }).filter(function (j) { return tot[j] > 0; }).slice(0, 3);
   var soma = tot.reduce(function (a, v) { return a + v; }, 0);
   pg.append(cartao({
-    id: 'pend-mes', span: 's12', titulo: 'Pendências fechadas por mês',
+    id: 'pend-mes', span: span || 's12', titulo: 'Pendências fechadas por mês',
     sub: fInt(soma) + ' fechadas, pelo mês do fechamento' + (top.length ? ' · meses que mais fecharam: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
       '. Toque num mês para ver também quantas foram abertas e para listar as fechadas nele.',
     desenhar: function (el) {
       if (!soma) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência fechada com os filtros atuais (marque “Fechada” no status ou tire o filtro).')); return; }
-      serieTempo(el, { baldes: b, modo: 'colunas', altura: 260, titulo: 'Pendências fechadas por mês',
+      serieTempo(el, { baldes: b, modo: 'colunas', altura: span === 's8' ? 320 : 260, titulo: 'Pendências fechadas por mês',
         series: [{ nome: 'Fechada e comprovada pela OM', cor: 'var(--good)', valores: ok }, { nome: 'Fechada com ponto de controle', cor: 'var(--critical)', valores: al },
           { nome: 'Fechada com OM de antes do período', cor: 'var(--neutral)', valores: ant }],
         rotularTotais: true,
