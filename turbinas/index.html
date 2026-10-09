@@ -848,7 +848,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.5'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.6'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -3383,6 +3383,8 @@ window.addEventListener('beforeinstallprompt', function (ev) {
   // "?atualizar" no endereço: apaga a cópia guardada do aplicativo e recarrega a versão publicada
   // (os dados das OMs ficam no IndexedDB e não são apagados)
   if (/[?&]atualizar\b/.test(location.search)) { recarregarVersaoNova(); return; }
+  // volta ao endereço limpo depois de recarregar a versão nova
+  if (/[?&]v=\d/.test(location.search)) try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) { /* segue */ }
   try { navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () { /* sem modo offline */ }); } catch (e) { /* idem */ }
   // O app aberto pelo ícone volta em segundo plano sem recarregar: confere a versão publicada
   // ao abrir, ao voltar para a tela (no máximo a cada 5 min) e a cada 30 min.
@@ -3396,8 +3398,13 @@ window.addEventListener('beforeinstallprompt', function (ev) {
 function recarregarVersaoNova() {
   Promise.all([
     navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }) : null,
-    window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : null
-  ]).catch(function () { /* segue */ }).then(function () { location.replace(location.pathname + location.hash); });
+    window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : null,
+    // o navegador também guarda os arquivos por até 10 min (cabeçalho do GitHub Pages): baixa de novo
+    window.fetch ? Promise.all(['./', 'index.html', 'modelo.js', 'sw.js'].map(function (u) { return fetch(u, { cache: 'reload' }).catch(function () { /* segue */ }); })) : null
+  ]).catch(function () { /* segue */ }).then(function () {
+    // endereço novo (?v=…): não há cópia guardada dele em lugar nenhum
+    location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+  });
 }
 /** "2026-10-09.4" > "2026-10-09.10"? Compara a data e depois o número da versão do dia. */
 function versaoMaior(a, b) {
