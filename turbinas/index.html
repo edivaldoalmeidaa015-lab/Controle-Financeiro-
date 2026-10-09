@@ -883,12 +883,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.13'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.14'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Pendências cruzando pendência com a OM (pontos de controle e status da OM de execução), sem misturar consumo de material.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): ficha da OM sem material (material fica só na aba Materiais) e pendências numeradas na ficha.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -2999,9 +2999,9 @@ function fichaOM(i, lista, pos, navegar) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
-      itensTroca(i).length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, itensTroca(i).map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] + (it[2] ? ' · vem da baixa de material no Manusis' : '') }, h('i', { style: 'background:' + (it[2] ? 'var(--s1)' : 'var(--s3)') }), it[1], it[2] ? h('small', { style: 'color:var(--muted);font-weight:500' }, ' (baixa no Manusis)') : null, marcaItem(i, it)); })),
-        h('div', { style: 'height:14px' })] : null,
-      blocoConsumo(i),
+      // material (baixas do Manusis) fica só na aba Materiais: aqui, só as peças citadas no serviço executado
+      O.pecasItens[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecasItens[i].map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] }, h('i', { style: 'background:var(--s3)' }), it[1]); })),
+        h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas no texto do serviço executado.')] : null,
       blocoPendOM(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
       O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,

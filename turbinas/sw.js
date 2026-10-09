@@ -1,6 +1,6 @@
 // Service worker do Painel de Turbinas: guarda o aplicativo no aparelho para abrir sem internet.
 // Os dados das OMs não passam por aqui — ficam no IndexedDB do próprio painel.
-var CACHE = 'painel-turbinas-v32';
+var CACHE = 'painel-turbinas-v33';
 var ARQUIVOS = ['./', './index.html', './modelo.js', './vendor/xlsx.mini.min.js', './manifest.webmanifest', './icone-192.png', './icone-512.png', './icone-180.png'];
 
 self.addEventListener('install', function (ev) {
