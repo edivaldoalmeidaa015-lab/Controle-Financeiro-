@@ -227,6 +227,7 @@ button { cursor: pointer; }
   border-left: 4px solid var(--warning); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ink); }
 .faixa-aviso > span { flex: 1 1 260px; }
 .kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (min-width: 1001px) { .kpis.k5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
@@ -848,12 +849,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.7'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.8'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): gráfico de pendências concluídas por mês na página Peças. Daqui pra frente, quando sair versão nova, o app avisa e atualiza com um toque.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): nova aba Pendências, com status, turbinas e quem abriu mais pendências, idade das abertas, pontos de controle e concluídas por mês.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -2098,20 +2099,134 @@ function cartaoPendencias(pg, B) {
 }
 
 /*
- * Pendências do Manusis: situação de controle de cada pendência (concluída sem comprovar, cancelada com a OM,
- * pronta para concluir, talvez já resolvida…), idade das abertas e turbinas. Vale todo o arquivo de pendências
- * (pode ser maior que o período das OMs); os filtros de complexo, parque e turbina se aplicam.
+ * Página Pendências (Manusis): status, idade das abertas, pontos de controle, turbinas e quem abriu mais,
+ * concluídas por mês e a lista. Vale todo o arquivo de pendências (pode ser maior que o período das OMs);
+ * os filtros de complexo, parque e turbina do painel se aplicam. Tocar numa barra filtra a página inteira.
  */
-var pendMSel = { sit: 'alertas', idade: null, wtg: null, mes: null }; // mes: {ini, fim, rot} = concluídas naquele mês
+var pendF = { status: null, sit: null, idade: null, wtg: null, usuario: null, mes: null }; // mes: {ini, fim, rot}
 function pendNoLocal(k) {
   var f = estado.f, w = PEND.w[k], pq = w >= 0 ? parqueDoWtg[w] : -1;
   return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
 }
 var CONC_ALERTA = ['concOMAberta', 'concNaoCita', 'concSemOM'];
-/** Pendências concluídas por mês (data de conclusão), comprovadas × com ponto de controle, com as abertas no mês por cima. */
-function cartaoPendMes(pg) {
-  var P = M.pendencias, n = P.num.length, ks = [];
-  for (var k = 0; k < n; k++) if (pendNoLocal(k)) ks.push(k);
+var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', max: 30 }, { k: 1, rot: '30 a 90 dias', max: 90 }, { k: 2, rot: '3 a 6 meses', max: 180 }, { k: 3, rot: '6 meses a 1 ano', max: 365 }, { k: 4, rot: 'Mais de 1 ano', max: Infinity }];
+var STATUS_PEND = { 'Pendente': 'var(--s4)', 'Em execução': 'var(--s1)', 'Concluído': 'var(--good)', 'Cancelado': 'var(--neutral)' };
+function filtrarPend(campo, valor) {
+  pendF[campo] = pendF[campo] === valor ? null : valor;
+  var y = window.scrollY; renderPagina(); window.scrollTo(0, y);
+}
+function paginaPendencias(pg) {
+  if (!PEND) {
+    pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Pendências do Manusis')));
+    pg.append(h('section', { class: 'card s12 sem-consumo', id: 'sem-pendencias' },
+      h('h3', null, 'Falta carregar as pendências do Manusis'),
+      h('p', null, 'Esta página mostra as pendências de cada turbina, quem abriu mais, o que está aberto, concluído e cancelado, há quanto tempo estão abertas e os pontos de controle (concluída sem comprovar, cancelada com a OM…). ',
+        'Para isso, o painel precisa da exportação de ', h('b', null, 'pendências do Manusis'), ' (abertas e fechadas, até 2 anos).'),
+      h('p', null, 'Toque no botão e escolha o arquivo ', h('b', null, 'pendencias_….zip'), ' (ou a base pronta com tudo junto). As OMs e o consumo já carregados continuam.'),
+      h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar pendências'),
+      h('p', { class: 'nota' }, 'Versão do painel: ' + fDataVersao())));
+    return;
+  }
+  var P = M.pendencias, n = P.num.length, hoje = diaMax;
+  for (var k0 = 0; k0 < n; k0++) if (PEND.dAb[k0] !== null && PEND.dAb[k0] > hoje) hoje = PEND.dAb[k0];
+  var aberta = function (k) { return /^(pend|exec)/.test(PEND.sit[k]); };
+  var idadeDe = function (k) { return aberta(k) && PEND.dAb[k] !== null ? hoje - PEND.dAb[k] : null; };
+  var faixa = function (k) { var d = idadeDe(k); if (d === null) return -1; for (var j = 0; j < IDADES_PEND.length; j++) if (d < IDADES_PEND[j].max) return j; return -1; };
+  var todas = []; for (var k = 0; k < n; k++) if (pendNoLocal(k)) todas.push(k);
+  var f = pendF;
+  if (f.wtg !== null && !todas.some(function (x) { return PEND.w[x] === f.wtg; })) f.wtg = null;
+  // passa em todos os filtros da página, menos o que está sendo desenhado (cada quadro mostra as opções dele)
+  var passa = function (k, ignorar) {
+    return (ignorar === 'status' || f.status === null || P.status[k] === f.status) &&
+      (ignorar === 'sit' || f.sit === null || PEND.sit[k] === f.sit) &&
+      (ignorar === 'idade' || f.idade === null || faixa(k) === f.idade) &&
+      (ignorar === 'wtg' || f.wtg === null || PEND.w[k] === f.wtg) &&
+      (ignorar === 'usuario' || f.usuario === null || P.usuario[k] === f.usuario) &&
+      (ignorar === 'mes' || !f.mes || (PEND.dFe[k] !== null && /^conc/.test(PEND.sit[k]) && PEND.dFe[k] >= f.mes.ini && PEND.dFe[k] <= f.mes.fim));
+  };
+  var sel = todas.filter(function (k) { return passa(k); });
+
+  // título e filtros ativos
+  var chips = [];
+  var chip = function (rot, campo) { chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { filtrarPend(campo, f[campo]); } }, rot, h('span', { 'aria-hidden': 'true' }, ' ×'))); };
+  if (f.status !== null) chip('Status: ' + f.status, 'status');
+  if (f.sit !== null) chip(SIT_PEND[f.sit].curto, 'sit');
+  if (f.idade !== null) chip('Aberta há ' + IDADES_PEND[f.idade].rot.toLowerCase(), 'idade');
+  if (f.wtg !== null) chip('Turbina ' + M.dic.wtg[f.wtg], 'wtg');
+  if (f.usuario !== null) chip('Aberta por ' + f.usuario, 'usuario');
+  if (f.mes) chip('Concluídas em ' + f.mes.rot, 'mes');
+  if (chips.length > 1) chips.push(h('button', { type: 'button', class: 'chip', onclick: function () { pendF = { status: null, sit: null, idade: null, wtg: null, usuario: null, mes: null }; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } }, 'Limpar tudo'));
+  pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Pendências do Manusis'),
+    h('p', null, 'Todas as pendências do arquivo (abertas e fechadas). Toque numa barra para filtrar a página inteira; toque de novo para tirar o filtro. Os filtros de complexo, parque e turbina do painel valem aqui.'),
+    chips.length ? h('div', { class: 'chips', style: 'margin-top:8px;width:100%' }, chips) : null));
+
+  // KPIs
+  var nAb = 0, nVelhas = 0, nConc = 0, nConcOk = 0, nCanc = 0, nAl = 0;
+  sel.forEach(function (k) {
+    var sit = PEND.sit[k];
+    if (aberta(k)) { nAb++; if (idadeDe(k) !== null && idadeDe(k) >= 180) nVelhas++; }
+    if (/^conc/.test(sit)) { nConc++; if (sit === 'concOk') nConcOk++; }
+    if (/^canc/.test(sit)) nCanc++;
+    if (SIT_PEND[sit].alerta) nAl++;
+  });
+  var pct = function (a, b) { return b ? fPct(a / b) : '–'; };
+  pg.append(h('div', { class: 'kpis k5' },
+    kpi({ rot: 'Pendências', valor: fInt(sel.length), valorTexto: fInt(sel.length), sub: f.status || f.sit || f.idade !== null || f.wtg !== null || f.usuario || f.mes ? 'com os filtros da página' : 'no arquivo do Manusis' }),
+    kpi({ rot: 'Abertas', valor: fInt(nAb), valorTexto: fInt(nAb), sub: fInt(nVelhas) + ' há mais de 6 meses', tip: 'Pendente ou em execução no Manusis.' }),
+    kpi({ rot: 'Concluídas', valor: fInt(nConc), valorTexto: fInt(nConc), sub: pct(nConcOk, nConc) + ' comprovadas pela OM' }),
+    kpi({ rot: 'Canceladas', valor: fInt(nCanc), valorTexto: fInt(nCanc), sub: pct(nCanc, sel.length) + ' do total' }),
+    kpi({ rot: 'Pontos de controle', valor: fInt(nAl), valorTexto: fInt(nAl), sub: 'para conferir', tip: 'Concluída sem comprovar, concluída com a OM aberta, cancelada com a OM ou sem OM, pronta para concluir, talvez já resolvida.' })));
+
+  // contagens de um campo com os demais filtros
+  var contar = function (campo, chave) {
+    var m = new Map(); todas.forEach(function (k) { if (!passa(k, campo)) return; var v = chave(k); if (v === null || v === undefined || v === -1) return; m.set(v, (m.get(v) || 0) + 1); }); return m;
+  };
+  var quadro = function (id, span, titulo, sub, itens, campo, top, extra) {
+    pg.append(cartao({ id: id, span: span, titulo: titulo, sub: sub,
+      desenhar: function (el) {
+        var vis = itens.slice(0, top);
+        if (f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
+        if (!vis.length) { el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência com os filtros atuais.')); return; }
+        barrasH(el, vis, Object.assign({ larguraRotulo: '52%', unidade: 'pendências', ativo: f[campo] === null ? null : new Set([f[campo]]), dica: 'Toque para filtrar a página',
+          onClick: function (x) { filtrarPend(campo, x); } }, extra || {}));
+        if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:4px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
+      } }));
+  };
+  // status no Manusis
+  var cSt = contar('status', function (k) { return P.status[k]; });
+  quadro('pend-status', 's4', 'Status no Manusis', 'Situação registrada no Manusis',
+    Object.keys(STATUS_PEND).filter(function (x) { return cSt.get(x); }).map(function (x) { return { k: x, rot: x, v: cSt.get(x), cor: STATUS_PEND[x] }; }), 'status', 6);
+  // idade das abertas
+  var cId = contar('idade', faixa);
+  quadro('pend-idade', 's4', 'Há quanto tempo está aberta', 'Só pendentes e em execução',
+    IDADES_PEND.map(function (d, j) { return { k: j, rot: d.rot, v: cId.get(j) || 0, cor: j >= 3 ? 'var(--critical)' : j === 2 ? 'var(--s4)' : 'var(--neutral)' }; }), 'idade', 5);
+  // pontos de controle
+  var cSi = contar('sit', function (k) { return SIT_PEND[PEND.sit[k]].alerta ? PEND.sit[k] : null; });
+  quadro('pend-controle', 's4', 'Pontos de controle', 'Para conferir: toque para listar e ver o motivo',
+    Object.keys(SIT_PEND).filter(function (x) { return cSi.get(x); }).map(function (x) { return { k: x, rot: SIT_PEND[x].curto, v: cSi.get(x), cor: SIT_PEND[x].cor }; }), 'sit', 10);
+  // turbinas e quem abriu: total, com abertas/concluídas/canceladas embaixo
+  var resumo = function (campo, chave) {
+    var m = new Map();
+    todas.forEach(function (k) {
+      if (!passa(k, campo)) return; var v = chave(k); if (v === null || v === undefined || v === -1 || v === '') return;
+      var r = m.get(v) || { v: 0, ab: 0, co: 0, ca: 0 }; r.v++;
+      if (aberta(k)) r.ab++; else if (/^conc/.test(PEND.sit[k])) r.co++; else if (/^canc/.test(PEND.sit[k])) r.ca++;
+      m.set(v, r);
+    });
+    return Array.from(m.entries()).map(function (e) { var r = e[1]; return { k: e[0], v: r.v, nota: innerWidth < 700 ? fInt(r.ab) + ' ab. · ' + fInt(r.co) + ' concl. · ' + fInt(r.ca) + ' canc.' : fInt(r.ab) + ' abertas · ' + fInt(r.co) + ' concluídas · ' + fInt(r.ca) + ' canceladas', cor: 'var(--s4)' }; })
+      .sort(function (a, b) { return b.v - a.v; });
+  };
+  var itW = resumo('wtg', function (k) { return PEND.w[k]; }); itW.forEach(function (d) { d.rot = M.dic.wtg[d.k]; });
+  quadro('pend-turbinas', 's6', 'Turbinas com mais pendências', fInt(itW.length) + ' turbinas · embaixo, quantas estão abertas, concluídas e canceladas', itW, 'wtg', 15);
+  var itU = resumo('usuario', function (k) { return P.usuario[k]; }); itU.forEach(function (d) { d.rot = d.k; });
+  quadro('pend-usuarios', 's6', 'Quem abriu mais pendências', 'Usuário que registrou a pendência no Manusis', itU, 'usuario', 15);
+
+  cartaoPendMes(pg, todas, passa);
+  cartaoListaPend(pg, sel, idadeDe);
+}
+/** Pendências concluídas por mês (data de conclusão), comprovadas × com ponto de controle. */
+function cartaoPendMes(pg, todas, passa) {
+  var ks = todas.filter(function (k) { return passa(k, 'mes'); });
   var dias = []; ks.forEach(function (k) { if (PEND.dAb[k] !== null) dias.push(PEND.dAb[k]); if (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null) dias.push(PEND.dFe[k]); });
   if (!dias.length) return;
   var ini = dataDe(Math.min.apply(null, dias)), fim = dataDe(Math.max.apply(null, dias)), b = [];
@@ -2133,7 +2248,7 @@ function cartaoPendMes(pg) {
   var soma = tot.reduce(function (a, v) { return a + v; }, 0);
   pg.append(cartao({
     id: 'pend-mes', span: 's12', titulo: 'Pendências concluídas por mês',
-    sub: fInt(soma) + ' concluídas no Manusis, pelo mês da conclusão' + (top.length ? ' · meses com mais conclusões: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
+    sub: fInt(soma) + ' concluídas, pelo mês da conclusão' + (top.length ? ' · meses com mais conclusões: ' + top.map(function (j) { return b[j].longo + ' (' + fInt(tot[j]) + ')'; }).join(', ') : '') +
       '. Toque num mês para ver também quantas foram abertas e para listar as concluídas nele.',
     desenhar: function (el) {
       serieTempo(el, { baldes: b, modo: 'colunas', altura: 260, titulo: 'Pendências concluídas por mês',
@@ -2142,9 +2257,9 @@ function cartaoPendMes(pg) {
         rotularTotais: true,
         tipExtra: function (j) { return [{ valor: fInt(abertas[j]), rotulo: 'Abertas no mês' }].concat(canc[j] ? [{ valor: fInt(canc[j]), rotulo: 'Canceladas no mês' }] : []); },
         onClick: function (j) {
-          pendMSel = { sit: 'todas', idade: null, wtg: null, mes: { ini: b[j].ini, fim: b[j].fim, rot: b[j].longo } };
+          pendF.mes = pendF.mes && pendF.mes.ini === b[j].ini ? null : { ini: b[j].ini, fim: b[j].fim, rot: b[j].longo };
           renderPagina();
-          setTimeout(function () { var c = document.getElementById('pend-manusis'); if (c) c.scrollIntoView({ block: 'start' }); }, 60);
+          setTimeout(function () { var c = document.getElementById('pend-lista'); if (c) c.scrollIntoView({ block: 'start' }); }, 60);
         } });
     },
     dados: { cols: [{ k: 'p', rot: 'Mês' }, { k: 'ok', rot: 'Comprovadas', num: true, fmt: fInt }, { k: 'al', rot: 'Com ponto de controle', num: true, fmt: fInt },
@@ -2152,83 +2267,37 @@ function cartaoPendMes(pg) {
       linhas: b.map(function (x, j) { return { p: x.longo, ok: ok[j], al: al[j], ant: ant[j], t: tot[j], ab: abertas[j], c: canc[j] }; }) }
   }));
 }
-var IDADES_PEND = [{ k: 0, rot: 'Até 30 dias', max: 30 }, { k: 1, rot: '30 a 90 dias', max: 90 }, { k: 2, rot: '3 a 6 meses', max: 180 }, { k: 3, rot: '6 meses a 1 ano', max: 365 }, { k: 4, rot: 'Mais de 1 ano', max: Infinity }];
-function cartaoPendManusis(pg) {
-  var P = M.pendencias, n = P.num.length, hoje = diaMax;
-  for (var k0 = 0; k0 < n; k0++) if (PEND.dAb[k0] !== null && PEND.dAb[k0] > hoje) hoje = PEND.dAb[k0];
-  var aberta = function (k) { return /^(pend|exec)/.test(PEND.sit[k]); };
-  var idadeDe = function (k) { return aberta(k) && PEND.dAb[k] !== null ? hoje - PEND.dAb[k] : null; };
-  var faixa = function (k) { var d = idadeDe(k); if (d === null) return -1; for (var j = 0; j < IDADES_PEND.length; j++) if (d < IDADES_PEND[j].max) return j; return -1; };
-  var todas = []; for (var k = 0; k < n; k++) if (pendNoLocal(k)) todas.push(k);
-  var noMes = function (k) { var x = pendMSel.mes; return !x || (/^conc/.test(PEND.sit[k]) && PEND.dFe[k] !== null && PEND.dFe[k] >= x.ini && PEND.dFe[k] <= x.fim); };
-  var ordemSit = Object.keys(SIT_PEND);
-  // escolher uma faixa de idade lista todas as abertas daquela idade, não só as com ponto de controle
-  var sitEf = function () { return pendMSel.sit === 'alertas' && pendMSel.idade !== null ? 'todas' : pendMSel.sit; };
-  var passa = function (k, ignorar) {
-    var sit = PEND.sit[k], se = sitEf();
-    return (ignorar === 'sit' || (se === 'alertas' ? SIT_PEND[sit].alerta : se === 'todas' || sit === se)) &&
-      (ignorar === 'idade' || pendMSel.idade === null || faixa(k) === pendMSel.idade) && (ignorar === 'wtg' || pendMSel.wtg === null || PEND.w[k] === pendMSel.wtg) && noMes(k);
+/** Lista das pendências com os filtros da página, com exportação em CSV. */
+function cartaoListaPend(pg, sel, idadeDe) {
+  var P = M.pendencias;
+  var linhas = sel.slice().sort(function (a, b) { return (PEND.dAb[a] || 0) - (PEND.dAb[b] || 0); }).map(function (k) {
+    var ie = PEND.iExec[k], sg = PEND.sug[k];
+    return { k: k, i: ie >= 0 ? ie : sg >= 0 ? sg : PEND.iOrig[k] >= 0 ? PEND.iOrig[k] : undefined, num: P.num[k], abertura: PEND.dAb[k], wtgTxt: P.wtg[k] || '–',
+      statusTxt: P.status[k], sitTxt: SIT_PEND[PEND.sit[k]].curto, item: textoPendencia(P.desc[k]), idade: idadeDe(k),
+      omExec: P.omExec[k] ? 'OM ' + String(P.omExec[k]).padStart(5, '0') : '–', omSug: sg >= 0 ? 'OM ' + String(O.om[sg]).padStart(5, '0') + ' (' + itensTroca(sg).map(function (x) { return x[1]; }).join(', ') + ')' : '',
+      omOrig: P.omOrig[k] ? 'OM ' + String(P.omOrig[k]).padStart(5, '0') : '–', usuario: P.usuario[k], conclusao: PEND.dFe[k] };
+  });
+  var exportar = function () {
+    baixarCSV('pendencias-manusis.csv', ['Número', 'Abertura', 'Conclusão', 'Turbina', 'Status no Manusis', 'Situação de controle', 'Pendência', 'OM de origem', 'OM de execução', 'OM que talvez resolveu', 'Dias aberta', 'Aberta por', 'Descrição completa'],
+      linhas.map(function (r) { return [r.num, r.abertura === null ? '' : fData(r.abertura), r.conclusao === null ? '' : fData(r.conclusao), r.wtgTxt, r.statusTxt, SIT_PEND[PEND.sit[r.k]].rot, r.item, r.omOrig, r.omExec, r.omSug, r.idade === null ? '' : r.idade, r.usuario, P.desc[r.k]]; }));
   };
-  var corpo = h('div', { class: 'pend-grade' }), lista = h('div'), subP = h('p', null), limpar = h('button', { class: 'btn', type: 'button' }, 'Ver todas as pendências');
-  function bloco(titulo, itens, ativo, onClick, top) {
-    var el = h('div', { class: 'pend-bloco' }, h('h4', null, titulo));
-    var vis = itens.slice(0, top);
-    if (ativo !== null && !vis.some(function (d) { return d.k === ativo; })) vis = vis.concat(itens.filter(function (d) { return d.k === ativo; }));
-    if (!vis.length) el.append(h('div', { class: 'vazio' }, 'Nenhuma pendência.'));
-    else barrasH(el, vis, { larguraRotulo: '56%', unidade: 'pendências', ativo: ativo === null ? null : new Set([ativo]), dica: 'Clique para filtrar a lista', onClick: onClick });
-    if (itens.length > top) el.append(h('p', { class: 'nota', style: 'margin:4px 0 0' }, 'Top ' + top + ' de ' + fInt(itens.length)));
-    return el;
-  }
-  function linhas() {
-    return todas.filter(function (k) { return passa(k); }).sort(function (a, b) { return (PEND.dAb[a] || 0) - (PEND.dAb[b] || 0); }).map(function (k) {
-      var ie = PEND.iExec[k], sg = PEND.sug[k];
-      return { k: k, i: ie >= 0 ? ie : sg >= 0 ? sg : PEND.iOrig[k] >= 0 ? PEND.iOrig[k] : undefined, num: P.num[k], abertura: PEND.dAb[k], wtgTxt: P.wtg[k] || '–',
-        statusTxt: P.status[k], sitTxt: SIT_PEND[PEND.sit[k]].curto, item: textoPendencia(P.desc[k]), idade: idadeDe(k),
-        omExec: P.omExec[k] ? 'OM ' + String(P.omExec[k]).padStart(5, '0') : '–', omSug: sg >= 0 ? 'OM ' + String(O.om[sg]).padStart(5, '0') + ' (' + itensTroca(sg).map(function (x) { return x[1]; }).join(', ') + ')' : '',
-        omOrig: P.omOrig[k] ? 'OM ' + String(P.omOrig[k]).padStart(5, '0') : '–', usuario: P.usuario[k], conclusao: PEND.dFe[k] };
-    });
-  }
-  function desenhar() {
-    corpo.textContent = ''; lista.textContent = '';
-    var cSit = {}; todas.forEach(function (k) { if (passa(k, 'sit')) cSit[PEND.sit[k]] = (cSit[PEND.sit[k]] || 0) + 1; });
-    var itSit = ordemSit.filter(function (x) { return cSit[x]; }).map(function (x) { return { k: x, rot: SIT_PEND[x].curto, v: cSit[x], cor: SIT_PEND[x].cor }; });
-    var cId = IDADES_PEND.map(function () { return 0; });
-    todas.forEach(function (k) { var j = faixa(k); if (j >= 0 && (pendMSel.sit === 'alertas' ? passa(k, 'sit') && (pendMSel.wtg === null || PEND.w[k] === pendMSel.wtg) : passa(k, 'idade'))) cId[j]++; });
-    var itId = IDADES_PEND.map(function (d, j) { return { k: j, rot: d.rot, v: cId[j], cor: j >= 3 ? 'var(--critical)' : j === 2 ? 'var(--s4)' : 'var(--neutral)' }; });
-    var cW = new Map(); todas.forEach(function (k) { if (passa(k, 'wtg') && PEND.w[k] >= 0) cW.set(PEND.w[k], (cW.get(PEND.w[k]) || 0) + 1); });
-    var itW = Array.from(cW.entries()).map(function (e) { return { k: e[0], rot: M.dic.wtg[e[0]], v: e[1], cor: 'var(--s4)' }; }).sort(function (a, b) { return b.v - a.v; });
-    var sitAtiva = pendMSel.sit === 'alertas' || pendMSel.sit === 'todas' ? null : pendMSel.sit;
-    corpo.append(
-      bloco('Situação', itSit, sitAtiva, function (x) { pendMSel.sit = pendMSel.sit === x ? 'alertas' : x; desenhar(); }, 12),
-      bloco('Há quanto tempo está aberta', itId, pendMSel.idade, function (x) { pendMSel.idade = pendMSel.idade === x ? null : x; desenhar(); }, 5),
-      bloco('Por turbina', itW, pendMSel.wtg, function (x) { pendMSel.wtg = pendMSel.wtg === x ? null : x; desenhar(); }, 10));
-    var ls = linhas(), nAl = todas.filter(function (k) { return SIT_PEND[PEND.sit[k]].alerta; }).length;
-    var se = sitEf(), oQue = se === 'alertas' ? 'com ponto de controle' : se === 'todas' ? '' : '“' + SIT_PEND[se].curto + '”';
-    if (pendMSel.idade !== null) oQue += (oQue ? ', ' : '') + 'abertas há ' + IDADES_PEND[pendMSel.idade].rot.toLowerCase();
-    if (pendMSel.wtg !== null) oQue += (oQue ? ', ' : '') + 'na ' + M.dic.wtg[pendMSel.wtg];
-    if (pendMSel.mes) oQue += (oQue ? ', ' : '') + 'concluídas em ' + pendMSel.mes.rot;
-    subP.textContent = fInt(todas.length) + ' pendências no arquivo, ' + fInt(nAl) + ' com ponto de controle. Listando ' + fInt(ls.length) + (oQue ? ' ' + oQue : '') + '.' +
-      (se !== 'alertas' && se !== 'todas' ? ' ' + SIT_PEND[se].dica : '') + ' Toque numa barra para filtrar e numa linha para abrir a OM.';
-    limpar.textContent = pendMSel.mes ? 'Limpar mês' : pendMSel.sit === 'todas' ? 'Só pontos de controle' : 'Ver todas as pendências';
-    var clamp = function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); };
-    tabela(lista, {
+  var corpo = h('div');
+  var sitUnica = pendF.sit ? ' ' + SIT_PEND[pendF.sit].dica : '';
+  pg.append(h('section', { class: 'card s12', id: 'pend-lista', 'aria-labelledby': 'h-pend-lista' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-pend-lista' }, 'Lista de pendências'),
+      h('p', null, fInt(linhas.length) + ' pendências, das mais antigas para as mais novas.' + sitUnica + ' Toque numa linha para abrir a OM.')),
+      h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'Exportar CSV'))),
+    corpo));
+  var clamp = function (v) { return h('span', { class: 'clamp', title: v }, v || '–'); };
+  aposRender.push(function () {
+    tabela(corpo, {
       cols: [{ k: 'num', rot: 'Nº', classe: 'forte' }, { k: 'abertura', rot: 'Abertura', fmt: function (v) { return v === null ? '–' : fData(v); } }, { k: 'wtgTxt', rot: 'Turbina' },
-        { k: 'sitTxt', rot: 'Situação' }, { k: 'item', rot: 'Pendência', classe: 'txt', ordenavel: false, fmt: clamp },
-        { k: 'omExec', rot: 'OM de execução' }, { k: 'omSug', rot: 'OM que talvez resolveu', classe: 'txt', ordenavel: false, fmt: clamp },
+        { k: 'statusTxt', rot: 'Status' }, { k: 'sitTxt', rot: 'Controle' }, { k: 'item', rot: 'Pendência', classe: 'txt', ordenavel: false, fmt: clamp },
+        { k: 'usuario', rot: 'Aberta por' }, { k: 'omExec', rot: 'OM de execução' }, { k: 'omSug', rot: 'OM que talvez resolveu', classe: 'txt', ordenavel: false, fmt: clamp },
         { k: 'idade', rot: 'Dias aberta', num: true, fmt: function (v) { return v === null ? '–' : fInt(v); } }],
-      linhas: ls, altura: 420, onLinha: function (r, ts) { if (r.i === undefined) return; var is = ts.filter(function (x) { return x.i !== undefined; }).map(function (x) { return x.i; }); abrirOM(r.i, is); }
+      linhas: linhas, altura: 460, onLinha: function (r, ts) { if (r.i === undefined) return; var is = ts.filter(function (x) { return x.i !== undefined; }).map(function (x) { return x.i; }); abrirOM(r.i, is); }
     });
-  }
-  limpar.addEventListener('click', function () { pendMSel = { sit: pendMSel.mes || pendMSel.sit === 'todas' ? 'alertas' : 'todas', idade: null, wtg: null, mes: null }; desenhar(); });
-  function exportar() {
-    baixarCSV('pendencias-manusis-controle.csv', ['Número', 'Abertura', 'Conclusão', 'Turbina', 'Status no Manusis', 'Situação de controle', 'Pendência', 'OM de origem', 'OM de execução', 'OM que talvez resolveu', 'Dias aberta', 'Aberta por', 'Descrição completa'],
-      linhas().map(function (r) { return [r.num, r.abertura === null ? '' : fData(r.abertura), r.conclusao === null ? '' : fData(r.conclusao), r.wtgTxt, r.statusTxt, SIT_PEND[PEND.sit[r.k]].rot, r.item, r.omOrig, r.omExec, r.omSug, r.idade === null ? '' : r.idade, r.usuario, P.desc[r.k]]; }));
-  }
-  pg.append(h('section', { class: 'card s12', id: 'pend-manusis', 'aria-labelledby': 'h-pend-manusis' },
-    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-pend-manusis' }, 'Pendências do Manusis: controle'), subP),
-      h('div', { class: 'ferr' }, limpar, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'Exportar CSV'))),
-    corpo, lista));
-  aposRender.push(desenhar);
+  });
 }
 
 function paginaComponentes(pg) {
@@ -2260,13 +2329,6 @@ function paginaComponentes(pg) {
   ));
 
   if (CONS) cartoesConsumo(pg, B);
-  if (PEND) { cartaoPendMes(pg); cartaoPendManusis(pg); }
-  else pg.append(h('section', { class: 'card s12 sem-consumo', id: 'sem-pendencias' },
-    h('h3', null, 'Falta carregar as pendências do Manusis'),
-    h('p', null, 'Aqui aparecem o gráfico de pendências concluídas por mês e o quadro de controle das pendências (concluída sem comprovar, cancelada com a OM, pronta para concluir, há quanto tempo está aberta…). ',
-      'Para isso, o painel precisa da exportação de ', h('b', null, 'pendências do Manusis'), ' (abertas e fechadas, até 2 anos).'),
-    h('p', null, 'Toque no botão e escolha o arquivo ', h('b', null, 'pendencias_….zip'), ' (ou a base pronta com tudo junto). As OMs e o consumo já carregados continuam.'),
-    h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar pendências')));
 
   pg.append(cartaoPecas('s6', 12));
 
@@ -2982,7 +3044,8 @@ var PAGINAS = {
   componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
   custos: { rot: 'Custos', icone: 'custos', fn: paginaCustos },
   ordens: { rot: 'Ordens', icone: 'ordens', fn: paginaOrdens },
-  materiais: { rot: 'Materiais', icone: 'caixa', fn: paginaMateriais }
+  materiais: { rot: 'Materiais', icone: 'caixa', fn: paginaMateriais },
+  pendencias: { rot: 'Pendências', curto: 'Pend.', icone: 'alerta', fn: paginaPendencias }
 };
 var refs = {};
 
