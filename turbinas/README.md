@@ -27,7 +27,9 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
 
 Também opcional: as **pendências** do Manusis 4 (aba "Pendências", abertas e fechadas; pode ser
 um período maior que o das OMs, ex.: 2 anos). Cada pendência se liga às OMs de origem e de execução
-e a página Peças ganha o quadro **Pendências do Manusis: controle**, com a situação de cada uma:
+e o painel ganha a aba **Pendências**: status no Manusis, turbinas e usuários com mais pendências,
+há quanto tempo as abertas estão abertas, concluídas por mês, lista com CSV e a situação de controle de cada uma
+(tocar numa barra filtra a página inteira):
 
 - concluída com a OM de execução ainda não fechada;
 - concluída, mas a OM de execução não cita a peça ou o item da pendência;
