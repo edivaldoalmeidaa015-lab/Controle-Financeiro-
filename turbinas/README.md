@@ -32,6 +32,12 @@ cartões; rosca de status; idade das abertas; as pendências que mais se repetem
 quem abriu e parque divididas por status; fechadas por mês; lista com CSV. Tocar em qualquer visual
 filtra a página inteira.
 
+A aba também cruza cada pendência com a **OM** de origem e de execução (nunca com o consumo de
+material): status da OM de execução e pontos de controle — fechada com a OM ainda aberta, fechada
+mas o serviço executado da OM não cita o item, cancelada junto com a OM (com o motivo, ex.:
+Duplicidade) ou sem OM, pronta para fechar (OM com apontamentos concluídos), talvez já resolvida
+por outra OM da mesma turbina que diz no texto que trocou a mesma peça.
+
 Na ficha da OM aparecem, numa linha cada, as pendências abertas ou executadas nela.
 
 Carregue as planilhas juntas, ou o consumo e as pendências depois da base de OMs; ao
