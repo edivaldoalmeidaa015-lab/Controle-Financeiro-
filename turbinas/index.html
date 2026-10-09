@@ -471,6 +471,10 @@ small .mc { display: inline; }
 .bloco-txt { padding: 0 20px 18px; }
 .bloco-txt h4 { margin: 4px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .bloco-txt p { margin: 0 0 12px; font-size: 13.5px; color: var(--ink-2); white-space: pre-wrap; }
+.exec-txt .exec-antes { margin-bottom: 6px; }
+.exec-lista { list-style: none; margin: 0 0 12px; padding: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.exec-lista li { display: grid; grid-template-columns: 34px 1fr; gap: 2px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.exec-lista li:last-child { border-bottom: 0; }
 
 /* tela de carga */
 .boas-vindas { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
@@ -887,12 +891,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.17'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-09.18'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): abas Turbinas, Peças, Custos, Ordens e Materiais no estilo Power BI, com cartões, roscas e barras que filtram ao tocar.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Prog. (programado × realizado e situação dos ciclos) e, na ficha da OM, os itens numerados do serviço executado em lista.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3427,6 +3431,41 @@ function imprimirOM() {
   window.addEventListener('afterprint', fim);
   window.print();
 }
+/**
+ * Texto do serviço executado com os itens numerados ("1° Rolamento do yaw. 2° Rolamento das blades…",
+ * "1- lubrificação 2- limpeza") em lista vertical: "1 - Rolamento do yaw", "2 - …". Só vira lista quando
+ * a numeração segue em sequência a partir do 1 (datas, horas e quantidades ficam no texto).
+ */
+function textoNumerado(t) {
+  var caixa = h('div', { class: 'exec-txt' });
+  String(t).split('\n').forEach(function (linha) {
+    var rx = /(^|[\s;.])(\d{1,2})\s*(?:[°ºª]|[-–)](?=\s*\D)|\.(?!\d))\s*/g, m, marcas = [];
+    while ((m = rx.exec(linha))) marcas.push({ n: +m[2], ini: m.index + m[1].length, fim: rx.lastIndex });
+    // maior sequência 1, 2, 3… na ordem do texto
+    var cadeia = [];
+    marcas.forEach(function (mk, j) {
+      if (mk.n !== 1) return;
+      var c = [mk], prox = 2;
+      for (var k = j + 1; k < marcas.length; k++) if (marcas[k].n === prox) { c.push(marcas[k]); prox++; }
+      if (c.length > cadeia.length) cadeia = c;
+    });
+    if (cadeia.length < 2) { caixa.append(h('p', null, linha)); return; }
+    var antes = linha.slice(0, cadeia[0].ini).trim();
+    if (antes) caixa.append(h('p', { class: 'exec-antes' }, antes));
+    // o último item vai até o fim da frase; o resto do texto volta a ser parágrafo
+    var ult = cadeia[cadeia.length - 1], cauda = linha.slice(ult.fim), depois = '';
+    var corte = /[a-zà-ú)\]](?=[A-ZÀ-Ú][a-zà-ú]{2,})|\.\s+(?=[A-ZÀ-Ú])/.exec(cauda);
+    if (corte) { depois = cauda.slice(corte.index + 1).trim(); cauda = cauda.slice(0, corte.index + 1); }
+    var itens = cadeia.map(function (mk, j) { return (j + 1 < cadeia.length ? linha.slice(mk.fim, cadeia[j + 1].ini) : cauda).trim().replace(/^[-–\s]+/, '').replace(/[;,.]+$/, ''); });
+    // "1ª & 2ª demão" não é lista: todo item precisa ter texto
+    if (itens.some(function (x) { return (x.match(/[A-Za-zÀ-ú]/g) || []).length < 3; })) { caixa.append(h('p', null, linha)); return; }
+    caixa.append(h('ol', { class: 'exec-lista' }, cadeia.map(function (mk, j) {
+      return h('li', null, h('span', { class: 'pend-n' }, mk.n + ' -'), h('span', null, itens[j]));
+    })));
+    if (depois) caixa.append(h('p', null, depois));
+  });
+  return caixa;
+}
 function fichaOM(i, lista, pos, navegar) {
   var nav = lista.length > 1 ? h('div', { class: 'nav-om' },
     h('button', { class: 'btn', type: 'button', disabled: pos === 0 ? true : null, onclick: function () { navegar(-1); } }, '‹ Anterior'),
@@ -3459,7 +3498,7 @@ function fichaOM(i, lista, pos, navegar) {
         h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas no texto do serviço executado.')] : null,
       blocoPendOM(i),
       h('h4', null, 'Descrição'), h('p', null, O.desc[i] || '–'),
-      O.exec[i] ? [h('h4', null, 'Serviço executado'), h('p', null, O.exec[i])] : null,
+      O.exec[i] ? [h('h4', null, 'Serviço executado'), textoNumerado(O.exec[i])] : null,
       O.obsEspera && O.obsEspera[i] ? [h('h4', null, 'Observação da espera'), h('p', null, O.obsEspera[i])] : null,
       O.obsCancel && O.obsCancel[i] ? [h('h4', null, 'Observação do cancelamento'), h('p', null, O.obsCancel[i])] : null)];
 }
