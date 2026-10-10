@@ -116,7 +116,6 @@ button { cursor: pointer; }
   display: flex; align-items: center; gap: 16px; padding: 14px 24px 10px;
 }
 .topo h1 { font-size: 19px; line-height: 1.2; margin: 0; font-weight: 650; letter-spacing: -.01em; }
-.topo .sub { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
 .topo .acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -891,12 +890,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-09.18'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-10.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba Prog. (programado × realizado e situação dos ciclos) e, na ficha da OM, os itens numerados do serviço executado em lista.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): topo mais limpo, sem a linha de detalhes; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3745,10 +3744,10 @@ function montarApp() {
     LOGO_COMPLETO_URL ? h('span', { class: 'logo-completo' }, h('img', { src: LOGO_COMPLETO_URL, alt: LOGO_NOME, decoding: 'async' })) : null,
     LOGO_URL ? (function () { var l = logo(); l.setAttribute('class', 'marca-topo' + (LOGO_COMPLETO_URL ? ' so-celular' : '')); return l; })() : null,
     h('div', { class: 'titulo' },
-      h('h1', null, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0])),
-      h('div', { class: 'sub' }, fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · OMs criadas de ' + fData(diaMin) + ' a ' + fData(diaMax) +
+      // detalhes da base só no título (passar o mouse): o topo fica limpo
+      h('h1', { title: fInt(nTurb) + ' turbinas' + (modelo ? ' ' + modelo : '') + ' · ' + M.parques.length + ' parques · OMs criadas de ' + fData(diaMin) + ' a ' + fData(diaMax) +
         (M.fonte === 'manusis' ? (CONS ? ' · consumo de materiais: ' + fInt(M.consumo.om.length) + ' baixas' : ' · sem consumo de materiais') : '') +
-        ' · painel versão ' + fDataVersao())),
+        ' · painel versão ' + fDataVersao() }, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0]))),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
