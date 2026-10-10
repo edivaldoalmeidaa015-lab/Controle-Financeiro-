@@ -201,6 +201,15 @@ button { cursor: pointer; }
 .opc:hover { background: var(--hover); }
 .opc .cx { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--axis); display: grid; place-items: center; }
 .pop .dica { padding: 0 12px 6px; font-size: 11.5px; color: var(--muted); }
+.pop.pop-om { width: min(380px, calc(100vw - 16px)); }
+.opc-om { display: flex; flex-direction: column; gap: 2px; width: 100%; border: 0; background: transparent; text-align: left; padding: 7px 8px; border-radius: 6px; font-size: 13px; color: var(--ink); cursor: pointer; border-bottom: 1px solid var(--border); }
+.opc-om:hover, .opc-om:focus-visible { background: var(--hover); }
+.opc-om .om-l1 { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.opc-om .om-st { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-2); }
+.opc-om .om-st i { width: 7px; height: 7px; border-radius: 50%; }
+.opc-om .om-l2 { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slicer.busca-om .val { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-weight: 500; }
+.slicer.busca-om .val svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .opc[aria-checked="true"] .cx { background: var(--accent); border-color: var(--accent); }
 .opc[aria-checked="true"] .cx::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
 .opc .qt { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -666,6 +675,7 @@ var ICONES = {
   ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   tendencia: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  lupa: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
   alvo: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',
   componentes: '<path d="M14.7 6.3a4 4 0 0 0-5.3 5.3l-6 6a1.8 1.8 0 0 0 2.6 2.6l6-6a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.3-.3-.3-2.3z"/>'
 };
@@ -890,12 +900,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-10.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-10.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): topo mais limpo, sem a linha de detalhes; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): busca rápida de OM na barra de filtros (número, turbina ou descrição); topo mais limpo; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3513,7 +3523,7 @@ function abrirPop(botao, construir, id) {
   var el = h('div', { class: 'pop', role: 'dialog' });
   document.body.append(el);
   var r = botao.getBoundingClientRect();
-  el.style.left = Math.min(r.left, innerWidth - 316) + 'px';
+  el.style.left = Math.max(8, Math.min(r.left, innerWidth - (id === 'busca-om' ? Math.min(388, innerWidth - 8) : 316))) + 'px';
   el.style.top = (r.bottom + 6) + 'px';
   var fora = function (ev) { if (!el.contains(ev.target) && !botao.contains(ev.target)) fecharPop(); };
   var esc = function (ev) { if (ev.key === 'Escape') { fecharPop(); botao.focus(); } };
@@ -3522,6 +3532,42 @@ function abrirPop(botao, construir, id) {
   document.addEventListener('pointerdown', fora, true);
   document.addEventListener('keydown', esc);
   construir(el);
+}
+
+/* ---------- busca rápida de OM: número, turbina ou texto (em todas as OMs, sem os filtros) ---------- */
+var INDICE_BUSCA = null;
+function popBuscaOM(el) {
+  if (!INDICE_BUSCA || INDICE_BUSCA.M !== M) INDICE_BUSCA = { M: M, txt: O.om.map(function (n, i) {
+    return semAcentoTxt((O.wtg[i] >= 0 ? M.dic.wtg[O.wtg[i]] + ' ' : '') + (O.desc[i] || '') + ' ' + (O.sistema[i] >= 0 ? M.dic.sistema[O.sistema[i]] : ''));
+  }) };
+  var campo = h('input', { type: 'search', placeholder: 'Ex.: 17265, AB-IV02, pitch…', 'aria-label': 'Buscar OM', inputmode: 'search', autocomplete: 'off' });
+  var info = h('div', { class: 'dica' }, 'Digite o número da OM, a turbina ou um trecho da descrição.');
+  var lista = h('div', { class: 'lista lista-om', role: 'listbox' });
+  var achadas = [];
+  var buscar = function () {
+    var q = campo.value.trim(); lista.textContent = ''; achadas = [];
+    if (!q) { info.textContent = 'Digite o número da OM, a turbina ou um trecho da descrição.'; return; }
+    var num = /^\d+$/.test(q) ? String(+q) : null, palavras = semAcentoTxt(q).split(/\s+/).filter(Boolean);
+    for (var i = 0; i < O.om.length; i++) {
+      var ok = num !== null ? String(O.om[i]).indexOf(num) >= 0 : palavras.every(function (w) { return INDICE_BUSCA.txt[i].indexOf(w) >= 0; });
+      if (ok) achadas.push(i);
+    }
+    // número exato primeiro, depois as mais recentes
+    achadas.sort(function (a, b) { return (num !== null ? (String(O.om[b]) === num) - (String(O.om[a]) === num) || (String(O.om[b]).indexOf(num) === 0) - (String(O.om[a]).indexOf(num) === 0) : 0) || (O.dAb[b] || 0) - (O.dAb[a] || 0); });
+    info.textContent = achadas.length ? fInt(achadas.length) + ' OMs' + (achadas.length > 40 ? ' · mostrando 40' : '') + ' · toque para abrir' : 'Nenhuma OM encontrada.';
+    achadas.slice(0, 40).forEach(function (i) {
+      lista.append(h('button', { type: 'button', class: 'opc-om', role: 'option', onclick: function () { fecharPop(); abrirOM(i, achadas.slice(0, 40)); } },
+        h('span', { class: 'om-l1' }, h('b', null, 'OM ' + String(O.om[i]).padStart(5, '0')), O.wtg[i] >= 0 ? ' · ' + M.dic.wtg[O.wtg[i]] : '',
+          h('span', { class: 'om-st' }, h('i', { style: 'background:' + corStatus(O.status[i]) }), M.dic.status[O.status[i]])),
+        h('span', { class: 'om-l2' }, fData(O.dAb[i]) + ' · ' + (O.desc[i] || '–'))));
+    });
+  };
+  var t = null;
+  campo.addEventListener('input', function () { clearTimeout(t); t = setTimeout(buscar, 150); });
+  campo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); buscar(); if (achadas.length) { fecharPop(); abrirOM(achadas[0], achadas.slice(0, 40)); } } });
+  el.classList.add('pop-om');
+  el.append(h('div', { class: 'busca' }, campo), info, lista);
+  campo.focus();
 }
 
 function textoDim(dim) {
@@ -3650,6 +3696,10 @@ function renderFiltros(cont) {
     h('span', { class: 'rot' }, 'Período'), h('span', { class: 'val' }, textoPeriodo()));
   bPer.addEventListener('click', function () { abrirPop(bPer, popPeriodo, 'periodo'); });
   linha.append(bPer);
+  var bOM = h('button', { type: 'button', class: 'slicer busca-om', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', title: 'Procurar uma OM pelo número, turbina ou descrição' },
+    h('span', { class: 'rot' }, 'Buscar OM'), h('span', { class: 'val' }, icone('lupa'), 'Nº, turbina…'));
+  bOM.addEventListener('click', function () { abrirPop(bOM, popBuscaOM, 'busca-om'); });
+  linha.prepend(bOM);
   (M.complexos.length > 1 ? ['complexo'] : []).concat(['parque', 'wtg', 'tipo', 'falha', 'peca', 'status']).forEach(function (dim) {
     var b = h('button', { type: 'button', class: 'slicer' + (estado.f[dim].size ? ' ativo' : ''), 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
       h('span', { class: 'rot' }, ROTULO_DIM[dim]), h('span', { class: 'val' }, textoDim(dim)));
