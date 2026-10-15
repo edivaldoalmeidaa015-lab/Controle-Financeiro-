@@ -384,6 +384,15 @@ small .mc { display: inline; }
 .seg-data input, .seg-busca input { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .seg-busca { flex: 1 1 220px; } .seg-busca input { width: 100%; }
 .seg-limpar { margin-left: auto; }
+.yaw-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.yaw-w { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.yaw-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.yaw-cab .link { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; padding: 0; }
+.yaw-reg { display: grid; grid-template-columns: 1fr; gap: 2px; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--border); background: transparent; padding: 6px 0; font: inherit; color: var(--ink); }
+.yaw-reg.clic { cursor: pointer; } .yaw-reg.clic:hover { background: var(--hover); }
+.yaw-num { font-size: 12.5px; font-weight: 650; } .yaw-num small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.yaw-txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; } .yaw-txt i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
 .lista-prog { margin: 0 0 10px; flex-wrap: wrap; }
 .seg-sel select { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); max-width: 100%; }
 .ordem-pend { display: inline-flex; gap: 4px; margin-left: auto; }
@@ -900,12 +909,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-10.2'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-15.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): busca rápida de OM na barra de filtros (número, turbina ou descrição); topo mais limpo; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): quadro "Yaw drive com defeito" na aba Turbinas; busca rápida de OM; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -1838,6 +1847,97 @@ function cartaoTopTurbinas(span, top, comSeletor) {
 }
 
 /* ---------- Turbinas ---------- */
+/* ---------- yaw drive com defeito: OMs abertas e pendências abertas que citam o yaw drive ---------- */
+var YAW_RE = /yaw ?drive|yaw driver|redutora? (do |de |da )?yaw|motor(es)? (do |de )?yaw|acionamento (de )?guinada|redutora? de guinada|gearbox do yaw/;
+var YAW_GRAUS = [
+  { rot: 'Quebrado', cor: 'var(--critical)', dica: 'Peça quebrada, travada, solta ou fora de operação' },
+  { rot: 'Defeito', cor: 'var(--s4)', dica: 'Freio, pastilha, rolamento ou peça danificada/desgastada' },
+  { rot: 'Falta proteção/ventoinha', cor: 'var(--s7)', dica: 'Ventoinha ou proteção do motor faltando ou danificada' },
+  { rot: 'A confirmar', cor: 'var(--neutral)', dica: 'Barulho anormal ou inspeção pedida' }];
+var yawF = null; // grau marcado no quadro
+function grauYaw(t) {
+  if (/quebrad|travad|avariad|\bsolt[oa]\b|desativad|fica parad|indisponi|rompid/.test(t)) return 0;
+  if (/ventoinha|protec/.test(t) && !/freio|pastilha|rolament/.test(t)) return 2;
+  if (/danificad|desgast|freio|pastilha|rolament|substitu|reparo|troca/.test(t)) return 1;
+  return 3;
+}
+function posicaoYaw(t) {
+  var m = /(?:yaw ?drive|motor(?:es)? do yaw|redutora?(?: de posicao)?|posicao|yaw)\s*(?:n[ºo°]\s*)?0?([1-4](?:\s*e\s*[1-4])?)\b/.exec(t);
+  return m ? m[1].replace(/\s+/g, ' ') : '–';
+}
+function trechoYaw(txt) {
+  var partes = String(txt || '').split(/(?<=[.;!])\s+|\n|(?=Usuário:)/), achou = partes.filter(function (x) { return YAW_RE.test(semAcentoTxt(x)); });
+  var t = (achou.length ? achou.join(' ') : String(txt || '')).replace(/\s+/g, ' ').trim();
+  return t.length > 220 ? t.slice(0, 217) + '…' : t;
+}
+function levantarYaw() {
+  var L = [], canc = IDX.grupo['Cancelada'];
+  for (var i = 0; i < O.om.length; i++) {
+    if (ehFechada(i) || O.grupo[i] === canc) continue;
+    var d = semAcentoTxt(O.desc[i]), t = d + ' ' + semAcentoTxt(O.exec[i]);
+    if (!YAW_RE.test(t) || /cycle-brm|teste do planejamento/.test(d)) continue; // BRM: flushing de rotina
+    L.push({ i: i, w: O.wtg[i], origem: 'OM', num: String(O.om[i]).padStart(5, '0'), data: O.dAb[i], status: M.dic.status[O.status[i]],
+      g: grauYaw(t), pos: posicaoYaw(t), texto: trechoYaw(YAW_RE.test(semAcentoTxt(O.exec[i])) ? O.exec[i] : O.desc[i]) });
+  }
+  if (PEND) {
+    var P = M.pendencias;
+    for (var k = 0; k < P.num.length; k++) {
+      var st = stBI(k); if (st !== 'Aberta' && st !== 'Em andamento') continue;
+      var tp = semAcentoTxt(P.desc[k]); if (!YAW_RE.test(tp)) continue;
+      // pendência costuma juntar vários itens ("2 lâmpadas queimadas, 1 parafuso quebrado no yaw deck, proteção do motor do yaw faltando"): o grau sai só do item do yaw
+      tp = tp.split(/[.;,\n]|\s-\s/).filter(function (x) { return /yaw(?! ?deck)/.test(x); }).join(' ') || tp; // "yaw deck" é o piso da nacele, não o yaw drive
+      var ie = PEND.iExec[k];
+      L.push({ i: ie >= 0 ? ie : undefined, w: PEND.w[k], origem: 'Pendência', num: String(P.num[k]), data: PEND.dAb[k], status: st,
+        g: grauYaw(tp), pos: posicaoYaw(tp), texto: trechoYaw(textoPendencia(P.desc[k])), omExec: P.omExec[k] ? String(P.omExec[k]).padStart(5, '0') : '' });
+    }
+  }
+  return L;
+}
+function yawNoLocal(w) {
+  var f = estado.f, pq = w >= 0 ? parqueDoWtg[w] : -1;
+  return (!f.wtg.size || f.wtg.has(w)) && (!f.parque.size || f.parque.has(pq)) && (!f.complexo.size || (pq >= 0 && f.complexo.has(M.parqueComplexo[pq])));
+}
+function cartaoYaw(pg) {
+  var todos = levantarYaw().filter(function (r) { return yawNoLocal(r.w); });
+  // por turbina: pior grau
+  var porW = new Map();
+  todos.forEach(function (r) { var x = porW.get(r.w); if (!x) { x = { w: r.w, g: 9, regs: [] }; porW.set(r.w, x); } x.g = Math.min(x.g, r.g); x.regs.push(r); });
+  var turb = Array.from(porW.values()).sort(function (a, b) { return a.g - b.g || String(M.dic.wtg[a.w]).localeCompare(String(M.dic.wtg[b.w]), 'pt', { numeric: true }); });
+  var cont = YAW_GRAUS.map(function (_, j) { return turb.filter(function (x) { return x.g === j; }).length; });
+  var vis = turb.filter(function (x) { return yawF === null || x.g === yawF; });
+  var nomeW = function (w) { return w >= 0 ? M.dic.wtg[w] : '(sem turbina)'; };
+  var exportar = function () {
+    baixarCSV('yaw-drive-defeitos.csv', ['Grau da turbina', 'Turbina', 'Origem', 'Número', 'Abertura', 'Status', 'Grau do registro', 'Yaw drive', 'Defeito (texto)', 'OM de execução'],
+      turb.reduce(function (a, x) { return a.concat(x.regs.map(function (r) { return [YAW_GRAUS[x.g].rot, nomeW(r.w), r.origem, r.num, r.data === null ? '' : fData(r.data), r.status, YAW_GRAUS[r.g].rot, r.pos, r.texto, r.omExec || '']; })); }, []));
+  };
+  var corpo = h('div');
+  pg.append(h('section', { class: 'card s12', id: 'yaw-drive', 'aria-labelledby': 'h-yaw' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-yaw' }, 'Yaw drive com defeito'),
+      h('p', null, fInt(turb.length) + ' turbinas com OM ou pendência aberta citando yaw drive, motor ou redutora do yaw' + (PEND ? '' : ' (carregue as pendências do Manusis para ver todas)') + '. Grau pelo texto do registro; toque numa linha para abrir a OM ou a turbina.')),
+      h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'CSV'))),
+    h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Grau do defeito', style: 'margin-bottom:10px' }, YAW_GRAUS.map(function (gr, j) {
+      var on = yawF === j;
+      return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), title: gr.dica, onclick: function () { yawF = on ? null : j; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
+        h('i', { style: 'background:' + gr.cor }), gr.rot, h('small', null, ' ' + fInt(cont[j])));
+    })),
+    corpo));
+  aposRender.push(function () {
+    if (!vis.length) { corpo.append(h('div', { class: 'vazio' }, 'Nenhuma turbina com yaw drive em aberto nos filtros atuais.')); return; }
+    var lista = h('div', { class: 'yaw-lista' });
+    vis.forEach(function (x) {
+      lista.append(h('div', { class: 'yaw-w' },
+        h('div', { class: 'yaw-cab' }, h('span', { class: 'pill' }, h('i', { style: 'background:' + YAW_GRAUS[x.g].cor }), YAW_GRAUS[x.g].rot),
+          h('button', { type: 'button', class: 'link forte', onclick: function () { abrirTurbina(x.w); } }, nomeW(x.w))),
+        x.regs.sort(function (a, b) { return a.g - b.g; }).map(function (r) {
+          var abre = r.i !== undefined;
+          return h(abre ? 'button' : 'div', { type: abre ? 'button' : null, class: 'yaw-reg' + (abre ? ' clic' : ''), onclick: abre ? function () { abrirOM(r.i, [r.i]); } : null },
+            h('span', { class: 'yaw-num' }, (r.origem === 'OM' ? 'OM ' : 'Pend. ') + r.num, h('small', null, (r.data === null ? '' : fData(r.data)) + ' · ' + r.status + (r.pos !== '–' ? ' · yaw ' + r.pos : '') + (r.omExec ? ' · OM ' + r.omExec : ''))),
+            h('span', { class: 'yaw-txt' }, h('i', { style: 'background:' + YAW_GRAUS[r.g].cor }), r.texto));
+        })));
+    });
+    corpo.append(lista);
+  });
+}
 function paginaTurbinas(pg) {
   var B = base();
   var porW = new Map();
@@ -1888,6 +1988,7 @@ function paginaTurbinas(pg) {
     },
     dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Corretivas' }], linhas: itTw } }));
   pg.append(cartaoMapa('s12'));
+  cartaoYaw(pg);
 
   pg.append(cartao({
     id: 'ranking', span: 's12', titulo: 'Ranking de turbinas', sub: 'Clique numa linha para abrir o detalhe · ordene pelas colunas',
