@@ -384,7 +384,8 @@ small .mc { display: inline; }
 .seg-data input, .seg-busca input { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .seg-busca { flex: 1 1 220px; } .seg-busca input { width: 100%; }
 .seg-limpar { margin-left: auto; }
-.yaw-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.yaw-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 10px; }
+.yaw-w { min-width: 0; } .yaw-txt { overflow-wrap: anywhere; }
 .yaw-w { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
 .yaw-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .yaw-cab .link { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; padding: 0; }
