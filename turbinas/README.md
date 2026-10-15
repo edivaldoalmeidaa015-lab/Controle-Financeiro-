@@ -93,7 +93,7 @@ A imagem fica só no HTML gerado; não é versionada aqui.
 | Página | Conteúdo |
 |---|---|
 | Visão geral | 4 indicadores (OMs, backlog, backlog > 90 dias, tempo médio para fechar), abertas × fechadas, destaques automáticos, turbinas que mais pedem atenção, falhas mais frequentes (códigos do SCADA citados na descrição, ex.: 120_Pitch controller communications fault), peças mais trocadas |
-| Turbinas | Mapa 5 parques × 20 posições (métrica selecionável) e ranking das 100 turbinas |
+| Turbinas | Mapa dos parques (métrica selecionável), quadro **Yaw drive com defeito** (OMs e pendências abertas que citam yaw drive, motor ou redutora do yaw, com grau: quebrado, defeito, falta proteção/ventoinha, a confirmar) e ranking das turbinas |
 | Peças | Peças trocadas identificadas no texto do serviço executado: ranking, turbinas e OMs com a frase de origem |
 | Backlog | Envelhecimento, motivos de espera e OMs mais antigas |
 | Custos | Custo por mês e por tipo de serviço e OMs de maior custo; custos atípicos (≥ R$ 10 mi) excluídos por padrão |
