@@ -910,7 +910,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-15.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-17.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -1871,8 +1871,54 @@ function trechoYaw(txt) {
   var t = (achou.length ? achou.join(' ') : String(txt || '')).replace(/\s+/g, ' ').trim();
   return t.length > 220 ? t.slice(0, 217) + '…' : t;
 }
+/* OM fechada com o yaw drive ainda quebrado: o último registro que fala do yaw/redutora diz que ficou isolado, desabilitado,
+   operando com 3, aguardando material... e nenhuma OM fechada depois, na mesma turbina, registra a troca. */
+var YAW_FICOU = /operando com (apenas )?(0?3|tres)|com (apenas )?(0?3|tres) (redutoras|motores|yaw)|segue com (0?3|tres)|desabilitad|isolad[oa] o motor|aguardando (mce|material|substitui|peca|a chegada)|oportunidade futura|para futur[oa]|levad[oa]s? para (a )?oficina|sem as planetarias|retirad[oa] o motor da redutora|nao foi possivel (da |dar )?continuidade|(girando livre|quebrad|trinca|danificad).{0,200}(passad|repassad|passando)\w* .{0,30}lideranc/;
+var YAW_TROCOU = /(substitu\w*|troca\w*|instala\w*|montage\w*|montad\w*)( d[oa]s?| de)?( \d+| [1-4]º?)?( (nov[oa]s?|reparad[oa]s?))? (redutor|redutora|redutoras|yaw ?drives?|motor(es)? (do |de )?yaw)\b|todas (as )?redutoras e motores (estao )?ok/;
+function txtYaw(s) { return semAcentoTxt(s).replace(/\s+/g, ' '); }
+function posYawPerto(t, ate) { // último número de posição antes do trecho que diz como ficou
+  var re = /(?:yaw ?drive|motor(?:es)? do yaw|redutora?(?: de posicao)?|posicao|motor)\s*(?:n[ºo°]\s*)?0?([1-4])\b/g, m, p = '–', ini = Math.max(0, ate - 250);
+  while ((m = re.exec(t)) && m.index < ate) if (m.index >= ini) p = m[1];
+  return p;
+}
+function recorteYaw(tx) { // texto longo: mostra o trecho que diz como o yaw ficou
+  if (tx.length <= 220) return tx;
+  var m = YAW_FICOU.exec(txtYaw(tx)), fim = m ? Math.min(tx.length, m.index + m[0].length + 60) : 217, ini = Math.max(0, fim - 217);
+  if (ini) ini = tx.indexOf(' ', ini) + 1; // começa numa palavra inteira
+  return (ini ? '…' : '') + tx.slice(ini, fim) + (fim < tx.length ? '…' : '');
+}
+function yawFechadasSemTroca(canc) {
+  var L = [], cand = [], porW = new Map();
+  for (var i = 0; i < O.om.length; i++) {
+    if (!ehFechada(i)) continue;
+    var d = txtYaw(O.desc[i]), ex = txtYaw(O.exec[i]), t = d + ' ' + ex;
+    if (/cycle-|teste do planejamento|substituicao de (gearbox|gerador)|pitch bearing/.test(d)) continue; // BRM, preventivas e troca de componente grande
+    if (!YAW_RE.test(t) && !(/yaw|top box fuse or motor protection/.test(t) && /redutor(?!a? do pitch)/.test(t))) continue; // o alarme 102 do top box é o motor do yaw
+    var w = O.wtg[i], lst = porW.get(w); if (!lst) porW.set(w, lst = []); lst.push(i);
+    // o serviço executado vem do mais novo para o mais antigo: vale o registro mais recente que fala do yaw ou da redutora
+    var rawEnt = String(O.exec[i] || '').split(/(?=Usu[áa]rio:|\[\d\d\/\d\d\/\d{4} \d\d:\d\d - )/i), k = -1;
+    for (var e = 0; e < rawEnt.length; e++) if (/yaw|redutor/.test(txtYaw(rawEnt[e]).replace(/redutora? do pitch/g, ''))) { k = e; break; }
+    var raw = k >= 0 ? rawEnt[k] : (rawEnt[0] || O.desc[i]), ult = txtYaw(raw), m = YAW_FICOU.exec(ult);
+    if (m) cand.push({ i: i, w: w, raw: raw, pos: posYawPerto(ult, m.index + m[0].length) });
+  }
+  cand.forEach(function (c) {
+    var troca = (porW.get(c.w) || []).some(function (j) {
+      if (O.om[j] <= O.om[c.i] || O.dAb[j] < O.dAb[c.i]) return false;
+      var tj = txtYaw(O.desc[j]) + ' ' + txtYaw(O.exec[j]), mj = YAW_TROCOU.exec(tj); if (!mj) return false;
+      var pj = posYawPerto(tj, mj.index + mj[0].length + 60);
+      return c.pos === '–' || pj === '–' || pj === c.pos;
+    });
+    if (troca) return;
+    var frases = c.raw.replace(/^(Usu[áa]rio:.*?\d\d:\d\d|\[[^\]]*\])\s*/i, '').split(/(?<=[.;!])\s*(?=[A-ZÀ-Ú])|(?<=[.;!])\s+/), achou = frases.filter(function (x) { return YAW_FICOU.test(txtYaw(x)); });
+    var tx = (achou.length ? achou.join(' ') : c.raw).replace(/\s+/g, ' ').trim();
+    L.push({ i: c.i, w: c.w, origem: 'OM', num: String(O.om[c.i]).padStart(5, '0'), data: O.dAb[c.i], status: 'OM fechada sem a troca',
+      g: 0, pos: c.pos, texto: recorteYaw(tx) });
+  });
+  return L;
+}
 function levantarYaw() {
   var L = [], canc = IDX.grupo['Cancelada'];
+  L = L.concat(yawFechadasSemTroca(canc));
   for (var i = 0; i < O.om.length; i++) {
     if (ehFechada(i) || O.grupo[i] === canc) continue;
     var d = semAcentoTxt(O.desc[i]), t = d + ' ' + semAcentoTxt(O.exec[i]);
@@ -1914,7 +1960,7 @@ function cartaoYaw(pg) {
   var corpo = h('div');
   pg.append(h('section', { class: 'card s12', id: 'yaw-drive', 'aria-labelledby': 'h-yaw' },
     h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-yaw' }, 'Yaw drive com defeito'),
-      h('p', null, fInt(turb.length) + ' turbinas com OM ou pendência aberta citando yaw drive, motor ou redutora do yaw' + (PEND ? '' : ' (carregue as pendências do Manusis para ver todas)') + '. Grau pelo texto do registro; toque numa linha para abrir a OM ou a turbina.')),
+      h('p', null, fInt(turb.length) + ' turbinas com OM ou pendência aberta citando yaw drive, motor ou redutora do yaw, ou OM fechada que deixou o yaw drive fora sem troca depois' + (PEND ? '' : ' (carregue as pendências do Manusis para ver todas)') + '. Grau pelo texto do registro; toque numa linha para abrir a OM ou a turbina.')),
       h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'CSV'))),
     h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Grau do defeito', style: 'margin-bottom:10px' }, YAW_GRAUS.map(function (gr, j) {
       var on = yawF === j;
