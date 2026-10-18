@@ -470,6 +470,14 @@ small .mc { display: inline; }
 .drawer-h p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
 .drawer-h .ferr { margin-left: auto; display: flex; gap: 6px; }
 .drawer-b { overflow: auto; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 14px; }
+.an-geral { width: min(1080px, 100vw); }
+.an-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px; }
+@media (max-width: 600px) { .an-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .an-g { padding: 10px 12px; } .an-g .k-val { font-size: 22px; } .an-g .k-sub { font-size: 12px; } }
+.an-g .k-val { font-size: 26px; font-weight: 700; }
+.an-cats .st-btn { text-align: left; }
+.an-item { display: grid; gap: 3px; width: 100%; text-align: left; font: inherit; color: var(--ink); }
+.an-item.clic { cursor: pointer; } .an-item.clic:hover { background: var(--hover); }
+.an-prob { font-weight: 650; color: var(--ink); }
 .mini-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .mini-kpis .card { padding: 10px 12px; }
 .mini-kpis .k-rot { font-size: 11.5px; color: var(--ink-2); }
@@ -685,6 +693,7 @@ var ICONES = {
   ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   tendencia: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  analise: '<path d="M9 4.5H6.5a1.5 1.5 0 0 0-1.5 1.5v13.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H15"/><path d="M9 3.5h6v3H9zM8.5 13.5l2.5 2.5 4.5-5"/>',
   lupa: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
   alvo: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',
   componentes: '<path d="M14.7 6.3a4 4 0 0 0-5.3 5.3l-6 6a1.8 1.8 0 0 0 2.6 2.6l6-6a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.3-.3-.3-2.3z"/>'
@@ -910,7 +919,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-17.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-18.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -3475,6 +3484,134 @@ function abrirTurbina(w) {
     desenhar();
   });
 }
+/* ---------- Análise geral: todas as conferências do painel de uma vez, na base inteira (sem filtros) ---------- */
+var GRUPOS_AN = [
+  { k: 'baixa', rot: 'Baixa de material', precisa: 'consumo' },
+  { k: 'pend', rot: 'Pendências', precisa: 'pendencias' },
+  { k: 'custo', rot: 'Custos' },
+  { k: 'om', rot: 'OMs fechadas' }];
+var CATS_AN = [
+  { k: 'soTexto', g: 'baixa', rot: CONF.soTexto.rot, cor: CONF.soTexto.cor, dica: CONF.soTexto.dica },
+  { k: 'soBaixa', g: 'baixa', rot: CONF.soBaixa.rot, cor: CONF.soBaixa.cor, dica: CONF.soBaixa.dica },
+  { k: 'diverge', g: 'baixa', rot: CONF.diverge.rot, cor: CONF.diverge.cor, dica: CONF.diverge.dica },
+  { k: 'parcial', g: 'baixa', rot: CONF.parcial.rot, cor: CONF.parcial.cor, dica: CONF.parcial.dica },
+  { k: 'pFechSem', g: 'pend', rot: 'Pendência fechada sem comprovar', cor: 'var(--critical)', dica: SIT_PEND.concNaoCita.dica + ' Inclui fechada com a OM ainda aberta e fechada sem OM.' },
+  { k: 'pPronta', g: 'pend', rot: 'Pendência pronta para fechar', cor: 'var(--s4)', dica: SIT_PEND.execOMFechada.dica + ' ' + SIT_PEND.execPronta.dica },
+  { k: 'pTalvez', g: 'pend', rot: SIT_PEND.pendTalvez.rot, cor: SIT_PEND.pendTalvez.cor, dica: SIT_PEND.pendTalvez.dica },
+  { k: 'pCanc', g: 'pend', rot: 'Pendência cancelada junto com a OM ou sem OM', cor: SIT_PEND.cancOM.cor, dica: SIT_PEND.cancOM.dica },
+  { k: 'pVelha', g: 'pend', rot: 'Pendência aberta há mais de 6 meses sem OM', cor: 'var(--serious)', dica: 'Aberta há mais de 180 dias (até a data da base) e sem OM de execução: cobrar a programação.' },
+  { k: 'atipico', g: 'custo', rot: 'Custo atípico', cor: 'var(--warning)', dica: 'Custo da OM muito acima do padrão: confira o lançamento.' },
+  { k: 'preco', g: 'custo', rot: 'Baixa com preço a validar no cadastro', cor: 'var(--serious)', dica: 'Preço unitário do material fora do padrão (ex.: óleo por litro com o preço do tambor).' },
+  { k: 'yaw', g: 'om', rot: 'OM fechada deixou o yaw drive fora', cor: 'var(--critical)', dica: 'O último registro diz que o yaw drive ficou isolado, desabilitado ou retirado, e nenhuma OM depois registra a troca.' }];
+function levantarAchados() {
+  var A = [], canc = IDX.grupo['Cancelada'];
+  var nomePecas = function (lst) { return lst.map(function (it) { return M.componentes[it[0]]; }).filter(function (x, j, a) { return x && a.indexOf(x) === j; }).join(', '); };
+  var nomeBaixas = function (ks) { return ks.map(function (k) { return nomeMaterial(k).desc; }).filter(function (x, j, a) { return a.indexOf(x) === j; }).slice(0, 3).join(', '); };
+  for (var i = 0; i < N; i++) {
+    if (O.grupo[i] === canc) continue;
+    var c = conferencia(i);
+    if (c && c !== 'ok') {
+      var r = conferirPecas(i), det;
+      if (c === 'soTexto') det = 'Texto diz que trocou: ' + nomePecas(r.semBaixa.length ? r.semBaixa : O.pecasItens[i]);
+      else if (c === 'soBaixa') det = 'Baixado: ' + nomeBaixas(r.semTexto);
+      else if (c === 'diverge') det = 'Texto: ' + nomePecas(O.pecasItens[i]) + ' · baixado: ' + nomeBaixas(r.semTexto);
+      else det = [r.semBaixa.length && r.fechada ? 'sem baixa: ' + nomePecas(r.semBaixa) : '', r.semTexto.length ? 'baixa sem troca no texto: ' + nomeBaixas(r.semTexto) : ''].filter(Boolean).join(' · ');
+      A.push({ cat: c, i: i, w: O.wtg[i], data: O.dAb[i], reg: 'OM ' + String(O.om[i]).padStart(5, '0'), det: det });
+    }
+    if (O.atipico[i]) A.push({ cat: 'atipico', i: i, w: O.wtg[i], data: O.dAb[i], reg: 'OM ' + String(O.om[i]).padStart(5, '0'), det: 'Custo ' + fMoedaCompleta(O.custoTot[i] || 0) + ' · ' + String(O.desc[i] || '').slice(0, 90) });
+    if (CONS && CONS[i]) CONS[i].forEach(function (k) {
+      if (M.consumo.suspeito[k]) A.push({ cat: 'preco', i: i, w: O.wtg[i], data: O.dAb[i], reg: 'OM ' + String(O.om[i]).padStart(5, '0'), det: nomeMaterial(k).desc + ' · ' + fQtd(M.consumo.qtd[k], M.consumo.un[k]) + ' × ' + fMoedaCompleta(M.consumo.vUnit[k]) + ' = ' + fMoeda(M.consumo.vTot[k]) });
+    });
+  }
+  if (PEND) {
+    var P = M.pendencias, MAP = { concNaoCita: 'pFechSem', concOMAberta: 'pFechSem', concSemOM: 'pFechSem', execOMFechada: 'pPronta', execPronta: 'pPronta', pendTalvez: 'pTalvez', cancOM: 'pCanc', cancSemOM: 'pCanc' };
+    for (var k = 0; k < P.num.length; k++) {
+      var s = PEND.sit[k], cat = MAP[s], ie = PEND.iExec[k];
+      if (!cat && s === 'pend' && !String(P.omExec[k] || '').trim() && PEND.dAb[k] !== null && diaMax - PEND.dAb[k] > 180) cat = 'pVelha';
+      if (!cat) continue;
+      var alvo = cat === 'pTalvez' && PEND.sug[k] >= 0 ? PEND.sug[k] : ie >= 0 ? ie : undefined;
+      var extra = cat === 'pTalvez' && PEND.sug[k] >= 0 ? ' · ver OM ' + String(O.om[PEND.sug[k]]).padStart(5, '0') : cat === 'pVelha' ? ' · ' + fInt(diaMax - PEND.dAb[k]) + ' dias' : '';
+      A.push({ cat: cat, i: alvo, w: PEND.w[k], data: PEND.dAb[k], reg: 'Pend. ' + P.num[k], det: SIT_PEND[s].curto + extra + ' · ' + textoPendencia(P.desc[k]).replace(/\s+/g, ' ').slice(0, 110) });
+    }
+  }
+  yawFechadasSemTroca(canc).forEach(function (y) { A.push({ cat: 'yaw', i: y.i, w: y.w, data: y.data, reg: 'OM ' + y.num, det: (y.pos !== '–' ? 'Yaw ' + y.pos + ' · ' : '') + y.texto }); });
+  A.forEach(function (a) { var pq = a.w >= 0 ? parqueDoWtg[a.w] : -1; a.cx = pq >= 0 ? M.parqueComplexo[pq] : -1; });
+  return A;
+}
+var anSel = { cat: null, cx: null };
+function abrirAnaliseGeral() {
+  esconderTip();
+  var todos = levantarAchados();
+  var catDe = {}; CATS_AN.forEach(function (c) { catDe[c.k] = c; });
+  var nomeW = function (w) { return w >= 0 ? M.dic.wtg[w] : '(sem turbina)'; };
+  var faltam = GRUPOS_AN.filter(function (g) { return (g.precisa === 'consumo' && !CONS) || (g.precisa === 'pendencias' && !PEND); });
+  var corpo = h('div', { class: 'drawer-b' });
+  var painel = h('aside', { class: 'drawer an-geral', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-tit' },
+    h('div', { class: 'drawer-h' },
+      h('div', null, h('h2', { id: 'an-tit' }, 'Análise geral'),
+        h('p', null, 'Base de ' + fData(diaMax) + ' · ' + fInt(N) + ' OMs' + (PEND ? ' · ' + fInt(M.pendencias.num.length) + ' pendências' : '') + (CONS ? ' · ' + fInt(M.consumo.om.length) + ' baixas' : '') + ' · abertas e fechadas, sem os filtros')),
+      h('div', { class: 'ferr' },
+        h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'CSV'),
+        h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', onclick: fecharCamada }, icone('fechar')))),
+    corpo);
+  function exportar() {
+    baixarCSV('analise-geral.csv', ['Grupo', 'Problema', 'Complexo', 'Turbina', 'Registro', 'Data', 'Detalhe'],
+      todos.map(function (a) { var c = catDe[a.cat]; return [GRUPOS_AN.filter(function (g) { return g.k === c.g; })[0].rot, c.rot, a.cx >= 0 ? M.complexos[a.cx] : '', nomeW(a.w), a.reg, a.data === null || a.data === undefined ? '' : fData(a.data), a.det]; }));
+  }
+  abrirCamada(painel);
+  var pag = 0, POR = 100;
+  function desenhar() {
+    corpo.textContent = '';
+    var noCx = todos.filter(function (a) { return anSel.cx === null || a.cx === anSel.cx; });
+    // resumo por grupo, com os dois complexos separados
+    corpo.append(h('div', { class: 'an-grupos' }, GRUPOS_AN.map(function (g) {
+      var dele = noCx.filter(function (a) { return catDe[a.cat].g === g.k; });
+      var falta = faltam.indexOf(g) >= 0;
+      return h('div', { class: 'card an-g' }, h('div', { class: 'k-rot' }, g.rot),
+        h('div', { class: 'k-val' }, falta ? '–' : fInt(dele.length)),
+        h('div', { class: 'k-sub' }, falta ? 'Carregue ' + (g.precisa === 'consumo' ? 'o consumo de materiais' : 'as pendências') + ' para conferir' :
+          M.complexos.map(function (nm, cx) { return h('div', null, nm.replace(/ do Piau[ií]$/, '') + ': ' + fInt(dele.filter(function (a) { return a.cx === cx; }).length)); })));
+    })));
+    if (M.complexos.length > 1) corpo.append(h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Complexo' },
+      [{ k: null, rot: 'Os dois complexos' }].concat(M.complexos.map(function (nm, cx) { return { k: cx, rot: nm }; })).map(function (o) {
+        var on = anSel.cx === o.k;
+        return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { anSel.cx = o.k; pag = 0; desenhar(); } }, o.rot);
+      })));
+    corpo.append(h('div', { class: 'seletor-status an-cats', role: 'group', 'aria-label': 'Problema' }, CATS_AN.map(function (c) {
+      var n = noCx.filter(function (a) { return a.cat === c.k; }).length, on = anSel.cat === c.k;
+      if (!n && !on) return null;
+      return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), title: c.dica, onclick: function () { anSel.cat = on ? null : c.k; pag = 0; desenhar(); } },
+        h('i', { style: 'background:' + c.cor }), c.rot, h('small', null, ' ' + fInt(n)));
+    })));
+    var vis = noCx.filter(function (a) { return anSel.cat === null || a.cat === anSel.cat; });
+    // turbinas com mais problemas
+    var porW = new Map(); vis.forEach(function (a) { if (a.w >= 0) porW.set(a.w, (porW.get(a.w) || 0) + 1); });
+    var top = Array.from(porW.entries()).map(function (e) { return { k: e[0], rot: M.dic.wtg[e[0]], v: e[1] }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 10);
+    var bodyT = h('div', { class: 'card-b' }), bodyL = h('div', { class: 'card-b' });
+    corpo.append(h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Turbinas com mais problemas'), h('p', null, (anSel.cat === null ? 'Todos os problemas' : catDe[anSel.cat].rot) + ' · toque para abrir a turbina'))), bodyT));
+    var nPag = Math.max(1, Math.ceil(vis.length / POR)); pag = Math.min(pag, nPag - 1);
+    corpo.append(h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Lista de problemas'),
+      h('p', null, fInt(vis.length) + ' registro(s)' + (anSel.cat !== null ? ' · ' + catDe[anSel.cat].dica : ' · mais recentes primeiro') + ' · toque para abrir a OM'))), bodyL));
+    barrasH(bodyT, top, { larguraRotulo: '30%', unidade: 'problemas', cor: 'var(--critical)', onClick: function (w) { abrirTurbina(w); } });
+    var linhas = vis.slice().sort(function (a, b) { return (b.data || 0) - (a.data || 0); }).slice(pag * POR, pag * POR + POR).map(function (a) {
+      return { i: a.i, w: nomeW(a.w), reg: a.reg, data: a.data, prob: catDe[a.cat], det: a.det };
+    });
+    // cartões em vez de tabela: no celular a tabela escondia o problema e o detalhe
+    var oms = []; linhas.forEach(function (r) { if (r.i !== undefined && oms.indexOf(r.i) < 0) oms.push(r.i); });
+    if (!linhas.length) bodyL.append(h('div', { class: 'vazio' }, 'Nenhum problema encontrado.'));
+    else bodyL.append(h('div', { class: 'yaw-lista' }, linhas.map(function (r) {
+      var abre = r.i !== undefined;
+      return h(abre ? 'button' : 'div', { type: abre ? 'button' : null, class: 'yaw-w an-item' + (abre ? ' clic' : ''), onclick: abre ? function () { abrirOM(r.i, oms); } : null },
+        h('span', { class: 'yaw-num' }, r.w, h('small', null, r.reg + ' · ' + (r.data === null || r.data === undefined ? '–' : fData(r.data)))),
+        h('span', { class: 'yaw-txt an-prob' }, h('i', { style: 'background:' + r.prob.cor }), r.prob.rot),
+        h('span', { class: 'yaw-txt' }, r.det));
+    })));
+    if (nPag > 1) bodyL.append(h('div', { class: 'pag' }, fInt(pag * POR + 1) + '–' + fInt(Math.min(vis.length, (pag + 1) * POR)) + ' de ' + fInt(vis.length),
+      h('button', { class: 'btn', type: 'button', disabled: pag === 0 ? true : null, onclick: function () { pag--; desenhar(); } }, '‹ Anterior'),
+      h('button', { class: 'btn', type: 'button', disabled: pag >= nPag - 1 ? true : null, onclick: function () { pag++; desenhar(); } }, 'Próxima ›')));
+  }
+  requestAnimationFrame(desenhar);
+}
 function passaDimsSemLocal(i) {
   for (var k = 0; k < DIMS.length; k++) {
     var d = DIMS[k];
@@ -3947,6 +4084,7 @@ function montarApp() {
         (M.fonte === 'manusis' ? (CONS ? ' · consumo de materiais: ' + fInt(M.consumo.om.length) + ' baixas' : ' · sem consumo de materiais') : '') +
         ' · painel versão ' + fDataVersao() }, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0]))),
     h('div', { class: 'acoes' },
+      h('button', { class: 'btn', type: 'button', id: 'btn-analise', onclick: abrirAnaliseGeral, 'aria-label': 'Análise geral', title: 'Analisar tudo de uma vez: baixa de material, pendências, custos e OMs fechadas' }, icone('analise'), h('span', { class: 'txt' }, 'Análise geral')),
       h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
       h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo, title: 'Carregar a planilha de OMs mais recente' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
