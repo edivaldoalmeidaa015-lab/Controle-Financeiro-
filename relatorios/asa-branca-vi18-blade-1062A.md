@@ -57,6 +57,12 @@ Parada de máquina: TURBINA PARADA
 • Descida dos técnicos da torre
 • Organização dos materiais
 
-*Próxima atividade:*
+━━━━━━━━━━━━━━━━━━
+
+*3º DIA – 21/10/2026*
+
+*Resumo da atividade:*
 • Laminação da camada interna
+
+*Próxima atividade:*
 • Colagem do núcleo
