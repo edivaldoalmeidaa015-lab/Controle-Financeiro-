@@ -35,5 +35,9 @@ Parada de máquina: TURBINA PARADA
 • Descida dos técnicos da torre
 • Organização dos materiais
 
-*Próxima atividade:*
+━━━━━━━━━━━━━━━━━━
+
+*2º DIA – 20/10/2026*
+
+*Resumo da atividade:*
 • Colagem do anteparo
