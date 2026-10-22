@@ -60,9 +60,27 @@ Parada de máquina: TURBINA PARADA
 ━━━━━━━━━━━━━━━━━━
 
 *3º DIA – 21/10/2026*
+Chegada no Parque: 06:00
+Saída do Parque: 16:00 (+ 1 hora de almoço)
+Standby: ( ) Sim (X) Não
+Parada de máquina: TURBINA PARADA
 
 *Resumo da atividade:*
-• Laminação da camada interna
+• DDS time MegaWind
+• Mobilização para a torre
+• Preenchimento dos documentos
+• Subida dos técnicos
+• Realização das ancoragens
+• Descida dos técnicos
+• Acesso ao dano (17.500)
+• Ajuste do anteparo para laminação das camadas internas
+• Laminação das camadas internas
+• Aguardando a cura do laminado
+• Teste de dureza
+• Colagem do núcleo
+• Vácuo do núcleo
+• Descida dos técnicos da torre
+• Organização dos materiais
 
 *Próxima atividade:*
-• Colagem do núcleo
+• Laminação das camadas externas
