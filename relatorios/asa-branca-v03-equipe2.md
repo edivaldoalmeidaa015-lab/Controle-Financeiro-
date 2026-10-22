@@ -63,3 +63,26 @@ MegaWind/Invenergy
 **Próxima atividade:** Lixamento e laminação SS
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 3º dia – 21/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 15:00
+
+**Resumo da atividade:**
+- Deslocamento para a torre V-03
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Stand-by, vento alto
+- Aguardando melhoria das condições do vento
+- Descida da torre
+- Organização dos materiais
+
+**Próxima atividade:** Lixamento e laminação SS
+**Standby:** (X) Sim ( ) Não
+**Parada de máquina:** Turbina parada
+**Observação:** Stand-by o dia todo aguardando melhoria das condições climáticas.
