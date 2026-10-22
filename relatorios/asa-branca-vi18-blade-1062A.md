@@ -82,5 +82,30 @@ Parada de máquina: TURBINA PARADA
 • Descida dos técnicos da torre
 • Organização dos materiais
 
-*Próxima atividade:*
+━━━━━━━━━━━━━━━━━━
+
+*4º DIA – 22/10/2026*
+Chegada no Parque: 05:00
+Saída do Parque: 14:00 (+ 1 hora de almoço)
+Standby: (X) Sim ( ) Não
+Parada de máquina: TURBINA PARADA
+
+*Resumo da atividade:*
+• DDS time MegaWind
+• Mobilização para a torre
+• Preenchimento dos documentos
+• Subida dos técnicos
+• Realização das ancoragens
+• Descida dos técnicos
+• Acesso ao dano (17.500)
+• Ajuste do núcleo para laminação das camadas externas
 • Laminação das camadas externas
+• Reparo finalizado
+• Reparo em processo de cura
+• Descida dos técnicos da torre
+• Organização dos materiais
+
+*Obs:* Equipe MegaWind ficou em standby das 05:00 às 07:30 aguardando a melhoria climática.
+
+*Próxima atividade:*
+• Pós-cura, teste de dureza, putty e topcoat
