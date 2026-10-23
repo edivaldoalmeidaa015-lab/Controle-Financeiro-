@@ -86,3 +86,28 @@ MegaWind/Invenergy
 **Standby:** (X) Sim ( ) Não
 **Parada de máquina:** Turbina parada
 **Observação:** Stand-by o dia todo aguardando melhoria das condições climáticas.
+
+---
+
+## 4º dia – 22/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 13:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre V-03
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Descida nas cordas
+- Lixamento SS
+- Traçado p/ laminação
+- Laminação SS
+- Descida dos técnicos
+- Corte de camadas SS
+- Organização dos materiais
+
+**Próxima atividade:** Pós-cura, acabamento e pintura
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina parada
