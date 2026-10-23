@@ -924,7 +924,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-23.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-23.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2809,7 +2809,9 @@ function paginaProgramacao(pg) {
       (ignorar === 'wtg' || f.wtg === null || O.wtg[i] === f.wtg);
   };
   var programada = function (i, ignorarMes) { return !cancelada(i) && dentro(O.dProg[i], ignorarMes); };
-  var realizada = function (i, ignorarMes) { return ehFechada(i) && dentro(O.dFe[i], ignorarMes); };
+  // com um ano escolhido, só conta a OM programada naquele ano (a semianual de 2025 fechada em 2026 não entra em 2026)
+  var progNoAno = function (i) { return f.ano === null || (O.dProg[i] !== null && O.dProg[i] !== undefined && anoDe(O.dProg[i]) === f.ano); };
+  var realizada = function (i, ignorarMes) { return ehFechada(i) && dentro(O.dFe[i], ignorarMes) && progNoAno(i); };
   var pct = function (a, b) { return b ? fPct(a / b) : '–'; };
 
   /* ---------- segmentadores ---------- */
@@ -2853,10 +2855,10 @@ function paginaProgramacao(pg) {
 
   /* ---------- cartões ---------- */
   var sel = todas.filter(function (i) { return passa(i); });
-  var nProg = 0, nReal = 0, nConc = 0, nPend = 0, nAtr = 0, nCanc = 0, nAg = 0;
+  var nProg = 0, nReal = 0, nConc = 0, nPend = 0, nAtr = 0, nCanc = 0, nAg = 0, nForaAno = 0;
   sel.forEach(function (i) {
     if (cancelada(i) && dentro(O.dProg[i])) nCanc++;
-    if (realizada(i)) nReal++;
+    if (realizada(i)) nReal++; else if (ehFechada(i) && dentro(O.dFe[i])) nForaAno++; // fechada no período, programada em outro ano
     if (!programada(i)) return;
     nProg++;
     if (ehFechada(i)) nConc++; else { nPend++; if (atrasada(i)) nAtr++; if (aguardando(i)) nAg++; }
@@ -2864,7 +2866,7 @@ function paginaProgramacao(pg) {
   var periodo = f.ano === null ? 'em todo o período' : f.mes !== null ? 'em ' + MESES_LONGO[f.mes] + ' de ' + f.ano : 'em ' + f.ano;
   pg.append(h('div', { class: 'kpis k5' },
     kpi({ rot: 'Programado', valor: fInt(nProg), valorTexto: fInt(nProg), sub: 'OMs ' + periodo + (nCanc ? ' · ' + fInt(nCanc) + ' canceladas fora' : ''), tip: 'OMs das atividades programadas com a data de início da programação no período. As canceladas não contam.' }),
-    kpi({ rot: 'Realizado', valor: fInt(nReal), valorTexto: fInt(nReal), sub: 'OMs fechadas ' + periodo, tip: 'OMs das atividades programadas fechadas no período (pode incluir OM programada antes).' }),
+    kpi({ rot: 'Realizado', valor: fInt(nReal), valorTexto: fInt(nReal), sub: 'OMs fechadas ' + periodo + (nForaAno ? ' · ' + fInt(nForaAno) + ' programadas em outro ano fora' : ''), tip: 'OMs programadas no ano escolhido e fechadas no período. As fechadas no período mas programadas em outro ano (ex.: semianual de 2025 fechada em 2026) ficam de fora.' }),
     kpi({ rot: 'Aderência', valor: nProg ? fPct(nConc / nProg) : '–', valorTexto: pct(nConc, nProg), sub: fInt(nConc) + ' de ' + fInt(nProg) + ' programadas já fechadas', tip: 'Das OMs programadas no período, quantas já foram fechadas.' }),
     kpi({ rot: 'Pendentes', valor: fInt(nPend), valorTexto: fInt(nPend), sub: 'ainda não fechadas' + (nAg ? ' · ' + fInt(nAg) + ' executadas, aguardando fechar' : ''), tip: 'Programadas no período e sem fechamento até ' + fData(hoje) + '.' }),
     kpi({ rot: 'Atrasadas', valor: fInt(nAtr), valorTexto: fInt(nAtr), sub: pct(nAtr, nPend) + ' das pendentes · programadas há mais de 30 dias', tip: 'Pendentes com a data de início da programação há mais de 30 dias (antes de ' + fData(hoje - PRAZO) + ').' })));
