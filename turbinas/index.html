@@ -475,9 +475,14 @@ small .mc { display: inline; }
 @media (max-width: 600px) { .an-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .an-g { padding: 10px 12px; } .an-g .k-val { font-size: 22px; } .an-g .k-sub { font-size: 12px; } }
 .an-g .k-val { font-size: 26px; font-weight: 700; }
 .an-cats .st-btn { text-align: left; }
-.an-item { display: grid; gap: 3px; width: 100%; text-align: left; font: inherit; color: var(--ink); }
+.an-item { display: grid; align-content: start; gap: 3px; width: 100%; text-align: left; font: inherit; color: var(--ink); }
 .an-item.clic { cursor: pointer; } .an-item.clic:hover { background: var(--hover); }
 .an-prob { font-weight: 650; color: var(--ink); }
+.sub-cel { display: block; font-weight: 400; color: var(--muted); font-size: 12px; white-space: normal; }
+.tab tr.sel td { background: var(--hover); }
+.mais-mat { padding: 0; }
+.mais-btn { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border: 0; background: transparent; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.mais-btn small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
 .mini-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .mini-kpis .card { padding: 10px 12px; }
 .mini-kpis .k-rot { font-size: 11.5px; color: var(--ink-2); }
@@ -919,7 +924,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-18.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-23.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2289,7 +2294,7 @@ function semAcentoTxt(s) { return String(s || '').normalize('NFD').replace(/[\u0
 
 /* Conferência da troca com o material baixado no Manusis, e as peças mais baixadas. */
 var confSel = 'soTexto';
-function cartoesConsumo(pg, B) {
+function cartoesConsumo(pg, B, semPecasBaixadas) {
   var grupos = { ok: [], parcial: [], diverge: [], soTexto: [], soBaixa: [] }, ordemConf = ['ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
   B.forEach(function (i) { var c = conferencia(i); if (c) grupos[c].push(i); });
   var nTot = ordemConf.reduce(function (t, g) { return t + grupos[g].length; }, 0);
@@ -2333,6 +2338,15 @@ function cartoesConsumo(pg, B) {
       'Cada peça é conferida: “em parte” é quando uma bate e outra não. “Sem baixa” considera só OMs fechadas. ' + fInt(nTot) + ' OMs · clique para listar',
     desenhar: function (el) { el.append(barras); desenharBarras(); }
   }));
+  if (!semPecasBaixadas) cartaoPecasBaixadas(pg, B);
+  pg.append(h('section', { class: 'card s12' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, tituloT, subT)), corpoT));
+  atualizarSub();
+  aposRender.push(desenharLista);
+  cartaoPendencias(pg, B);
+}
+
+function cartaoPecasBaixadas(pg, B) {
   // peças mais baixadas (pelo material do almoxarifado, não pelo texto)
   var C = M.consumo, porMat = new Map();
   B.forEach(function (i) {
@@ -2353,11 +2367,6 @@ function cartoesConsumo(pg, B) {
     dados: { cols: [{ k: 'cod', rot: 'Código' }, { k: 'rot', rot: 'Material' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt },
       { k: 'qtd', rot: 'Quantidade', num: true, fmt: function (v, r) { return fQtd(v, r.un); } }, { k: 'valor', rot: 'Valor baixado', num: true, fmt: fMoedaCompleta }], linhas: mats }
   }));
-  pg.append(h('section', { class: 'card s12' },
-    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, tituloT, subT)), corpoT));
-  atualizarSub();
-  aposRender.push(desenharLista);
-  cartaoPendencias(pg, B);
 }
 
 /*
@@ -3034,7 +3043,19 @@ function paginaProgramacao(pg) {
   });
 }
 
-function paginaComponentes(pg) {
+function cartaoRoscaPecas(pg) {
+  // participação por tipo de peça (rosca)
+  var porCompR = new Map(); base('peca').forEach(function (i) { catsTroca(i).forEach(function (k) { porCompR.set(k, (porCompR.get(k) || 0) + 1); }); });
+  var ordC = Array.from(porCompR.entries()).sort(function (a, c) { return c[1] - a[1]; });
+  var paleta = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'];
+  var itComp = ordC.slice(0, 8).map(function (e, j) { return { k: e[0], rot: M.componentes[e[0]], v: e[1], cor: paleta[j] }; });
+  var resto = ordC.slice(8).reduce(function (t, e) { return t + e[1]; }, 0);
+  if (resto) itComp.push({ k: null, rot: 'Demais tipos (' + fInt(ordC.length - 8) + ')', v: resto, cor: 'var(--neutral)' });
+  pg.append(cartao({ id: 'pecas-rosca', span: 's6', titulo: 'Trocas por tipo de peça', sub: 'OMs com troca de cada tipo · toque numa fatia para filtrar',
+    desenhar: function (el) { rosca(el, itComp, { centro: 'trocas', ativo: estado.f.peca.size ? estado.f.peca : null, onClick: function (k) { alternarFiltro('peca', k); } }); },
+    dados: { cols: [{ k: 'rot', rot: 'Tipo de peça' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itComp } }));
+}
+function paginaComponentes(pg, soExtras) {
   var B = base(), b = baldes();
   var comTexto = contar(B, function (i) { return !!O.exec[i]; });
   var comPeca = B.filter(function (i) { return catsTroca(i).length; });
@@ -3047,6 +3068,7 @@ function paginaComponentes(pg) {
   var top = Array.from(porComp.entries()).sort(function (a, c) { return c[1] - a[1]; })[0];
   var custoMat = soma(comPeca, O.custoMat, custoValido);
 
+  if (!soExtras) {
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Componentes substituídos'),
     h('p', null, 'Peças identificadas automaticamente no texto do “Serviço executado” (frases como “realizado a substituição da placa AEPA”). Confira a frase de origem na tabela abaixo.' +
       (CONS ? ' Com o consumo de materiais carregado, contam também as peças baixadas no Manusis (troca que o texto não descreve), e cada troca é conferida com a baixa.' : ''))));
@@ -3062,21 +3084,13 @@ function paginaComponentes(pg) {
     kpi({ rot: 'Material nessas OMs', valor: fMoeda(custoMat), valorTexto: fMoeda(custoMat), sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })
   ));
 
-  // participação por tipo de peça (rosca) e peças trocadas por mês (colunas)
-  var porCompR = new Map(); base('peca').forEach(function (i) { catsTroca(i).forEach(function (k) { porCompR.set(k, (porCompR.get(k) || 0) + 1); }); });
-  var ordC = Array.from(porCompR.entries()).sort(function (a, c) { return c[1] - a[1]; });
-  var paleta = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'];
-  var itComp = ordC.slice(0, 8).map(function (e, j) { return { k: e[0], rot: M.componentes[e[0]], v: e[1], cor: paleta[j] }; });
-  var resto = ordC.slice(8).reduce(function (t, e) { return t + e[1]; }, 0);
-  if (resto) itComp.push({ k: null, rot: 'Demais tipos (' + fInt(ordC.length - 8) + ')', v: resto, cor: 'var(--neutral)' });
-  pg.append(cartao({ id: 'pecas-rosca', span: 's6', titulo: 'Trocas por tipo de peça', sub: 'OMs com troca de cada tipo · toque numa fatia para filtrar',
-    desenhar: function (el) { rosca(el, itComp, { centro: 'trocas', ativo: estado.f.peca.size ? estado.f.peca : null, onClick: function (k) { alternarFiltro('peca', k); } }); },
-    dados: { cols: [{ k: 'rot', rot: 'Tipo de peça' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itComp } }));
+  cartaoRoscaPecas(pg);
+  }
   pg.append(cartao({ id: 'pecas-mes', span: 's6', titulo: 'Peças trocadas por ' + b.tipo, sub: 'Pela data de abertura da OM',
     desenhar: function (el) { serieTempo(el, { baldes: b, modo: 'colunas', altura: 250, legenda: false, rotularTotais: true, titulo: 'Peças trocadas', series: [{ nome: 'Peças trocadas', cor: 'var(--s3)', valores: mes }] }); },
     dados: { cols: [{ k: 'p', rot: 'Período' }, { k: 'v', rot: 'Peças', num: true, fmt: fInt }], linhas: b.map(function (x, k) { return { p: x.longo, v: mes[k] }; }) } }));
 
-  if (CONS) cartoesConsumo(pg, B);
+  if (CONS) cartoesConsumo(pg, B, soExtras);
 
   pg.append(cartaoPecas('s6', 12));
 
@@ -3133,6 +3147,121 @@ function paginaComponentes(pg) {
       onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
   });
+}
+
+/* ---------- Trocas e materiais: em qual turbina trocou, qual peça e qual material saiu para a OM ---------- */
+var trocaSel = { w: null, sit: null, pag: 0 }, maisMat = false;
+var SIT_TROCA = ['ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
+function paginaTrocas(pg) {
+  var B = base(), C = M.consumo;
+  var vBaixa = function (k) { return C.suspeito[k] && !estado.atipicos ? 0 : C.vTot[k]; };
+  // uma linha por OM com troca no texto ou peça baixada
+  var canc = IDX.grupo['Cancelada']; // OM cancelada não é troca (fica de fora, como na Análise geral)
+  var trocas = B.filter(function (i) { return O.grupo[i] !== canc && (catsTroca(i).length || (CONS && baixasPeca(i).length)); }).map(function (i) {
+    var ks = CONS ? baixasPeca(i) : [];
+    return { i: i, w: O.wtg[i], sit: conferencia(i), ks: ks, valor: ks.reduce(function (t, k) { return t + vBaixa(k); }, 0),
+      pecas: itensTroca(i).filter(function (it) { return !it[2]; }).map(function (it) { return it[1]; }).filter(function (x, j, a) { return x && a.indexOf(x) === j; }) };
+  });
+  var nPecas = trocas.reduce(function (t, r) { return t + pecasContadas(r.i).length; }, 0);
+  var valor = trocas.reduce(function (t, r) { return t + r.valor; }, 0);
+  var semBaixa = trocas.filter(function (r) { return r.sit === 'soTexto'; }).length;
+  var nomeW = function (w) { return w >= 0 ? M.dic.wtg[w] : '(sem turbina)'; };
+
+  pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Trocas e materiais'),
+    h('p', null, 'Em qual turbina foi trocada a peça, o que o técnico escreveu no serviço executado e qual material saiu do almoxarifado para a OM. Toque numa turbina para ver só as trocas dela, e numa troca para abrir a OM.')));
+  if (!CONS && M.fonte === 'manusis') pg.append(h('div', { class: 'faixa-aviso', role: 'note' },
+    h('span', null, 'Carregue o consumo de materiais do Manusis para ver o material baixado em cada troca.'),
+    h('button', { class: 'btn', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar consumo')));
+  var turbs = new Set(trocas.map(function (r) { return r.w; }).filter(function (w) { return w >= 0; }));
+  pg.append(h('div', { class: 'kpis' },
+    kpi({ rot: 'OMs com troca', valor: fInt(trocas.length), valorTexto: fInt(trocas.length), sub: CONS ? 'troca no texto ou peça baixada' : 'troca descrita no texto' }),
+    kpi({ rot: 'Peças trocadas', valor: fInt(nPecas), valorTexto: fInt(nPecas), sub: 'em ' + fInt(turbs.size) + ' turbinas' }),
+    kpi({ rot: 'Material baixado', valor: CONS ? fMoeda(valor) : '–', valorTexto: CONS ? fMoeda(valor) : '–', sub: CONS ? (estado.atipicos ? 'peças, inclui preços a validar' : 'peças, sem preços a validar') : 'carregue o consumo' }),
+    kpi({ rot: 'Trocas sem baixa', valor: CONS ? fInt(semBaixa) : '–', valorTexto: CONS ? fInt(semBaixa) : '–', sub: CONS ? 'OM fechada, texto diz que trocou e nada foi baixado' : 'carregue o consumo' })));
+
+  // por turbina
+  var porW = new Map();
+  trocas.forEach(function (r) {
+    if (r.w < 0) return;
+    var x = porW.get(r.w) || { w: r.w, n: 0, valor: 0, sem: 0, cats: new Map() };
+    x.n++; x.valor += r.valor; if (r.sit === 'soTexto') x.sem++;
+    catsTroca(r.i).forEach(function (c) { x.cats.set(c, (x.cats.get(c) || 0) + 1); });
+    porW.set(r.w, x);
+  });
+  if (trocaSel.w !== null && !porW.has(trocaSel.w)) trocaSel.w = null;
+  var linhasW = Array.from(porW.values()).map(function (x) {
+    return { w: x.w, rot: M.dic.wtg[x.w], n: x.n, valor: x.valor, sem: x.sem,
+      pecas: Array.from(x.cats.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 3).map(function (e) { return M.componentes[e[0]] + ' (' + e[1] + ')'; }).join(', ') };
+  });
+  var estreito = innerWidth < 600;
+  var cols = [{ k: 'rot', rot: 'Turbina', classe: 'forte quebra', fmt: function (v, r) { return h('span', null, h('b', null, (trocaSel.w === r.w ? '▸ ' : '') + v), h('small', { class: 'sub-cel' }, r.pecas + (estreito && r.sem ? ' · ' + fInt(r.sem) + ' sem baixa' : ''))); } },
+    { k: 'n', rot: 'Trocas', num: true, fmt: fInt }];
+  if (CONS) cols.push({ k: 'valor', rot: 'Material', num: true, fmt: function (v) { return v ? fMoeda(v) : '–'; } });
+  if (CONS && !estreito) cols.push({ k: 'sem', rot: 'Sem baixa', num: true, fmt: function (v) { return v ? fInt(v) : '–'; } }); // no celular vai embaixo do nome
+  pg.append(h('section', { class: 'card s12', id: 'trocas-wtg' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Trocas por turbina'),
+      h('p', null, fInt(linhasW.length) + ' turbinas · embaixo do nome, as peças mais trocadas · toque para ver só as trocas da turbina'))),
+    (function () { var el = h('div'); aposRender.push(function () {
+      tabela(el, { cols: cols, linhas: linhasW, ordem: { k: 'n', desc: true }, altura: 360,
+        onLinha: function (r) { trocaSel.w = trocaSel.w === r.w ? null : r.w; trocaSel.pag = 0; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); var l = document.getElementById('trocas-lista'); if (l && trocaSel.w !== null) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+      Array.prototype.forEach.call(el.querySelectorAll('tbody tr'), function (tr, j) { var r = linhasW.slice().sort(function (a, b) { return b.n - a.n; })[j]; if (r && r.w === trocaSel.w) tr.classList.add('sel'); });
+    }); return el; })()));
+
+  // lista de trocas
+  var daW = trocas.filter(function (r) { return trocaSel.w === null || r.w === trocaSel.w; });
+  var lista = daW.filter(function (r) { return trocaSel.sit === null || r.sit === trocaSel.sit; }).sort(function (a, b) { return O.dAb[b.i] - O.dAb[a.i]; });
+  var POR = 100, nPag = Math.max(1, Math.ceil(lista.length / POR)); trocaSel.pag = Math.min(trocaSel.pag, nPag - 1);
+  var exportar = function () {
+    var L = [];
+    lista.forEach(function (r) {
+      var base = [nomeW(r.w), String(O.om[r.i]).padStart(5, '0'), fData(O.dAb[r.i]), M.dic.status[O.status[r.i]] || '', r.pecas.join(', '), r.sit ? CONF[r.sit].rot : ''];
+      if (!r.ks.length) L.push(base.concat(['', '', '', '', '']));
+      r.ks.forEach(function (k) { var nm = nomeMaterial(k); L.push(base.concat([nm.cod, nm.desc, String(C.qtd[k]).replace('.', ','), C.un[k] || '', String(Math.round(C.vTot[k] * 100) / 100).replace('.', ',')])); });
+    });
+    baixarCSV('trocas-e-materiais.csv', ['Turbina', 'OM', 'Abertura', 'Status', 'Peça trocada (texto)', 'Situação', 'Código do material', 'Material baixado', 'Quantidade', 'Unidade', 'Valor (R$)'], L);
+  };
+  var chips = CONS ? h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Situação da troca', style: 'margin-bottom:10px' }, SIT_TROCA.map(function (k) {
+    var n = daW.filter(function (r) { return r.sit === k; }).length, on = trocaSel.sit === k;
+    return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), title: CONF[k].dica, onclick: function () { trocaSel.sit = on ? null : k; trocaSel.pag = 0; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
+      h('i', { style: 'background:' + CONF[k].cor }), CONF[k].curto, h('small', null, ' ' + fInt(n)));
+  })) : null;
+  var corpoL = h('div');
+  pg.append(h('section', { class: 'card s12', id: 'trocas-lista' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Lista de trocas' + (trocaSel.w !== null ? ' · ' + M.dic.wtg[trocaSel.w] : '')),
+      h('p', null, fInt(lista.length) + ' OMs · mais recentes primeiro' + (trocaSel.sit ? ' · ' + CONF[trocaSel.sit].dica : '') + ' ',
+        trocaSel.w !== null || trocaSel.sit ? h('button', { type: 'button', class: 'link', onclick: function () { trocaSel.w = null; trocaSel.sit = null; trocaSel.pag = 0; renderPagina(); } }, 'mostrar todas') : null)),
+      h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'CSV'))),
+    chips, corpoL));
+  aposRender.push(function () {
+    var vis = lista.slice(trocaSel.pag * POR, trocaSel.pag * POR + POR), oms = vis.map(function (r) { return r.i; });
+    if (!vis.length) { corpoL.append(h('div', { class: 'vazio' }, 'Nenhuma troca nos filtros atuais.')); return; }
+    corpoL.append(h('div', { class: 'yaw-lista' }, vis.map(function (r) {
+      var mats = r.ks.slice(0, 4).map(function (k) { return nomeMaterial(k).desc + ' · ' + fQtd(C.qtd[k], C.un[k]) + ' · ' + fMoeda(C.vTot[k]) + (C.suspeito[k] ? ' (preço a validar)' : ''); });
+      if (r.ks.length > 4) mats.push('+ ' + (r.ks.length - 4) + ' material(is)');
+      return h('button', { type: 'button', class: 'yaw-w an-item clic', onclick: function () { abrirOM(r.i, oms); } },
+        h('span', { class: 'yaw-num' }, nomeW(r.w), h('small', null, 'OM ' + String(O.om[r.i]).padStart(5, '0') + ' · ' + fData(O.dAb[r.i]) + ' · ' + (M.dic.status[O.status[r.i]] || ''))),
+        h('span', { class: 'yaw-txt' }, h('b', null, 'Trocou: '), r.pecas.length ? r.pecas.join(', ') : '— (o texto não descreve a troca)'),
+        CONS ? h('span', { class: 'yaw-txt' }, h('b', null, 'Material baixado: '), mats.length ? mats.join(' | ') : 'nenhum') : null,
+        r.sit ? h('span', { class: 'yaw-txt an-prob' }, h('i', { style: 'background:' + CONF[r.sit].cor }), CONF[r.sit].rot) : null);
+    })));
+    if (nPag > 1) corpoL.append(h('div', { class: 'pag' }, fInt(trocaSel.pag * POR + 1) + '–' + fInt(Math.min(lista.length, (trocaSel.pag + 1) * POR)) + ' de ' + fInt(lista.length),
+      h('button', { class: 'btn', type: 'button', disabled: trocaSel.pag === 0 ? true : null, onclick: function () { trocaSel.pag--; renderPagina(); document.getElementById('trocas-lista').scrollIntoView({ block: 'start' }); } }, '‹ Anterior'),
+      h('button', { class: 'btn', type: 'button', disabled: trocaSel.pag >= nPag - 1 ? true : null, onclick: function () { trocaSel.pag++; renderPagina(); document.getElementById('trocas-lista').scrollIntoView({ block: 'start' }); } }, 'Próxima ›')));
+  });
+
+  // o essencial
+  cartaoRoscaPecas(pg);
+  if (CONS) cartaoPecasBaixadas(pg, B);
+
+  // o resto fica guardado: só desenha quando abre
+  pg.append(h('section', { class: 'card s12 mais-mat' },
+    h('button', { type: 'button', class: 'mais-btn', 'aria-expanded': String(maisMat), onclick: function () { maisMat = !maisMat; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
+      h('span', null, h('b', null, 'Mais análises de material'), h('small', null, ' curva ABC, novo × reparado, consumo por mês e por material, local de aplicação, conferência detalhada e pendências de controle')),
+      h('span', { 'aria-hidden': 'true' }, maisMat ? '▴' : '▾'))));
+  if (maisMat) {
+    if (CONS) paginaMateriais(pg);
+    paginaComponentes(pg, true);
+  }
 }
 
 /* ---------- Mão de obra ---------- */
@@ -3787,7 +3916,7 @@ function fichaOM(i, lista, pos, navegar) {
       campo('Checklist', O.ckItens[i] ? fInt(O.ckResp[i] || 0) + ' de ' + fInt(O.ckItens[i]) + ' itens' : '–')),
     h('div', { class: 'bloco-txt' },
       O.falhas[i].length ? [h('h4', null, 'Falha'), h('div', { class: 'pecas', style: 'margin-bottom:14px' }, O.falhas[i].map(function (k) { return h('span', { class: 'pill' }, h('i', { style: 'background:var(--s2)' }), M.falhas[k]); }))] : null,
-      // material (baixas do Manusis) fica só na aba Materiais: aqui, só as peças citadas no serviço executado
+      // material (baixas do Manusis) fica na aba Trocas e materiais: aqui, só as peças citadas no serviço executado
       O.pecasItens[i].length ? [h('h4', null, 'Peças trocadas'), h('div', { class: 'pecas' }, O.pecasItens[i].map(function (it) { return h('span', { class: 'pill', title: 'Categoria: ' + M.componentes[it[0]] }, h('i', { style: 'background:var(--s3)' }), it[1]); })),
         h('p', { class: 'nota', style: 'margin:6px 0 14px' }, 'Identificadas no texto do serviço executado.')] : null,
       blocoPendOM(i),
@@ -4026,7 +4155,8 @@ function salvarHash() {
 }
 function lerHash() {
   var p; try { p = new URLSearchParams((location.hash || '').slice(1)); } catch (e) { p = new URLSearchParams(); }
-  if (PAGINAS[p.get('p')]) estado.pagina = p.get('p');
+  var pgH = p.get('p'); if (pgH === 'componentes' || pgH === 'materiais') pgH = 'trocas'; // abas antigas, juntadas em Trocas
+  if (PAGINAS[pgH]) estado.pagina = pgH;
   var per = p.get('per');
   estado.per = { chave: 'tudo', ini: diaMin, fim: diaMax };
   if (per) {
@@ -4050,10 +4180,9 @@ function lerHash() {
 var PAGINAS = {
   visao: { rot: 'Visão geral', curto: 'Visão', icone: 'visao', fn: paginaVisao },
   turbinas: { rot: 'Turbinas', icone: 'turbinas', fn: paginaTurbinas },
-  componentes: { rot: 'Peças', icone: 'componentes', fn: paginaComponentes },
+  trocas: { rot: 'Trocas e materiais', curto: 'Trocas', icone: 'componentes', fn: paginaTrocas },
   custos: { rot: 'Custos', icone: 'custos', fn: paginaCustos },
   ordens: { rot: 'Ordens', icone: 'ordens', fn: paginaOrdens },
-  materiais: { rot: 'Materiais', curto: 'Mat.', icone: 'caixa', fn: paginaMateriais },
   pendencias: { rot: 'Pendências', curto: 'Pend.', icone: 'alerta', fn: paginaPendencias },
   programacao: { rot: 'Programação', curto: 'Prog.', icone: 'alvo', fn: paginaProgramacao }
 };
@@ -4097,7 +4226,7 @@ function montarApp() {
 }
 
 // Depois de escolher um item no filtro, mostra onde ele aparece de verdade.
-var CENARIO_DIM = { peca: 'componentes', falha: 'ordens', status: 'ordens' };
+var CENARIO_DIM = { peca: 'trocas', falha: 'ordens', status: 'ordens' };
 function irParaCenario(dim, k) {
   if (dim === 'wtg') { atualizar(); window.scrollTo(0, 0); abrirTurbina(k); return; }
   if (CENARIO_DIM[dim] && PAGINAS[CENARIO_DIM[dim]]) { estado.ordens.pag = 0; estado.ordens.busca = ''; irPara(CENARIO_DIM[dim]); return; }
