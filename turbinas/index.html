@@ -924,7 +924,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-23.2'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-10-23.3'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -1619,6 +1619,16 @@ var COR_STATUS_OM = { 'Abertas': 'var(--s4)', 'Programadas': 'var(--s1)', 'Em es
 function corStatusOM(k) { return COR_STATUS_OM[M.dic.status[k]] || 'var(--s5)'; }
 
 /* ---------- Visão geral ---------- */
+/* Quadros de consulta ficam numa seção recolhida no fim da aba: só são desenhados quando ela é aberta. */
+var maisAberto = {};
+function secaoMais(pg, chave, resumo, desenhar) {
+  var on = !!maisAberto[chave];
+  pg.append(h('section', { class: 'card s12 mais-mat' },
+    h('button', { type: 'button', class: 'mais-btn', 'aria-expanded': String(on), onclick: function () { maisAberto[chave] = !on; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
+      h('span', null, h('b', null, 'Mais detalhes'), h('small', null, ' ' + resumo)),
+      h('span', { 'aria-hidden': 'true' }, on ? '▴' : '▾'))));
+  if (on) desenhar(pg);
+}
 function paginaVisao(pg) {
   var B = base(), b = baldes();
   var bkl = B.filter(function (i) { return O.grupo[i] === IDX.grupo['Backlog']; });
@@ -1677,12 +1687,12 @@ function paginaVisao(pg) {
 
   pg.append(cartao({ id: 'destaques', span: 's4', titulo: 'Destaques', sub: 'Leitura automática dos filtros atuais', desenhar: function (el) { destaques(el, B, bkl, fech); } }));
 
-  pg.append(cartaoParques(B));
-
-  // as turbinas e as peças que mais pedem atenção
-  pg.append(cartaoTopTurbinas('s4', 10, true));
-  pg.append(cartaoFalhas('s4', 10));
-  pg.append(cartaoPecas('s4', 10));
+  pg.append(cartaoTopTurbinas('s12', 10, true));
+  secaoMais(pg, 'visao', 'comparativo por parque, falhas mais frequentes e peças mais trocadas', function (pg) {
+    pg.append(cartaoParques(B));
+    pg.append(cartaoFalhas('s6', 10));
+    pg.append(cartaoPecas('s6', 10));
+  });
 }
 
 /* Comparativo por parque: números por turbina, porque os parques têm tamanhos diferentes (16 a 20 máquinas). */
@@ -2026,28 +2036,6 @@ function paginaTurbinas(pg) {
     kpi({ rot: 'OMs por turbina', valor: comOM.length ? nf1.format(nOMs / comOM.length) : '–', valorTexto: comOM.length ? nf1.format(nOMs / comOM.length) : '–', sub: maisOMs ? 'mais: ' + maisOMs.wtg + ' (' + fInt(maisOMs.oms) + ')' : '' }),
     kpi({ rot: 'Corretivas', valor: nOMs ? fPct(nCorr / nOMs) : '–', valorTexto: nOMs ? fPct(nCorr / nOMs) : '–', sub: fInt(nCorr) + ' OMs corretivas' }),
     kpi({ rot: 'Custo médio por turbina', valor: comOM.length ? fMoeda(custoT / comOM.length) : '–', valorTexto: comOM.length ? fMoeda(custoT / comOM.length) : '–', sub: estado.atipicos ? 'inclui custos atípicos' : 'sem custos atípicos' })));
-  // rosca por tipo de serviço, barras por parque e top turbinas (divididas por tipo)
-  var tiposT = tiposPresentes(B);
-  var itTipo = tiposPresentes(base('tipo')).map(function (t) { return { k: t.k, rot: t.nome, v: t.v, cor: t.cor }; });
-  pg.append(cartao({ id: 'tur-tipo', span: 's4', titulo: 'OMs por tipo de serviço', sub: 'Toque numa fatia para filtrar',
-    desenhar: function (el) { rosca(el, itTipo, { centro: 'OMs', ativo: estado.f.tipo.size ? estado.f.tipo : null, onClick: function (k) { alternarFiltro('tipo', k); } }); },
-    dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itTipo } }));
-  var itPq = empilharPorTipo(base('parque'), function (i) { return O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]]; }, function (p) { return M.parques[p] || '–'; }, tiposT);
-  pg.append(cartao({ id: 'tur-parque', span: 's4', titulo: 'OMs por parque', sub: 'Barra dividida por tipo de serviço · toque para filtrar',
-    desenhar: function (el) {
-      el.append(legenda(tiposT.map(function (t) { return { nome: t.nome, cor: t.cor }; })));
-      var vis = itPq.slice(0, 10);
-      barrasH(el, vis, { larguraRotulo: '40%', unidade: 'OMs', onClick: function (k) { alternarFiltro('parque', k); }, ativo: estado.f.parque.size ? estado.f.parque : null });
-      if (itPq.length > 10) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top 10 de ' + fInt(itPq.length) + ' parques'));
-    },
-    dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Corretivas' }], linhas: itPq } }));
-  var itTw = empilharPorTipo(B, function (i) { return O.wtg[i]; }, function (w) { return M.dic.wtg[w]; }, tiposT);
-  pg.append(cartao({ id: 'tur-top', span: 's4', titulo: 'Turbinas com mais OMs', sub: 'Top 10 · barra dividida por tipo · toque para abrir a turbina',
-    desenhar: function (el) {
-      el.append(legenda(tiposT.map(function (t) { return { nome: t.nome, cor: t.cor }; })));
-      barrasH(el, itTw.slice(0, 10), { larguraRotulo: '40%', unidade: 'OMs', onClick: function (k) { abrirTurbina(k); }, dica: 'Toque para abrir a turbina' });
-    },
-    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Corretivas' }], linhas: itTw } }));
   pg.append(cartaoMapa('s12'));
   cartaoYaw(pg);
 
@@ -2068,6 +2056,30 @@ function paginaTurbinas(pg) {
       });
     }
   }));
+  secaoMais(pg, 'turbinas', 'OMs por tipo de serviço, OMs por parque e turbinas com mais OMs', function (pg) {
+    // rosca por tipo de serviço, barras por parque e top turbinas (divididas por tipo)
+    var tiposT = tiposPresentes(B);
+    var itTipo = tiposPresentes(base('tipo')).map(function (t) { return { k: t.k, rot: t.nome, v: t.v, cor: t.cor }; });
+    pg.append(cartao({ id: 'tur-tipo', span: 's4', titulo: 'OMs por tipo de serviço', sub: 'Toque numa fatia para filtrar',
+      desenhar: function (el) { rosca(el, itTipo, { centro: 'OMs', ativo: estado.f.tipo.size ? estado.f.tipo : null, onClick: function (k) { alternarFiltro('tipo', k); } }); },
+      dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itTipo } }));
+    var itPq = empilharPorTipo(base('parque'), function (i) { return O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]]; }, function (p) { return M.parques[p] || '–'; }, tiposT);
+    pg.append(cartao({ id: 'tur-parque', span: 's4', titulo: 'OMs por parque', sub: 'Barra dividida por tipo de serviço · toque para filtrar',
+      desenhar: function (el) {
+        el.append(legenda(tiposT.map(function (t) { return { nome: t.nome, cor: t.cor }; })));
+        var vis = itPq.slice(0, 10);
+        barrasH(el, vis, { larguraRotulo: '40%', unidade: 'OMs', onClick: function (k) { alternarFiltro('parque', k); }, ativo: estado.f.parque.size ? estado.f.parque : null });
+        if (itPq.length > 10) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top 10 de ' + fInt(itPq.length) + ' parques'));
+      },
+      dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Corretivas' }], linhas: itPq } }));
+    var itTw = empilharPorTipo(B, function (i) { return O.wtg[i]; }, function (w) { return M.dic.wtg[w]; }, tiposT);
+    pg.append(cartao({ id: 'tur-top', span: 's4', titulo: 'Turbinas com mais OMs', sub: 'Top 10 · barra dividida por tipo · toque para abrir a turbina',
+      desenhar: function (el) {
+        el.append(legenda(tiposT.map(function (t) { return { nome: t.nome, cor: t.cor }; })));
+        barrasH(el, itTw.slice(0, 10), { larguraRotulo: '40%', unidade: 'OMs', onClick: function (k) { abrirTurbina(k); }, dica: 'Toque para abrir a turbina' });
+      },
+      dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Corretivas' }], linhas: itTw } }));
+  });
 }
 
 function linhaOM(i) {
@@ -2606,7 +2618,12 @@ function paginaPendencias(pg) {
     }));
   };
   var cabEmp = function () { return h('div', { class: 'leg-ordem' }, legendaStatus(), ordem()); };
-  var visual = function (id, span, titulo, sub, desenhar, dados) { pg.append(cartao({ id: id, span: span, titulo: titulo, sub: sub, desenhar: desenhar, dados: dados })); };
+  // quadros de consulta vão para "Mais detalhes" (com o span de lá); os outros ficam no topo
+  var extras = [], GUARDA = { 'pend-status': 's4', 'pend-frequentes': 's8', 'pend-status-om': 's6', 'pend-usuarios': 's6', 'pend-parques': 's4' };
+  var visual = function (id, span, titulo, sub, desenhar, dados) {
+    var f = function () { pg.append(cartao({ id: id, span: GUARDA[id] || span, titulo: titulo, sub: sub, desenhar: desenhar, dados: dados })); };
+    if (GUARDA[id]) extras.push(f); else f();
+  };
   var barras = function (el, itens, campo, top, o) {
     var vis = itens.slice(0, top);
     if (f[campo] !== null && !vis.some(function (d) { return d.k === f[campo]; })) vis = vis.concat(itens.filter(function (d) { return d.k === f[campo]; }));
@@ -2628,7 +2645,7 @@ function paginaPendencias(pg) {
   var cId = IDADES_PEND.map(function () { return 0; }); todas.forEach(function (k) { var j = faixa(k); if (j >= 0 && passa(k, 'idade')) cId[j]++; });
   var corId = function (j) { return j >= 3 ? 'var(--critical)' : j === 2 ? 'var(--s4)' : 'var(--s1)'; };
   var bId = IDADES_PEND.map(function (d) { return { rot: d.curto, longo: 'Abertas há ' + d.rot.toLowerCase() }; });
-  visual('pend-idade', 's4', 'Há quanto tempo estão abertas', 'Abertas e em andamento, pela data de abertura · em vermelho, mais de 6 meses',
+  visual('pend-idade', 's6', 'Há quanto tempo estão abertas', 'Abertas e em andamento, pela data de abertura · em vermelho, mais de 6 meses',
     function (el) {
       serieTempo(el, { baldes: bId, modo: 'colunas', altura: 230, titulo: 'Idade das pendências abertas', legenda: false, rotularTotais: true, tipSemZeros: true,
         series: IDADES_PEND.map(function (d, j) { return { nome: d.rot, cor: corId(j), valores: cId.map(function (v, i) { return i === j ? v : 0; }) }; }),
@@ -2662,7 +2679,7 @@ function paginaPendencias(pg) {
     { cols: [{ k: 'rot', rot: 'Status da OM' }, { k: 'v', rot: 'Pendências', num: true, fmt: fInt }], linhas: itOM });
   // 4) turbinas e 5) quem abriu (barras empilhadas por status)
   var itW = empilhado('wtg', function (k) { return PEND.w[k]; }, function (w) { return M.dic.wtg[w]; });
-  visual('pend-turbinas', 's6', 'Pendências por turbina', fInt(itW.length) + ' turbinas · barra dividida por status · embaixo, quantas ainda estão abertas',
+  visual('pend-turbinas', 's12', 'Pendências por turbina', fInt(itW.length) + ' turbinas · barra dividida por status · embaixo, quantas ainda estão abertas',
     function (el) { el.append(cabEmp()); barras(el, itW, 'wtg', 15); }, tabelaDe(itW, 'Turbina'));
   var itU = empilhado('usuario', function (k) { return P.usuario[k]; }, function (u) { return u; });
   visual('pend-usuarios', 's6', 'Pendências por quem abriu', 'Usuário que registrou a pendência no Manusis · barra dividida por status',
@@ -2671,9 +2688,10 @@ function paginaPendencias(pg) {
   var itP = empilhado('parque', parqueDe, function (p) { return M.parques[p] || '–'; });
   visual('pend-parques', 's4', 'Pendências por parque', 'Barra dividida por status', function (el) { el.append(cabEmp()); barras(el, itP, 'parque', 10, { larguraRotulo: '42%' }); }, tabelaDe(itP, 'Parque'));
   // 7) fechadas por mês
-  cartaoPendMes(pg, todas, passa, 's8');
+  extras.push(function () { cartaoPendMes(pg, todas, passa, 's8'); });
   // 8) tabela
   cartaoListaPend(pg, sel, idadeDe);
+  secaoMais(pg, 'pendencias', 'por status, que mais se repetem, status da OM de execução, por quem abriu, por parque e fechadas por mês', function () { extras.forEach(function (f) { f(); }); });
 }
 function semAcentoTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 /** Pendências fechadas por mês (data de conclusão no Manusis); no detalhe, quantas foram abertas no mês. */
@@ -2955,6 +2973,7 @@ function paginaProgramacao(pg) {
   }));
 
   /* ---------- um painel por grupo (como no Power BI) ---------- */
+  var extras = []; // quadros de consulta: vão para "Mais detalhes"
   GRUPOS_PROG.forEach(function (g) {
     if (f.grupo !== null && f.grupo !== g) return;
     var s = porMes(function (i) { return AT[at[i]][0] === g; });
@@ -2962,7 +2981,7 @@ function paginaProgramacao(pg) {
     if (!p && !r) return;
     var conc = 0; todas.forEach(function (i) { if (passa(i) && AT[at[i]][0] === g && programada(i) && ehFechada(i)) conc++; });
     var nomes = AT.filter(function (a, k) { return a[0] === g && todas.some(function (i) { return at[i] === k && passa(i); }); }).map(function (a) { return a[1]; });
-    pg.append(cartao({
+    extras.push(function () { pg.append(cartao({
       id: 'prog-g-' + semAcentoTxt(g), span: f.grupo !== null ? 's12' : 's6', titulo: g,
       sub: fInt(p) + ' programadas · ' + fInt(r) + ' realizadas · aderência ' + pct(conc, nProgDe(g)) + (nomes.length ? ' · ' + nomes.join(', ') : ''),
       desenhar: function (el) {
@@ -2970,7 +2989,7 @@ function paginaProgramacao(pg) {
           series: [{ nome: 'Programado', cor: COR_PROG, valores: s.p }, { nome: 'Realizado', cor: COR_REAL, valores: s.r }], onClick: clicMes });
       },
       dados: dadosMes(s)
-    }));
+    })); });
   });
   function nProgDe(g) { var n = 0; todas.forEach(function (i) { if (passa(i) && AT[at[i]][0] === g && programada(i)) n++; }); return n; }
 
@@ -3004,11 +3023,11 @@ function paginaProgramacao(pg) {
   var itA = empilhar('ativ', function (i) { return at[i]; }, function (k) { return AT[k][1]; })
     .sort(function (x, y) { return GRUPOS_PROG.indexOf(AT[x.k][0]) - GRUPOS_PROG.indexOf(AT[y.k][0]) || y.v - x.v; });
   itA.forEach(function (d) { d.nota = AT[d.k][0] + ' · ' + d.nota; });
-  pg.append(cartao({ id: 'prog-ativ-barras', span: 's6', titulo: 'Aderência por atividade', sub: 'OMs programadas ' + periodo + ': fechadas, pendentes e atrasadas · toque para filtrar',
-    desenhar: function (el) { barrasFP(el, itA, 'ativ', 20); }, dados: tabFP(itA, 'Atividade') }));
+  extras.push(function () { pg.append(cartao({ id: 'prog-ativ-barras', span: 's6', titulo: 'Aderência por atividade', sub: 'OMs programadas ' + periodo + ': fechadas, pendentes e atrasadas · toque para filtrar',
+    desenhar: function (el) { barrasFP(el, itA, 'ativ', 20); }, dados: tabFP(itA, 'Atividade') })); });
   var itP = empilhar('parque', parqueDe, function (p) { return M.parques[p] || '–'; }).sort(function (x, y) { return y.p - x.p || y.v - x.v; });
-  pg.append(cartao({ id: 'prog-parques', span: 's6', titulo: 'Aderência por parque', sub: 'Ordenado pelo que falta fazer · toque para filtrar',
-    desenhar: function (el) { barrasFP(el, itP, 'parque', 10); }, dados: tabFP(itP, 'Parque') }));
+  extras.push(function () { pg.append(cartao({ id: 'prog-parques', span: 's6', titulo: 'Aderência por parque', sub: 'Ordenado pelo que falta fazer · toque para filtrar',
+    desenhar: function (el) { barrasFP(el, itP, 'parque', 10); }, dados: tabFP(itP, 'Parque') })); });
   var itW = empilhar('wtg', function (i) { return O.wtg[i]; }, function (w) { return M.dic.wtg[w]; }).sort(function (x, y) { return y.a - x.a || y.p - x.p || y.v - x.v; });
   pg.append(cartao({ id: 'prog-turbinas', span: 's12', titulo: 'Turbinas com mais atividades pendentes', sub: fInt(itW.filter(function (d) { return d.p; }).length) + ' turbinas com pendência · ordenado pelas atrasadas · toque para filtrar',
     desenhar: function (el) { barrasFP(el, itW.filter(function (d) { return d.p || d.k === f.wtg; }), 'wtg', 15); }, dados: tabFP(itW, 'Turbina') }));
@@ -3043,6 +3062,7 @@ function paginaProgramacao(pg) {
       linhas: linhas, altura: 460, onLinha: function (r, ts) { abrirOM(r.i, ts.map(function (x) { return x.i; })); }
     });
   });
+  secaoMais(pg, 'programacao', 'programado × realizado por grupo (Preventiva, UPG, BRM, Inspeção), aderência por atividade e por parque', function () { extras.forEach(function (f) { f(); }); });
 }
 
 function cartaoRoscaPecas(pg) {
@@ -3152,7 +3172,7 @@ function paginaComponentes(pg, soExtras) {
 }
 
 /* ---------- Trocas e materiais: em qual turbina trocou, qual peça e qual material saiu para a OM ---------- */
-var trocaSel = { w: null, sit: null, pag: 0 }, maisMat = false;
+var trocaSel = { w: null, sit: null, pag: 0 };
 var SIT_TROCA = ['ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
 function paginaTrocas(pg) {
   var B = base(), C = M.consumo;
@@ -3256,14 +3276,10 @@ function paginaTrocas(pg) {
   if (CONS) cartaoPecasBaixadas(pg, B);
 
   // o resto fica guardado: só desenha quando abre
-  pg.append(h('section', { class: 'card s12 mais-mat' },
-    h('button', { type: 'button', class: 'mais-btn', 'aria-expanded': String(maisMat), onclick: function () { maisMat = !maisMat; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
-      h('span', null, h('b', null, 'Mais análises de material'), h('small', null, ' curva ABC, novo × reparado, consumo por mês e por material, local de aplicação, conferência detalhada e pendências de controle')),
-      h('span', { 'aria-hidden': 'true' }, maisMat ? '▴' : '▾'))));
-  if (maisMat) {
+  secaoMais(pg, 'trocas', 'curva ABC, novo × reparado, consumo por mês e por material, local de aplicação, conferência detalhada e pendências de controle', function () {
     if (CONS) paginaMateriais(pg);
     paginaComponentes(pg, true);
-  }
+  });
 }
 
 /* ---------- Mão de obra ---------- */
@@ -3305,21 +3321,22 @@ function paginaCustos(pg) {
       linhas: b.map(function (x, k) { return { p: x.longo, m: mesMat[k], o: mesMO[k] }; }) }
   }));
 
+  var extras = []; // quadros de consulta: vão para "Mais detalhes"
   var Bt = base('tipo').filter(custoValido);
   var porT = agrupar(Bt, function (i) { return O.tipo[i]; }, function (i) { return O.custoTot[i]; });
   var itT = M.dic.tipo.map(function (n, k) { return { k: k, rot: n, v: porT.get(k) || 0, cor: corTipo(k) }; }).filter(function (d) { return d.v > 0; }).sort(function (a, b) { return b.v - a.v; });
-  pg.append(cartao({
+  extras.push(function () { pg.append(cartao({
     id: 'custo-tipo', span: 's4', titulo: 'Custo por tipo de serviço', sub: 'Clique para filtrar',
     desenhar: function (el) { barrasH(el, itT, { fmt: function (v) { return fMoeda(v); }, onClick: function (k) { alternarFiltro('tipo', k); }, ativo: estado.f.tipo, larguraRotulo: '34%' }); },
     dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'Custo', num: true, fmt: fMoedaCompleta }], linhas: itT }
-  }));
+  })); });
 
   // composição (rosca), por parque e turbinas de maior custo (barras divididas em material e mão de obra)
   var fmtM = function (v) { return fMoeda(v); };
   var itMO = [{ k: null, rot: 'Material', v: mat, cor: 'var(--s1)' }, { k: null, rot: 'Mão de obra', v: mo, cor: 'var(--s2)' }].filter(function (d) { return d.v > 0; });
-  pg.append(cartao({ id: 'custo-rosca', span: 's4', titulo: 'Material × mão de obra', sub: 'Composição do custo',
+  extras.push(function () { pg.append(cartao({ id: 'custo-rosca', span: 's4', titulo: 'Material × mão de obra', sub: 'Composição do custo',
     desenhar: function (el) { rosca(el, itMO, { fmt: fmtM, centro: 'custo total' }); },
-    dados: { cols: [{ k: 'rot', rot: 'Parte' }, { k: 'v', rot: 'Custo', num: true, fmt: fMoedaCompleta }], linhas: itMO } }));
+    dados: { cols: [{ k: 'rot', rot: 'Parte' }, { k: 'v', rot: 'Custo', num: true, fmt: fMoedaCompleta }], linhas: itMO } })); });
   var empCusto = function (ix, chave, nome) {
     var m = new Map();
     ix.forEach(function (i) { var g = chave(i); if (g === null || g < 0) return; var r = m.get(g) || { mat: 0, mo: 0 }; r.mat += O.custoMat[i] || 0; r.mo += O.custoMO[i] || 0; m.set(g, r); });
@@ -3328,10 +3345,10 @@ function paginaCustos(pg) {
   };
   var legMO = function () { return legenda([{ nome: 'Material', cor: 'var(--s1)' }, { nome: 'Mão de obra', cor: 'var(--s2)' }]); };
   var itCP = empCusto(base('parque').filter(custoValido), function (i) { return O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]]; }, function (p) { return M.parques[p] || '–'; });
-  pg.append(cartao({ id: 'custo-parque', span: 's4', titulo: 'Custo por parque', sub: 'Toque para filtrar',
+  extras.push(function () { pg.append(cartao({ id: 'custo-parque', span: 's4', titulo: 'Custo por parque', sub: 'Toque para filtrar',
     desenhar: function (el) { el.append(legMO()); barrasH(el, itCP.slice(0, 10), { fmt: fmtM, larguraRotulo: '38%', onClick: function (k) { alternarFiltro('parque', k); }, ativo: estado.f.parque.size ? estado.f.parque : null });
       if (itCP.length > 10) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top 10 de ' + fInt(itCP.length) + ' parques')); },
-    dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'mat', rot: 'Material', num: true, fmt: fMoedaCompleta }, { k: 'mo', rot: 'Mão de obra', num: true, fmt: fMoedaCompleta }, { k: 'v', rot: 'Total', num: true, fmt: fMoedaCompleta }], linhas: itCP } }));
+    dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'mat', rot: 'Material', num: true, fmt: fMoedaCompleta }, { k: 'mo', rot: 'Mão de obra', num: true, fmt: fMoedaCompleta }, { k: 'v', rot: 'Total', num: true, fmt: fMoedaCompleta }], linhas: itCP } })); });
   var itCW = empCusto(C, function (i) { return O.wtg[i]; }, function (w) { return M.dic.wtg[w]; });
   pg.append(cartao({ id: 'custo-turbina', span: 's4', titulo: 'Turbinas de maior custo', sub: 'Top 10 · toque para abrir a turbina',
     desenhar: function (el) { el.append(legMO()); barrasH(el, itCW.slice(0, 10), { fmt: fmtM, larguraRotulo: '38%', onClick: function (k) { abrirTurbina(k); }, dica: 'Toque para abrir a turbina' }); },
@@ -3352,7 +3369,7 @@ function paginaCustos(pg) {
     }
   }));
 
-  if (atip.length) pg.append(cartao({
+  if (atip.length) extras.push(function () { pg.append(cartao({
     id: 'custo-atipico', span: 's12', titulo: 'Custos atípicos (' + (estado.atipicos ? 'incluídos nos totais' : 'fora dos totais') + ')',
     sub: fInt(atip.length) + ' OM(s) somando ' + fMoeda(totAtip) + ' · valores lançados na origem que não combinam com o serviço descrito; confira no Manusis antes de usar · clique para ver a OM',
     desenhar: function (el) {
@@ -3361,7 +3378,7 @@ function paginaCustos(pg) {
           { k: 'custo', rot: 'Valor lançado', num: true, fmt: function (v) { return fMoeda(v); } }],
         linhas: atip.map(linhaOM), ordem: { k: 'custo', desc: true }, altura: 360, onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); } });
     }
-  }));
+  })); });
 
   // baixas com preço fora do padrão: a causa dos custos atípicos, para corrigir no cadastro do material
   if (CONS) {
@@ -3387,6 +3404,7 @@ function paginaCustos(pg) {
       }));
     }
   }
+  secaoMais(pg, 'custos', 'custo por tipo de serviço, material × mão de obra, custo por parque e custos atípicos', function () { extras.forEach(function (f) { f(); }); });
 }
 
 /* ---------- Ordens ---------- */
@@ -3417,22 +3435,23 @@ function paginaOrdens(pg) {
     kpi({ rot: 'Tempo para fechar', valor: leads.length ? fDias(leads[Math.floor(leads.length / 2)]) : '–', valorTexto: leads.length ? fDias(leads[Math.floor(leads.length / 2)]) : '–', sub: 'mediana das fechadas' })));
   var cS = new Map(); base('status').forEach(function (i) { cS.set(O.status[i], (cS.get(O.status[i]) || 0) + 1); });
   var itS = Array.from(cS.entries()).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) { return { k: e[0], rot: M.dic.status[e[0]], v: e[1], cor: corStatusOM(e[0]) }; });
-  pg.append(cartao({ id: 'om-status', span: 's4', titulo: 'OMs por status', sub: 'Toque numa fatia para filtrar',
+  pg.append(cartao({ id: 'om-status', span: 's12', titulo: 'OMs por status', sub: 'Toque numa fatia para filtrar',
     desenhar: function (el) { rosca(el, itS, { centro: 'OMs', ativo: estado.f.status.size ? estado.f.status : null, onClick: function (k) { alternarFiltro('status', k); } }); },
     dados: { cols: [{ k: 'rot', rot: 'Status' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itS } }));
   var itTo = tiposPresentes(base('tipo')).map(function (t) { return { k: t.k, rot: t.nome, v: t.v, cor: t.cor }; });
-  pg.append(cartao({ id: 'om-tipo', span: 's4', titulo: 'OMs por tipo de serviço', sub: 'Toque numa fatia para filtrar',
+  var extras = []; // quadros de consulta: vão para "Mais detalhes"
+  extras.push(function () { pg.append(cartao({ id: 'om-tipo', span: 's6', titulo: 'OMs por tipo de serviço', sub: 'Toque numa fatia para filtrar',
     desenhar: function (el) { rosca(el, itTo, { centro: 'OMs', ativo: estado.f.tipo.size ? estado.f.tipo : null, onClick: function (k) { alternarFiltro('tipo', k); } }); },
-    dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itTo } }));
+    dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }], linhas: itTo } })); });
   var gruposO = [{ g: gConc, nome: 'Fechadas', cor: 'var(--good)' }, { g: null, nome: 'Em aberto', cor: 'var(--s4)' }, { g: gCanc, nome: 'Canceladas', cor: 'var(--neutral)' }];
   var mP = new Map();
   base('parque').forEach(function (i) { var p = O.wtg[i] < 0 ? -1 : parqueDoWtg[O.wtg[i]]; if (p < 0) return; var r = mP.get(p) || [0, 0, 0]; r[O.grupo[i] === gConc ? 0 : O.grupo[i] === gCanc ? 2 : 1]++; mP.set(p, r); });
   var itPo = Array.from(mP.entries()).map(function (e) { var r = e[1], t = r[0] + r[1] + r[2]; return { k: e[0], rot: M.parques[e[0]], v: t, partes: gruposO.map(function (g, j) { return { v: r[j], cor: g.cor, rot: g.nome }; }), nota: fInt(r[1]) + ' em aberto · ' + fPct(r[1] / t) }; })
     .sort(function (a, b) { return b.v - a.v; });
-  pg.append(cartao({ id: 'om-parque', span: 's4', titulo: 'OMs por parque', sub: 'Barra dividida em fechadas, em aberto e canceladas · toque para filtrar',
+  extras.push(function () { pg.append(cartao({ id: 'om-parque', span: 's6', titulo: 'OMs por parque', sub: 'Barra dividida em fechadas, em aberto e canceladas · toque para filtrar',
     desenhar: function (el) { el.append(legenda(gruposO.map(function (g) { return { nome: g.nome, cor: g.cor }; }))); barrasH(el, itPo.slice(0, 10), { larguraRotulo: '40%', unidade: 'OMs', onClick: function (k) { alternarFiltro('parque', k); }, ativo: estado.f.parque.size ? estado.f.parque : null });
       if (itPo.length > 10) el.append(h('p', { class: 'nota', style: 'margin:6px 0 0' }, 'Top 10 de ' + fInt(itPo.length) + ' parques')); },
-    dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Em aberto' }], linhas: itPo } }));
+    dados: { cols: [{ k: 'rot', rot: 'Parque' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'nota', rot: 'Em aberto' }], linhas: itPo } })); });
   var card = h('section', { class: 'card s12' },
     h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Lista de OMs'), h('p', null, fInt(linhas.length) + ' OMs · clique numa linha para ver o detalhe'))),
     h('div', { class: 'barra-tab' }, busca,
@@ -3454,7 +3473,7 @@ function paginaOrdens(pg) {
       onPagina: function (p) { estado.ordens.pag = p; renderPagina(); document.querySelector('.pagina').scrollIntoView({ block: 'start' }); },
       onLinha: function (r, todas) { abrirOM(r.i, todas.map(function (x) { return x.i; })); }
     });
-  });
+  });  secaoMais(pg, 'ordens', 'OMs por tipo de serviço e OMs por parque', function () { extras.forEach(function (f) { f(); }); });
 }
 
 function exportarCSV(linhas) {
