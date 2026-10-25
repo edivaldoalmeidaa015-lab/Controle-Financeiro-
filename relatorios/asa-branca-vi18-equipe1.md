@@ -142,6 +142,14 @@ MegaWind/Invenergy
 - Descida dos técnicos da torre
 - Organização dos materiais
 
-**Próxima atividade:** Reparo finalizado Z 17.500
+**Status:** Reparo finalizado Z 17.500
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação
+
+---
+
+## Reparo finalizado
+
+**Período:** 19/10/2026 a 23/10/2026 (5 dias)
+**Turbina:** VI-18 – BLADE 1062 A – dano Z 17.500
+**Status final:** Reparo finalizado – Turbina em operação
