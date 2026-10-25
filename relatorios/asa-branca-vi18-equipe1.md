@@ -117,3 +117,31 @@ MegaWind/Invenergy
 **Standby:** (X) Sim ( ) Não
 **Parada de máquina:** Turbina parada
 **Observação:** Equipe MegaWind ficou em standby das 05:00 às 07:30 aguardando a melhoria climática.
+
+---
+
+## 5º dia – 23/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 17:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 17.500
+- Posicionamento da manta
+- Pós-cura de 20 em 20 minutos
+- Teste de dureza
+- Aplicação do putty
+- Lixamento do putty
+- Aplicação do topcoat
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Reparo finalizado Z 17.500
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação
