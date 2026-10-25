@@ -111,3 +111,34 @@ MegaWind/Invenergy
 **Próxima atividade:** Pós-cura, acabamento e pintura
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 5º dia – 23/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 17:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre V-03
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Descida nas cordas
+- Posicionamento das mantas
+- Pós-cura
+- Teste de dureza
+- Preparação da área
+- Aplicação do putty
+- Ajuste do putty
+- Preparação da área
+- Pintura (1ª e 2ª demãos)
+- Descida dos técnicos
+- Descida das cordas
+- Máquina em operação
+- Organização dos materiais na base
+
+**Próxima atividade:** Início dos próximos reparos, na mesma blade
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
