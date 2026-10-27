@@ -9,7 +9,7 @@ MegaWind/Invenergy
 - Tec. Rep. N1 - FCO LANGERTON
 
 **Atividade:** ( ) Interna ( x ) Externa
-**Turbina:** V-03
+**Turbina:** ASB05-03
 **BLADE:** 1072 C
 
 ---
@@ -20,7 +20,7 @@ MegaWind/Invenergy
 **Saída do parque:** 16:00 + 1 hora de almoço
 
 **Resumo da atividade:**
-- Deslocamento para a torre V-03
+- Deslocamento para a torre ASB05-03
 - DDS
 - Preenchimento de documentação
 - Subida dos técnicos
@@ -44,7 +44,7 @@ MegaWind/Invenergy
 **Saída do parque:** 12:00 + 1 hora de almoço
 
 **Resumo da atividade:**
-- Deslocamento para a torre V-03
+- Deslocamento para a torre ASB05-03
 - DDS
 - Preenchimento de documentação
 - Pesagem dos químicos
@@ -72,7 +72,7 @@ MegaWind/Invenergy
 **Saída do parque:** 15:00
 
 **Resumo da atividade:**
-- Deslocamento para a torre V-03
+- Deslocamento para a torre ASB05-03
 - DDS
 - Preenchimento de documentação
 - Pesagem dos químicos
@@ -95,7 +95,7 @@ MegaWind/Invenergy
 **Saída do parque:** 13:00 + 1 hora de almoço
 
 **Resumo da atividade:**
-- Deslocamento para a torre V-03
+- Deslocamento para a torre ASB05-03
 - DDS
 - Preenchimento de documentação
 - Pesagem dos químicos
@@ -120,7 +120,7 @@ MegaWind/Invenergy
 **Saída do parque:** 17:00 + 1 hora de almoço
 
 **Resumo da atividade:**
-- Deslocamento para a torre V-03
+- Deslocamento para a torre ASB05-03
 - DDS
 - Preenchimento de documentação
 - Pesagem dos químicos
