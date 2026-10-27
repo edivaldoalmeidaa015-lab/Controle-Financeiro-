@@ -1,0 +1,67 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório Equipe 1</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#666;--btn:#1a5fd0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b1b;--fg:#eee;--mut:#aaa;--btn:#4c8dff}}
+body{background:var(--bg);color:var(--fg);font:16px/1.45 Calibri,Arial,sans-serif;margin:0;padding:16px;max-width:760px}
+.bar{position:sticky;top:0;background:var(--bg);padding:8px 0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:var(--btn);color:#fff;border:0;border-radius:6px;padding:10px 14px;font-size:15px;cursor:pointer}
+#msg{color:var(--mut);font-size:14px}
+#rel ul{margin:4px 0;padding-left:24px} #rel hr{border:0;border-top:1px solid #999;margin:12px 0} #rel p{margin:0}
+</style></head><body>
+<div class="bar"><button id="c1">Copiar com negrito (Word / e-mail)</button><button id="c2">Copiar para WhatsApp</button><span id="msg"></span></div>
+<div id="rel">
+<p><b>Equipe 1</b></p>
+<br>
+<div><b>PARQUE EÓLICO ASA BRANCA</b></div>
+<div>MegaWind/Invenergy</div>
+<br>
+<div><b>Equipe A:</b></div>
+<ul>
+<li>Tec. 01 - ILIAN N3</li>
+<li>Tec. 02 - ANTÔNIO FRANCISCO</li>
+<li>Tec. 03 - PEDRO JORGE</li>
+</ul>
+<br>
+<div><b>Atividade:</b> ( ) Interna ( x ) Externa</div>
+<div><b>Turbina:</b> VI-18</div>
+<div><b>BLADE:</b> 1062 A</div>
+<br>
+<hr>
+<br>
+<p><b>1º dia – 26/10/2026</b></p>
+<br>
+<div><b>Chegada no parque:</b> 07:00</div>
+<div><b>Saída do parque:</b> 17:00 + 1 hora de almoço</div>
+<br>
+<div><b>Resumo da atividade:</b></div>
+<ul>
+<li>DDS geral mais time MegaWind</li>
+<li>Mobilização para a torre</li>
+<li>Preenchimento dos documentos</li>
+<li>Subida dos técnicos</li>
+<li>Realização das ancoragens</li>
+<li>Descida dos técnicos</li>
+<li>Acesso ao dano 29.000</li>
+<li>Lixamento investigativo</li>
+<li>Remoção do defeito</li>
+<li>Remoção do núcleo</li>
+<li>Remoção das camadas internas</li>
+<li>Descida dos técnicos da torre</li>
+<li>Organização dos materiais</li>
+</ul>
+<br>
+<div><b>Próxima atividade:</b> Colagem do anteparo</div>
+<div><b>Standby:</b> ( ) Sim (X) Não</div>
+<div><b>Parada de máquina:</b> Turbina parada</div>
+</div>
+<script>
+const WA="*Equipe 1*\n\n*PARQUE EÓLICO ASA BRANCA*\nMegaWind/Invenergy\n\n*Equipe A:*\n• Tec. 01 - ILIAN N3\n• Tec. 02 - ANTÔNIO FRANCISCO\n• Tec. 03 - PEDRO JORGE\n\n*Atividade:* ( ) Interna ( x ) Externa\n*Turbina:* VI-18\n*BLADE:* 1062 A\n\n━━━━━━━━━━━━━━━━━━\n\n*1º dia – 26/10/2026*\n\n*Chegada no parque:* 07:00\n*Saída do parque:* 17:00 + 1 hora de almoço\n\n*Resumo da atividade:*\n• DDS geral mais time MegaWind\n• Mobilização para a torre\n• Preenchimento dos documentos\n• Subida dos técnicos\n• Realização das ancoragens\n• Descida dos técnicos\n• Acesso ao dano 29.000\n• Lixamento investigativo\n• Remoção do defeito\n• Remoção do núcleo\n• Remoção das camadas internas\n• Descida dos técnicos da torre\n• Organização dos materiais\n\n*Próxima atividade:* Colagem do anteparo\n*Standby:* ( ) Sim (X) Não\n*Parada de máquina:* Turbina parada";
+const msg=t=>{document.getElementById('msg').textContent=t};
+function selCopy(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);let ok=false;try{ok=document.execCommand('copy')}catch(e){}return ok}
+document.getElementById('c1').onclick=async()=>{const el=document.getElementById('rel');
+ try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([el.innerHTML],{type:'text/html'}),'text/plain':new Blob([el.innerText],{type:'text/plain'})})]);msg('Copiado! Cole com Ctrl+V.');return}catch(e){}
+ msg(selCopy(el)?'Copiado! Cole com Ctrl+V.':'Texto selecionado: aperte Ctrl+C.')};
+document.getElementById('c2').onclick=async()=>{try{await navigator.clipboard.writeText(WA);msg('Copiado para WhatsApp! Cole com Ctrl+V.');return}catch(e){}
+ const t=document.createElement('textarea');t.value=WA;document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();msg(ok?'Copiado para WhatsApp! Cole com Ctrl+V.':'Não consegui copiar automaticamente.')};
+</script></body></html>
