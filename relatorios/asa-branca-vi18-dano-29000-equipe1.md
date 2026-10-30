@@ -95,7 +95,9 @@ MegaWind/Invenergy
 
 ---
 
-## 4º dia – 29/10/2026
+## 4º dia – 29/10/2026 (dois turnos)
+
+**1º turno – Equipe A**
 
 **Chegada no parque:** 06:00
 **Saída do parque:** 14:30 + 1 hora de almoço
@@ -118,3 +120,29 @@ MegaWind/Invenergy
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
 **Observação:** Continuidade da Equipe 2 no segundo turno.
+
+**2º turno – Equipe B**
+- Tec. Rep. N2 - HENRIQUE FELIX
+- Tec. Rep. N1 - VICTOR EMANOEL
+- Tec. Rep. N1 - FCO LANGERTON
+
+**Chegada no parque:** 14:00
+**Saída do parque:** 21:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS
+- Deslocamento para a torre VI-18
+- Preenchimento de documentação
+- Pesagem de químicos
+- Subida dos técnicos
+- Descida nas cordas
+- Posicionamento da manta
+- Pós-cura
+- Teste de dureza
+- Aplicação do putty
+- Descida dos técnicos
+- Descida das cordas
+- Organização dos materiais na base
+
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação
