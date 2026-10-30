@@ -37,3 +37,30 @@ MegaWind/Invenergy
 **Próxima atividade:** Colagem do anteparo
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 2º dia – 27/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 14:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 29.000
+- Corte da camada do anteparo
+- Laminação da camada do anteparo
+- Aguardando a cura da camada do anteparo
+- Colagem do anteparo
+- Anteparo em processo de cura
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Laminação das camadas internas e colagem do núcleo
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina parada
