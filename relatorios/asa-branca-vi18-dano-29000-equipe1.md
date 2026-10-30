@@ -92,3 +92,29 @@ MegaWind/Invenergy
 **Próxima atividade:** Ajuste do núcleo, laminação das camadas externas, pós-cura, teste de dureza, aplicação de putty e aplicação de gel
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 4º dia – 29/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 14:30 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 29.000
+- Ajuste do núcleo
+- Laminação da camada do externo
+- Aguardando a cura da camada do externo
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Pós-cura, teste de dureza e aplicação de putty
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina parada
+**Observação:** Continuidade da Equipe 2 no segundo turno.
