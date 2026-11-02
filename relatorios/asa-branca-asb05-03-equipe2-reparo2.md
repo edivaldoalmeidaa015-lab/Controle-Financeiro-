@@ -65,3 +65,33 @@ MegaWind/Invenergy
 **Próxima atividade:** Pós-cura e acabamento
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 3º dia – 28/10/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 17:30 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS
+- Deslocamento para a torre ASB05-03
+- Preenchimento de documentação
+- Pesagem de químicos
+- Subida dos técnicos
+- Descida nas cordas
+- Posicionamento da manta
+- Pós-cura
+- Teste de dureza
+- Acabamento
+- Pintura
+- Descida dos técnicos
+- Descida das cordas
+- Organização dos materiais na base
+
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+
+---
+
+## REPARO FINALIZADO – TURBINA ASB05-03 EM OPERAÇÃO ✅
