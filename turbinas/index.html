@@ -924,7 +924,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-10-25.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-04.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2773,7 +2773,7 @@ function cartaoListaPend(pg, sel, idadeDe) {
    ===================================================================== */
 var GRUPOS_PROG = ['Preventiva', 'UPG', 'BRM', 'Inspeção'];
 var COR_PROG = 'var(--s1)', COR_REAL = 'var(--good)', COR_PEND = 'var(--s4)', COR_ATRASO = 'var(--critical)';
-var PROG_F0 = function () { return { complexo: null, grupo: null, ativ: null, ciclo: null, ano: undefined, mes: null, mesAno: null, parque: null, wtg: null, lista: 'pend' }; };
+var PROG_F0 = function () { return { complexo: null, grupo: null, ativ: null, ciclo: null, ano: undefined, mes: null, mesAno: null, parque: null, wtg: null, lista: 'pend', matSit: null, matPag: 0 }; };
 var progF = PROG_F0();
 var PROG = null; // atividade programada de cada OM (índice em ATIVIDADES ou -1)
 function atividadesOM() {
@@ -2972,6 +2972,78 @@ function paginaProgramacao(pg) {
     dados: { cols: [{ k: 'm', rot: 'Mês' }, { k: 'p', rot: 'Programado', num: true, fmt: fInt }, { k: 'r', rot: 'Realizado', num: true, fmt: fInt }, { k: 'ap', rot: 'Programado acum. %', num: true, fmt: function (v) { return fInt(v) + '%'; } }, { k: 'ar', rot: 'Realizado acum. %', num: true, fmt: function (v) { return v === null ? '–' : fInt(v) + '%'; } }],
       linhas: b.map(function (x, j) { return { m: x.longo, p: tot.p[j], r: tot.r[j], ap: acumP[j], ar: acumR[j] }; }) }
   }));
+
+  /* ---------- realizadas × material baixado (todas as baixas da OM: na preventiva o material é óleo, graxa, filtro) ---------- */
+  var cardMat = h('section', { class: 'card s12', id: 'prog-material', 'aria-labelledby': 'h-prog-material' });
+  pg.append(cardMat);
+  if (!CONS) {
+    cardMat.append(h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-prog-material' }, 'Realizadas × material baixado'))),
+      h('div', { class: 'faixa-aviso', role: 'note' }, h('span', null, 'Carregue o consumo de materiais do Manusis para ver o material baixado em cada OM realizada.'),
+        h('button', { class: 'btn', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar consumo')));
+  } else {
+    var Cm = M.consumo, vK = function (k) { return Cm.suspeito[k] && !estado.atipicos ? 0 : Cm.vTot[k]; };
+    var reais = sel.filter(function (i) { return realizada(i); }).map(function (i) { var ks = CONS[i] || []; return { i: i, k: at[i], ks: ks, valor: ks.reduce(function (t, k) { return t + vK(k); }, 0) }; });
+    // por atividade; a que tem baixa em metade ou mais das realizadas "costuma usar material"
+    var porAt = new Map();
+    reais.forEach(function (r) { var x = porAt.get(r.k) || { k: r.k, n: 0, com: 0, valor: 0 }; x.n++; if (r.ks.length) x.com++; x.valor += r.valor; porAt.set(r.k, x); });
+    var usa = function (k) { var x = porAt.get(k); return x && x.com / x.n >= 0.5; };
+    var SIT_MAT = { com: { rot: 'Com material', cor: 'var(--good)' }, falta: { rot: 'Sem material (a atividade costuma usar)', curto: 'Sem material · costuma usar', cor: 'var(--critical)' }, normal: { rot: 'Sem material (normal)', curto: 'Sem material · normal', cor: 'var(--neutral)' } };
+    reais.forEach(function (r) { r.sit = r.ks.length ? 'com' : usa(r.k) ? 'falta' : 'normal'; });
+    var linhasAt = Array.from(porAt.values()).map(function (x) { return { k: x.k, rot: AT[x.k][1], grupo: AT[x.k][0], n: x.n, com: x.com, sem: x.n - x.com, pct: x.com / x.n, valor: x.valor }; });
+    var nCom = reais.filter(function (r) { return r.sit === 'com'; }).length, nFalta = reais.filter(function (r) { return r.sit === 'falta'; }).length;
+    if (f.matSit && !reais.some(function (r) { return r.sit === f.matSit; })) f.matSit = null;
+    var visM = reais.filter(function (r) { return !f.matSit || r.sit === f.matSit; }).sort(function (a, b) { return (O.dFe[b.i] || 0) - (O.dFe[a.i] || 0); });
+    var PORM = 100, nPagM = Math.max(1, Math.ceil(visM.length / PORM)); f.matPag = Math.min(f.matPag || 0, nPagM - 1);
+    var nomeWm = function (w) { return w >= 0 ? M.dic.wtg[w] : '–'; };
+    var exportarM = function () {
+      var L = [];
+      visM.forEach(function (r) {
+        var b0 = [String(O.om[r.i]).padStart(5, '0'), nomeWm(O.wtg[r.i]), AT[r.k][1], nomeCiclo(cicloDe(r.i)), fData(O.dFe[r.i]), SIT_MAT[r.sit].rot];
+        if (!r.ks.length) L.push(b0.concat(['', 'Nenhum material baixado', '', '', '']));
+        r.ks.forEach(function (k) { var nm = nomeMaterial(k); L.push(b0.concat([nm.cod, nm.desc, String(Cm.qtd[k]).replace('.', ','), Cm.un[k] || '', String(Math.round(Cm.vTot[k] * 100) / 100).replace('.', ',')])); });
+      });
+      baixarCSV('realizadas-x-material.csv', ['OM', 'Turbina', 'Atividade', 'Ciclo', 'Fechada em', 'Situação', 'Código', 'Material', 'Quantidade', 'Unidade', 'Valor (R$)'], L);
+    };
+    var redesenhar = function () { var y = window.scrollY; renderPagina(); window.scrollTo(0, y); };
+    var corpoAt = h('div'), corpoM = h('div');
+    cardMat.append(
+      h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-prog-material' }, 'Realizadas × material baixado'),
+        h('p', null, fInt(reais.length) + ' OMs realizadas ' + periodo + ' · ' + fInt(nCom) + ' com material baixado (' + (reais.length ? fPct(nCom / reais.length) : '–') + ')' +
+          (nFalta ? ' · ' + fInt(nFalta) + ' sem material numa atividade que costuma usar' : '') + '. Conta todas as baixas da OM (óleo, graxa, filtro e peças). Toque numa atividade para filtrar e numa OM para abrir.')),
+        h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportarM }, icone('baixar'), 'CSV'))),
+      corpoAt,
+      h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Material na OM realizada', style: 'margin:30px 0 10px' }, ['com', 'falta', 'normal'].map(function (s) {
+        var n = reais.filter(function (r) { return r.sit === s; }).length, on = f.matSit === s;
+        if (!n && !on) return null;
+        return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { progF.matSit = on ? null : s; progF.matPag = 0; redesenhar(); } },
+          h('i', { style: 'background:' + SIT_MAT[s].cor }), innerWidth < 600 && SIT_MAT[s].curto ? SIT_MAT[s].curto : SIT_MAT[s].rot, h('small', null, ' ' + fInt(n)));
+      })),
+      corpoM);
+    aposRender.push(function () {
+      if (!reais.length) { corpoAt.append(h('div', { class: 'vazio' }, 'Nenhuma OM realizada com os filtros atuais.')); return; }
+      var estreito = innerWidth < 600;
+      var colsAt = [{ k: 'rot', rot: 'Atividade', classe: 'forte quebra', fmt: function (v, r) { return h('span', null, h('b', null, v), h('small', { class: 'sub-cel' }, r.grupo + (estreito ? ' · ' + fInt(r.com) + ' com, ' + fInt(r.sem) + ' sem material' + (r.valor ? ' · ' + fMoeda(r.valor) : '') : ''))); } },
+        { k: 'n', rot: estreito ? 'Feitas' : 'Realizadas', num: true, fmt: fInt }];
+      if (!estreito) colsAt.push({ k: 'com', rot: 'Com material', num: true, fmt: fInt });
+      if (!estreito) colsAt.push({ k: 'sem', rot: 'Sem material', num: true, fmt: fInt });
+      colsAt.push({ k: 'pct', rot: estreito ? '%' : '% com', num: true, fmt: fPct });
+      if (!estreito) colsAt.push({ k: 'valor', rot: 'Material (R$)', num: true, fmt: function (v) { return v ? fMoeda(v) : '–'; } });
+      tabela(corpoAt, { cols: colsAt, linhas: linhasAt, ordem: { k: 'n', desc: true }, altura: 320, onLinha: function (r) { filtrarProg('ativ', r.k); } });
+      var vis = visM.slice(f.matPag * PORM, f.matPag * PORM + PORM), oms = vis.map(function (r) { return r.i; });
+      if (!vis.length) { corpoM.append(h('div', { class: 'vazio' }, 'Nenhuma OM nesta situação.')); return; }
+      corpoM.append(h('div', { class: 'yaw-lista' }, vis.map(function (r) {
+        var mats = r.ks.slice(0, 5).map(function (k) { return nomeMaterial(k).desc + ' · ' + fQtd(Cm.qtd[k], Cm.un[k]) + ' · ' + fMoeda(Cm.vTot[k]) + (Cm.suspeito[k] ? ' (preço a validar)' : ''); });
+        if (r.ks.length > 5) mats.push('+ ' + (r.ks.length - 5) + ' material(is)');
+        return h('button', { type: 'button', class: 'yaw-w an-item clic', onclick: function () { abrirOM(r.i, oms); } },
+          h('span', { class: 'yaw-num' }, nomeWm(O.wtg[r.i]), h('small', null, 'OM ' + String(O.om[r.i]).padStart(5, '0') + ' · fechada em ' + fData(O.dFe[r.i]) + ' · ' + nomeCiclo(cicloDe(r.i)))),
+          h('span', { class: 'yaw-txt' }, h('b', null, 'Material baixado: '), mats.length ? mats.join(' | ') + (r.valor ? ' · total ' + fMoeda(r.valor) : '') : 'nenhum'),
+          h('span', { class: 'yaw-txt an-prob' }, h('i', { style: 'background:' + SIT_MAT[r.sit].cor }), SIT_MAT[r.sit].rot));
+      })));
+      if (nPagM > 1) corpoM.append(h('div', { class: 'pag' }, fInt(f.matPag * PORM + 1) + '–' + fInt(Math.min(visM.length, (f.matPag + 1) * PORM)) + ' de ' + fInt(visM.length),
+        h('button', { class: 'btn', type: 'button', disabled: f.matPag === 0 ? true : null, onclick: function () { progF.matPag--; renderPagina(); document.getElementById('prog-material').scrollIntoView({ block: 'start' }); } }, '‹ Anterior'),
+        h('button', { class: 'btn', type: 'button', disabled: f.matPag >= nPagM - 1 ? true : null, onclick: function () { progF.matPag++; renderPagina(); document.getElementById('prog-material').scrollIntoView({ block: 'start' }); } }, 'Próxima ›')));
+    });
+  }
 
   /* ---------- um painel por grupo (como no Power BI) ---------- */
   var extras = []; // quadros de consulta: vão para "Mais detalhes"
