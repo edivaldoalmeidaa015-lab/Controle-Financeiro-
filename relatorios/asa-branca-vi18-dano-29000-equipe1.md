@@ -146,3 +146,38 @@ MegaWind/Invenergy
 
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação
+
+---
+
+## 5º dia – 03/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 17:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS cliente e time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Aguardando inspeção com o drone (time ArthWind)
+- Aguardando time do cliente fazer manobra de desligamento da WTG
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 29.000
+- Lixamento do putty
+- Aplicação do topcoat (1ª e 2ª demão)
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Teste de SPDA
+**Standby:** (X) Sim ( ) Não
+**Parada de máquina:** Turbina em operação
+**Observação:** Equipe MegaWind parada das 07:00 às 12:00.
+
+---
+
+## Reparo finalizado
+
+**Período:** 26/10/2026 a 03/11/2026 (5 dias)
+**Turbina:** VI-18 – BLADE 1062 A – dano 29.000
+**Status final:** Reparo finalizado – Turbina em operação
