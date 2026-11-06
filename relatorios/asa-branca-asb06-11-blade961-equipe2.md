@@ -11,6 +11,8 @@ MegaWind/Invenergy
 **Atividade:** ( ) Interna ( x ) Externa
 **Turbina:** ASB06-11
 **BLADE:** 961
+**Início:** 03/11/2026
+**Final:**
 
 ---
 
@@ -35,5 +37,31 @@ MegaWind/Invenergy
 - Organização dos materiais
 - Ida para a base
 
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 2º dia – 04/11/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 18:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Confecção do anteparo
+- Aguardo da cura
+- Subida dos equipamentos
+- Subida dos técnicos
+- Remoção do núcleo
+- Abertura de janela
+- Colagem do anteparo
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Laminação das camadas internas
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
