@@ -9,7 +9,7 @@ MegaWind/Invenergy
 - Tec. Rep. N1 - FCO LANGERTON
 
 **Atividade:** ( ) Interna ( x ) Externa
-**Turbina:** V-03
+**Turbina:** ASB06-11
 **BLADE:** 961
 
 ---
@@ -21,7 +21,7 @@ MegaWind/Invenergy
 
 **Resumo da atividade:**
 - DDS
-- Deslocamento para a torre VI-11
+- Deslocamento para a torre ASB06-11
 - Preenchimento de documentação
 - Checklist do material de acesso
 - Subida dos equipamentos
