@@ -65,3 +65,32 @@ MegaWind/Invenergy
 **Próxima atividade:** Laminação das camadas internas
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 3º dia – 05/11/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 18:30 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Confecção do anteparo
+- Aguardo da cura
+- Subida dos equipamentos
+- Subida dos técnicos
+- Posicionamento no reparo
+- Laminação das camadas internas
+- Aguardando cura
+- Teste de dureza
+- Colagem do núcleo
+- Vácuo
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Laminação das camadas externas
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em manutenção ⚠️
