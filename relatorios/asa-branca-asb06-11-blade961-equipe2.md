@@ -3,7 +3,7 @@
 **PARQUE EÓLICO ASA BRANCA**
 MegaWind/Invenergy
 
-**Equipe B:**
+**Equipe 2:**
 - Tec. Rep. N2 - HENRIQUE FELIX
 - Tec. Rep. N1 - VICTOR EMANOEL
 - Tec. Rep. N1 - FCO LANGERTON
@@ -99,7 +99,7 @@ MegaWind/Invenergy
 
 ## 4º dia – 06/11/2026 (dois turnos)
 
-**1º turno – Equipe B**
+**1º turno – Equipe 2**
 
 **Chegada no parque:** 06:00
 **Saída do parque:** 16:00 + 1 hora de almoço
@@ -124,7 +124,7 @@ MegaWind/Invenergy
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
 
-**2º turno – Equipe A**
+**2º turno – Equipe 1**
 - Tec. Rep. N3 - ILIAN BERGMAN
 - Tec. Rep. N1 - FRANCISCO
 - Tec. Rep. N1 - PEDRO JORGE
