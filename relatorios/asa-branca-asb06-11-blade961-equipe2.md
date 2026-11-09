@@ -123,3 +123,25 @@ MegaWind/Invenergy
 **Próxima atividade:** Acabamento e pintura
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
+
+**2º turno – Equipe A**
+- Tec. Rep. N3 - ILIAN BERGMAN
+- Tec. Rep. N1 - FRANCISCO
+- Tec. Rep. N1 - PEDRO JORGE
+
+**Chegada no parque:** 14:00
+**Saída do parque:** 21:00 + 1 hora de janta
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pós-cura de 2 horas
+- Descida dos técnicos da torre
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Pós-cura de mais 2 horas, putty e topcoat
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação
+**Observação:** Foi alinhado com o cliente Invenergy e a MegaWind fazer pós-cura de 2 horas para colocar a máquina em operação dentro do horário.
