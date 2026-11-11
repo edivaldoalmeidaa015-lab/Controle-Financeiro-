@@ -61,3 +61,28 @@ MegaWind/Invenergy
 **Próxima atividade:** Laminação e colagem do núcleo
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 3º dia – 11/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS cliente + time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 20.000
+- Laminação das camadas internas
+- Reparo em cura
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Colagem do núcleo e laminação das camadas externas
+**Standby:** (X) Sim ( ) Não
+**Parada de máquina:** Turbina parada
+**Observação:** Standby das 08:00 até as 12:00.
