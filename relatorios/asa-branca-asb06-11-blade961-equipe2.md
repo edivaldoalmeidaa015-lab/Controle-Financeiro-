@@ -145,3 +145,33 @@ MegaWind/Invenergy
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação
 **Observação:** Foi alinhado com o cliente Invenergy e a MegaWind fazer pós-cura de 2 horas para colocar a máquina em operação dentro do horário.
+
+---
+
+## 5º dia – 09/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 18:30 + 1 hora de almoço
+
+**Resumo da atividade:**
+- SIPAT Invenergy
+- Palestra com a psicóloga
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Montagem das ancoragens
+- Posicionamento no reparo
+- Pós-cura
+- Teste de dureza
+- Preparação da área
+- Aplicação do putty
+- Organização dos materiais
+- Puxar corda
+- Colocado máquina em marcha
+- Ida para a base
+
+**Próxima atividade:** Início do dano na Blade C #960
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
