@@ -175,3 +175,4 @@ MegaWind/Invenergy
 **Próxima atividade:** Início do dano na Blade C #960
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação ✅
+**Observação:** Reparo da Blade 961 ainda não finalizado (falta o topcoat). Atividade parada para dar prioridade ao dano da Blade C #960.
