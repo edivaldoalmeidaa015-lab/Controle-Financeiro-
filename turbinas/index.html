@@ -924,7 +924,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-12.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-12.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2020,7 +2020,9 @@ var hssF = null;
 function grauHSS(t, pend) {
   if (/acelerometro|sensor|circuito aberto/.test(t) && !/folga|gir[oa]|rotacao|moviment/.test(t)) return 2;
   if (pend && /moviment|comportamento irregular|indicio de giro|giro recente|giro do rolamento/.test(t)) return 1;
-  if (/folga|girando|\bgira\b|rotacao do rolamento|rolamento.{0,40}rotacao|desgast|trinca|danos? no eixo|danificad|rugosidade/.test(t)) return 0;
+  // o defeito tem que estar perto do HSS no texto ("inspeção HSS / rolamentos do pitch… desgaste dos dentes" é do pitch)
+  var DEF = '(folga|girando|\\bgira\\b|rotacao|desgast\\w*|trinca|danos?|danificad\\w*|rugosidade)', HS = '(hss|high speed shaft|eixo (de )?alta)';
+  if (new RegExp(HS + '[^.]{0,80}' + DEF + '|' + DEF + '[^.]{0,80}' + HS).test(t)) return 0;
   if (/moviment|\bgiro\b/.test(t)) return 1;
   return 3;
 }
@@ -2029,6 +2031,12 @@ function trechoRe(txt, re) {
   var t = (achou.length ? achou.join(' ') : String(txt || '')).replace(/\s+/g, ' ').trim();
   return t.length > 260 ? t.slice(0, 257) + '…' : t;
 }
+// só as frases que falam do HSS (a OM costuma juntar muitos serviços: "escovas desgastadas" não é o HSS)
+function frasesHSS(txt) {
+  return String(txt || '').split(/(?<=[.;!])\s*(?=[A-ZÀ-Ú\[-])|(?<=[.;!])\s+|\n|\s-\s*(?=[A-ZÀ-Ú])|(?=Usu[áa]rio:)|(?=\[\d\d\/)/).map(txtYaw).filter(function (x) { return HSS_RE.test(x); }).join(' . ');
+}
+// HSS trocado, calçado ou com a folga sanada: o defeito daquele registro está resolvido
+var HSS_RESOLVIDO = /sanad|corrigid|nao apresentou mais folga|eliminad|(instala\w*|colocad\w*) (d?os |de )?(shims|calcos)|substitui\w* (do |de |da )?(eixo (e componentes )?(do |de )?hss|eixo hss|hss|kit hss|rolamento do hss)|eixo hss novo|kit hss/;
 function levantarHSS() {
   var L = [], canc = IDX.grupo['Cancelada'];
   // troca da gearbox ou do HSS registrada em OM fechada: o que veio antes, na mesma turbina, fica resolvido
@@ -2036,7 +2044,7 @@ function levantarHSS() {
   for (var j = 0; j < O.om.length; j++) {
     if (!ehFechada(j)) continue;
     var tj = semAcentoTxt(O.desc[j]) + ' ' + semAcentoTxt(O.exec[j]);
-    if (/(substitui\w*|troca) (da |de |do )?(gearbox|gbx|eixo hss|hss|rolamento do hss)/.test(tj)) troca.set(O.wtg[j], Math.max(troca.get(O.wtg[j]) || 0, O.dFe[j] || O.dAb[j] || 0));
+    if (/(substitui\w*|troca) (da |de |do )?(gearbox|gbx|eixo hss|hss|rolamento do hss)/.test(tj) || HSS_RESOLVIDO.test(frasesHSS(O.exec[j]))) troca.set(O.wtg[j], Math.max(troca.get(O.wtg[j]) || 0, O.dFe[j] || O.dAb[j] || 0));
   }
   for (var i = 0; i < O.om.length; i++) {
     if (O.grupo[i] === canc) continue;
@@ -2046,11 +2054,16 @@ function levantarHSS() {
     var exLimpo = d ? ex.split(d).join(' ') : ex;
     var t = fech ? exLimpo : d + ' ' + ex;
     if (!HSS_RE.test(t)) continue;
-    var g = grauHSS(t, false);
+    // troca de gerador/gearbox/pá que só cita o eixo de alta no desacoplamento não é defeito no HSS
+    if (/substitui\w* (de |do |da )?(gerador|gearbox|gbx|pa\b|blade)/.test(d) && !HSS_RE.test(d)) continue;
+    var hs = frasesHSS(fech ? String(O.exec[i] || '').split(String(O.desc[i] || '')).join(' ') : O.desc[i] + '. ' + O.exec[i]) || t;
+    var g = grauHSS(hs, false);
+    if (fech && HSS_RESOLVIDO.test(hs)) continue; // trocado ou corrigido na própria OM
     if (/cycle-|teste do planejamento/.test(d) && g > 1) continue; // preventiva de rotina que só cita o HSS
     if (fech && g === 3) continue; // fechada sem defeito descrito
     if (troca.has(O.wtg[i]) && troca.get(O.wtg[i]) > (O.dAb[i] || 0) && !(fech && troca.get(O.wtg[i]) === (O.dFe[i] || O.dAb[i]))) continue;
     var st = M.dic.status[O.status[i]];
+    if (!fech && /substitui\w* (de |do |da )?(eixo )?hss|troca (do |de )?hss/.test(t)) st += ' · troca do HSS em andamento';
     if (fech) st = 'OM fechada' + (/loctite|lamina|calco/.test(ex) ? ' · paliativo, sem correção' : /monitor|acompanha|marcacao/.test(ex) ? ' · só monitoramento' : '');
     L.push({ i: i, w: O.wtg[i], origem: 'OM', num: String(O.om[i]).padStart(5, '0'), data: O.dAb[i], status: st, g: g,
       texto: trechoRe(fech && HSS_RE.test(txtYaw(O.exec[i])) ? O.exec[i] : O.desc[i] + ' ' + O.exec[i], HSS_RE) });
