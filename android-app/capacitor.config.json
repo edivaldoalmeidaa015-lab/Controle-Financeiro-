@@ -1,0 +1,14 @@
+{
+  "appId": "br.essentia.painelturbinas",
+  "appName": "Painel de Turbinas",
+  "webDir": "www",
+  "server": {
+    "url": "https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#f3f3f0"
+  }
+}

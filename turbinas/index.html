@@ -475,6 +475,7 @@ small .mc { display: inline; }
 @media (max-width: 600px) { .an-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .an-g { padding: 10px 12px; } .an-g .k-val { font-size: 22px; } .an-g .k-sub { font-size: 12px; } }
 .an-g .k-val { font-size: 26px; font-weight: 700; }
 .an-cats .st-btn { text-align: left; }
+.app-android [data-imprimir], .app-android #btn-instalar { display: none !important; }
 .an-item { display: grid; align-content: start; gap: 3px; width: 100%; text-align: left; font: inherit; color: var(--ink); }
 .an-item.clic { cursor: pointer; } .an-item.clic:hover { background: var(--hover); }
 .an-prob { font-weight: 650; color: var(--ink); }
@@ -924,7 +925,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-12.2'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-12.3'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -3672,9 +3673,21 @@ function exportarCSV(linhas) {
   }));
 }
 /** Baixa um CSV (separador ;, com BOM para o Excel abrir com acento). */
+/* App Android (APK feito com Capacitor): o WebView não baixa arquivo por link nem imprime.
+   O CSV vai para o "Compartilhar" do Android (Drive, WhatsApp, e-mail, Arquivos). */
+function appAndroid() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
+if (appAndroid()) document.documentElement.classList.add('app-android');
+function compartilharArquivo(nome, txt) {
+  var Pl = window.Capacitor.Plugins || {}, FS = Pl.Filesystem, SH = Pl.Share;
+  if (!FS || !SH) { alert('Não foi possível exportar neste aparelho.'); return; }
+  FS.writeFile({ path: nome, data: txt, directory: 'CACHE', encoding: 'utf8' })
+    .then(function (r) { return SH.share({ title: nome, files: [r.uri], dialogTitle: 'Salvar ou enviar ' + nome }); })
+    .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) alert('Não foi possível exportar: ' + (e && e.message || e)); });
+}
 function baixarCSV(nome, cab, linhas) {
   var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var txt = [cab.map(esc).join(';')].concat(linhas.map(function (l) { return l.map(esc).join(';'); })).join('\r\n');
+  if (appAndroid()) { compartilharArquivo(nome, '﻿' + txt); return; }
   var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
   var a = h('a', { href: URL.createObjectURL(blob), download: nome });
   document.body.append(a); a.click(); a.remove();
@@ -4108,7 +4121,7 @@ function fichaOM(i, lista, pos, navegar) {
     h('div', { class: 'drawer-h' },
       h('div', null, h('h2', { id: 'om-tit' }, r.omTxt), h('p', null, r.wtgTxt + ' · ' + r.tipoTxt + (SISTEMA_UTIL ? ' · ' + r.sistemaTxt : ''))),
       h('div', { class: 'ferr' }, pillStatus(r.status),
-        h('button', { class: 'btn', type: 'button', title: 'Imprimir ou salvar em PDF só esta OM', onclick: imprimirOM }, icone('imprimir'), h('span', { class: 'txt' }, 'Imprimir')),
+        h('button', { class: 'btn', type: 'button', title: 'Imprimir ou salvar em PDF só esta OM', onclick: imprimirOM, 'data-imprimir': '' }, icone('imprimir'), h('span', { class: 'txt' }, 'Imprimir')),
         h('button', { class: 'btn icone', type: 'button', 'aria-label': 'Fechar', 'data-foco': '', onclick: fecharCamada }, icone('fechar')))),
     h('div', { class: 'so-impressao' }, LOGO_COMPLETO_URL ? h('img', { src: LOGO_COMPLETO_URL, alt: LOGO_NOME }) : LOGO_URL ? h('img', { src: LOGO_URL, alt: LOGO_NOME }) : null,
       h('span', null, 'Manutenção de Aerogeradores · resumo da OM · impresso em ' + new Date().toLocaleDateString('pt-BR'))),
@@ -4422,7 +4435,7 @@ function montarApp() {
         ' · painel versão ' + fDataVersao() }, 'Manutenção de Aerogeradores · ' + (M.complexos.length > 1 ? M.complexos.join(' e ') : 'Complexo ' + M.complexos[0]))),
     h('div', { class: 'acoes' },
       h('button', { class: 'btn', type: 'button', id: 'btn-analise', onclick: abrirAnaliseGeral, 'aria-label': 'Análise geral', title: 'Analisar tudo de uma vez: baixa de material, pendências, custos e OMs fechadas' }, icone('analise'), h('span', { class: 'txt' }, 'Análise geral')),
-      h('button', { class: 'btn', type: 'button', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
+      h('button', { class: 'btn', type: 'button', 'data-imprimir': '', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
       h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo, title: 'Carregar a planilha de OMs mais recente' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
       h('button', { class: 'btn icone', type: 'button', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro', title: 'Tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'))));
@@ -4500,6 +4513,7 @@ function logo() {
    Carga dos dados
    ===================================================================== */
 function iniciar(modelo) {
+  if (appAndroid()) document.documentElement.classList.add('app-android'); // esconde imprimir e instalar
   M = modelo; O = M.ordens; A = M.apont; N = O.om.length;
   if (!O.falhas || !M.falhas) { // base salva por uma versão anterior do painel
     var fx = window.ModeloTurbinas && ModeloTurbinas.extrairFalhas ? ModeloTurbinas.extrairFalhas(O.desc) : { rotulos: [], falhas: O.desc.map(function () { return []; }) };
@@ -4772,7 +4786,7 @@ function telaErro(e) {
    Aplicativo instalável (ícone na tela inicial, abre sem internet)
    ===================================================================== */
 var pedidoInstalar = null;
-function modoApp() { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
+function modoApp() { if (appAndroid()) return true; try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
 function botaoInstalar() {
   var b = h('button', { class: 'btn instalar', type: 'button', id: 'btn-instalar', title: 'Instalar o painel como aplicativo', onclick: instalarApp, hidden: true },
     icone('baixar'), h('span', { class: 'txt' }, 'Instalar app'));

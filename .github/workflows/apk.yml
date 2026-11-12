@@ -1,0 +1,64 @@
+# Monta o app Android (APK) do Painel de Turbinas.
+# O app é uma casca (Capacitor) que abre o painel publicado no GitHub Pages:
+# as mudanças do painel chegam sozinhas; o APK só precisa ser refeito quando mudar o app em si.
+name: App Android (APK)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android-app/**'
+      - 'turbinas/icone-512.png'
+      - '.github/workflows/apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Projeto Android (ícone, assinatura, versão)
+        run: bash scripts/preparar.sh ${{ github.run_number }}
+
+      - name: Montar o APK
+        working-directory: android-app/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Copiar o APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Painel-Turbinas.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Painel-Turbinas-apk
+          path: android-app/Painel-Turbinas.apk
+
+      - name: Publicar para baixar no celular
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-android
+          name: App Android – Painel de Turbinas
+          make_latest: true
+          files: android-app/Painel-Turbinas.apk
+          body: |
+            App Android do Painel de Turbinas (versão 1.${{ github.run_number }}).
+            Baixe o arquivo Painel-Turbinas.apk no celular, permita instalar de fontes desconhecidas e instale.
+            O app abre o painel publicado: as atualizações do painel chegam sozinhas, sem reinstalar.
