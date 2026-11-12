@@ -1,0 +1,13 @@
+{
+  "name": "painel-turbinas-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Casca Android (Capacitor) do Painel de Turbinas: abre o painel publicado no GitHub Pages em tela cheia.",
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/filesystem": "^6.0.2",
+    "@capacitor/share": "^6.0.3"
+  }
+}
