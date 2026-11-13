@@ -925,12 +925,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-12.3'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-13.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): quadro "Yaw drive com defeito" na aba Turbinas; busca rápida de OM; aba Prog. com programado × realizado e situação dos ciclos; itens numerados do serviço executado em lista na ficha da OM.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): na aba Turbinas, quadros "HSS com defeito" e "Yaw pucks" (troca feita, incompleta ou pedida); na Prog., "Realizadas × material baixado" e ano pelo ciclo.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -2123,6 +2123,99 @@ function cartaoHSS(pg) {
     corpo.append(lista);
   });
 }
+/* ---------- Yaw pucks (pastilhas de deslizamento do rolamento do yaw): troca feita, incompleta ou pedida ---------- */
+var PUCK_RE = /yaw ?pucks?|\bpucks?\b|punck|friccao (de |do )?yaw|sistema de friccao/;
+var PUCK_GRAUS = [
+  { rot: 'Pede troca', cor: 'var(--critical)', dica: 'A preventiva ou a pendência diz que os pucks estão desgastados ou precisam de troca, e nenhuma troca foi registrada depois' },
+  { rot: 'Troca incompleta', cor: 'var(--s4)', dica: 'Trocaram parte dos pucks; outros ficaram por estarem travados ou quebrados' },
+  { rot: 'Troca feita', cor: 'var(--good)', dica: 'Troca das pastilhas/copos dos yaw pucks registrada em OM fechada' }];
+var puckF = null;
+function frasesDe(txt, re) {
+  return String(txt || '').split(/(?<=[.;!])\s*(?=[A-ZÀ-Ú\[-])|(?<=[.;!])\s+|\n|\s-\s*(?=[A-ZÀ-Ú])|(?=Usu[áa]rio:)|(?=\[\d\d\/)/).map(txtYaw).filter(function (x) { return re.test(x); }).join(' . ');
+}
+// troca: verbo junto da peça do puck ("substituição das pastilhas", "troca dos copos") e no passado;
+// "precisa substituir as pastilhas" é pedido, e "substituído brake pad" é do freio secundário
+var PUCK_TROCA = /(substituic\w*|troca(s|do|da)?|substituid[oa]s?|trocad[oa]s?)( d[aeo]s?| de)? (pastilhas?|copos?|o-rings?|yaw pucks?|pucks?)\b|\b(pastilhas?|copos?|yaw pucks?|pucks?)\b[^.]{0,30}(foram|foi) (substituid|trocad)/;
+var PUCK_FEITA = /realizad|incluindo|foram|\bfoi\b|feit[oa]s?\b|efetuad/;
+var PUCK_PEDE = /desgast|precisa(m)? (de )?(substituir|substituicao|trocar|troca)|tem que ser trocad|\bruim\b|fora d[oa]s? padr|programar (a )?substitui|yaw puck pendente|pucks? pendentes?/;
+function levantarPucks() {
+  var L = [], canc = IDX.grupo['Cancelada'], trocaW = new Map();
+  for (var i = 0; i < O.om.length; i++) {
+    if (O.grupo[i] === canc) continue;
+    var fech = ehFechada(i);
+    // na OM fechada vale o serviço executado (a descrição "brm-troca de pastilhas yaw pucks" é só o nome da atividade)
+    var hs = frasesDe(fech ? String(O.exec[i] || '').split(String(O.desc[i] || '')).join(' ') : O.desc[i] + '. ' + O.exec[i], PUCK_RE);
+    if (!hs) continue;
+    var g = null;
+    if (!fech && /troca de pastilhas (do )?yaw ?pucks?/.test(semAcentoTxt(O.desc[i]))) continue; // OMs do ciclo: vão no resumo do ciclo
+    if (fech && PUCK_TROCA.test(hs) && PUCK_FEITA.test(hs)) g = /nao foi possivel|travad|quebr/.test(hs) ? 1 : 2;
+    else if (fech ? PUCK_PEDE.test(hs) : /substitu|troca/.test(frasesDe(O.desc[i], PUCK_RE))) g = 0; // OM aberta só conta se pede a troca
+    if (g === null) continue; // só medição ("medida das pastilhas do yaw puck") ou sem defeito
+    if (g > 0) trocaW.set(O.wtg[i], Math.max(trocaW.get(O.wtg[i]) || 0, O.dFe[i] || O.dAb[i] || 0));
+    L.push({ i: i, w: O.wtg[i], origem: 'OM', num: String(O.om[i]).padStart(5, '0'), data: O.dAb[i], status: fech ? 'OM fechada' : M.dic.status[O.status[i]], g: g,
+      texto: trechoRe(fech ? O.exec[i] : O.desc[i] + ' ' + O.exec[i], PUCK_RE) });
+  }
+  if (PEND) {
+    var P = M.pendencias;
+    for (var k = 0; k < P.num.length; k++) {
+      var stp = stBI(k); if (stp !== 'Aberta' && stp !== 'Em andamento') continue;
+      var tp = semAcentoTxt(textoPendencia(P.desc[k])); if (!PUCK_RE.test(tp) || /sanad/.test(tp)) continue;
+      var ie = PEND.iExec[k];
+      L.push({ i: ie >= 0 ? ie : undefined, w: PEND.w[k], origem: 'Pendência', num: String(P.num[k]), data: PEND.dAb[k], status: stp, g: 0,
+        texto: trechoRe(textoPendencia(P.desc[k]), /./), omExec: String(P.omExec[k] || '').trim() ? String(P.omExec[k]).trim().padStart(5, '0') : '' });
+    }
+  }
+  // pedido de troca com troca registrada depois, na mesma turbina: resolvido
+  return L.filter(function (r) { return r.g > 0 || !(trocaW.get(r.w) > (r.data || 0)); });
+}
+function cartaoPucks(pg) {
+  var todos = levantarPucks().filter(function (r) { return yawNoLocal(r.w); });
+  var porW = new Map();
+  todos.forEach(function (r) { var x = porW.get(r.w); if (!x) { x = { w: r.w, g: 9, regs: [] }; porW.set(r.w, x); } x.g = Math.min(x.g, r.g); x.regs.push(r); });
+  var turb = Array.from(porW.values()).sort(function (a, b) { return a.g - b.g || String(M.dic.wtg[a.w]).localeCompare(String(M.dic.wtg[b.w]), 'pt', { numeric: true }); });
+  var cont = PUCK_GRAUS.map(function (_, j) { return turb.filter(function (x) { return x.g === j; }).length; });
+  var vis = turb.filter(function (x) { return puckF === null || x.g === puckF; });
+  var nomeW = function (w) { return w >= 0 ? M.dic.wtg[w] : '(sem turbina)'; };
+  // ciclo de troca de pucks (OMs "BRM-troca de pastilhas yaw pucks")
+  var cic = { feitas: 0, abertas: 0, canc: 0 };
+  for (var i = 0; i < O.om.length; i++) {
+    if (!/troca de pastilhas (do )?yaw ?pucks?/.test(semAcentoTxt(O.desc[i])) || !yawNoLocal(O.wtg[i])) continue;
+    if (O.grupo[i] === IDX.grupo['Cancelada']) cic.canc++; else if (ehFechada(i)) cic.feitas++; else cic.abertas++;
+  }
+  var nCic = cic.feitas + cic.abertas;
+  var exportar = function () {
+    baixarCSV('yaw-pucks.csv', ['Situação da turbina', 'Turbina', 'Origem', 'Número', 'Abertura', 'Status', 'Situação do registro', 'Texto', 'OM de execução'],
+      turb.reduce(function (a, x) { return a.concat(x.regs.map(function (r) { return [PUCK_GRAUS[x.g].rot, nomeW(r.w), r.origem, r.num, r.data === null || r.data === undefined ? '' : fData(r.data), r.status, PUCK_GRAUS[r.g].rot, r.texto, r.omExec || '']; })); }, []));
+  };
+  var corpo = h('div');
+  pg.append(h('section', { class: 'card s12', id: 'pucks', 'aria-labelledby': 'h-pucks' },
+    h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', { id: 'h-pucks' }, 'Yaw pucks'),
+      h('p', null, (nCic ? 'Ciclo de troca de pucks: ' + fInt(cic.feitas) + ' de ' + fInt(nCic) + ' OMs feitas, ' + fInt(cic.abertas) + ' em aberto ou em espera' + (cic.canc ? ' (' + fInt(cic.canc) + ' canceladas)' : '') + '. ' : '') +
+        fInt(turb.length) + ' turbinas com troca de pucks registrada ou pedida em OM' + (PEND ? ' ou pendência' : ' (carregue as pendências do Manusis para ver todas)') + '. A medição da preventiva sozinha não conta. Toque numa linha para abrir a OM ou a turbina.')),
+      h('div', { class: 'ferr' }, h('button', { class: 'btn', type: 'button', onclick: exportar }, icone('baixar'), 'CSV'))),
+    h('div', { class: 'seletor-status', role: 'group', 'aria-label': 'Situação dos yaw pucks', style: 'margin-bottom:10px' }, PUCK_GRAUS.map(function (gr, j) {
+      var on = puckF === j;
+      return h('button', { type: 'button', class: 'st-btn' + (on ? ' on' : ''), 'aria-pressed': String(on), title: gr.dica, onclick: function () { puckF = on ? null : j; var y = window.scrollY; renderPagina(); window.scrollTo(0, y); } },
+        h('i', { style: 'background:' + gr.cor }), gr.rot, h('small', null, ' ' + fInt(cont[j])));
+    })),
+    corpo));
+  aposRender.push(function () {
+    if (!vis.length) { corpo.append(h('div', { class: 'vazio' }, 'Nenhuma troca de yaw pucks registrada ou pedida nos filtros atuais.')); return; }
+    var lista = h('div', { class: 'yaw-lista' });
+    vis.forEach(function (x) {
+      lista.append(h('div', { class: 'yaw-w' },
+        h('div', { class: 'yaw-cab' }, h('span', { class: 'pill' }, h('i', { style: 'background:' + PUCK_GRAUS[x.g].cor }), PUCK_GRAUS[x.g].rot),
+          h('button', { type: 'button', class: 'link forte', onclick: function () { abrirTurbina(x.w); } }, nomeW(x.w))),
+        x.regs.sort(function (a, b) { return a.g - b.g; }).map(function (r) {
+          var abre = r.i !== undefined;
+          return h(abre ? 'button' : 'div', { type: abre ? 'button' : null, class: 'yaw-reg' + (abre ? ' clic' : ''), onclick: abre ? function () { abrirOM(r.i, [r.i]); } : null },
+            h('span', { class: 'yaw-num' }, (r.origem === 'OM' ? 'OM ' : 'Pend. ') + r.num, h('small', null, (r.data === null || r.data === undefined ? '' : fData(r.data)) + ' · ' + r.status + (r.omExec ? ' · OM ' + r.omExec : r.origem === 'Pendência' ? ' · sem OM de execução' : ''))),
+            h('span', { class: 'yaw-txt' }, h('i', { style: 'background:' + PUCK_GRAUS[r.g].cor }), r.texto));
+        })));
+    });
+    corpo.append(lista);
+  });
+}
 function paginaTurbinas(pg) {
   var B = base();
   var porW = new Map();
@@ -2153,6 +2246,7 @@ function paginaTurbinas(pg) {
   pg.append(cartaoMapa('s12'));
   cartaoYaw(pg);
   cartaoHSS(pg);
+  cartaoPucks(pg);
 
   pg.append(cartao({
     id: 'ranking', span: 's12', titulo: 'Ranking de turbinas', sub: 'Clique numa linha para abrir o detalhe · ordene pelas colunas',
