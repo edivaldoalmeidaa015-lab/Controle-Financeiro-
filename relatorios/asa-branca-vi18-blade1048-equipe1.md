@@ -86,3 +86,28 @@ MegaWind/Invenergy
 **Standby:** (X) Sim ( ) Não
 **Parada de máquina:** Turbina parada
 **Observação:** Standby das 08:00 até as 12:00.
+
+---
+
+## 4º dia – 12/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS cliente + time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 20.000
+- Colagem do núcleo
+- Núcleo em cura
+- Vácuo no núcleo
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Laminação das camadas externas e pós-cura
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina parada
