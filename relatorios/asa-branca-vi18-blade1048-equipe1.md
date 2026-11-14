@@ -111,3 +111,29 @@ MegaWind/Invenergy
 **Próxima atividade:** Laminação das camadas externas e pós-cura
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina parada
+
+---
+
+## 5º dia – 13/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 19:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS cliente + time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 20.000
+- Ajuste do núcleo
+- Laminação das camadas
+- Aguardando cura das camadas
+- Pós-cura
+- Descida dos técnicos da torre
+- Organização dos materiais
+
+**Próxima atividade:** Aplicação de putty e topcoat
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação
