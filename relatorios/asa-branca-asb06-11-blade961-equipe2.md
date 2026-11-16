@@ -12,7 +12,7 @@ MegaWind/Invenergy
 **Turbina:** ASB06-11
 **BLADE:** 961
 **Início:** 03/11/2026
-**Final:**
+**Final:** 13/11/2026
 
 ---
 
@@ -176,3 +176,32 @@ MegaWind/Invenergy
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação ✅
 **Observação:** Reparo da Blade 961 ainda não finalizado (falta o topcoat). Atividade parada para dar prioridade ao dano da Blade C #960.
+
+---
+
+## 6º dia – 13/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 19:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- SIPAT Invenergy
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Posicionamento no reparo
+- Ajuste do putty
+- Preparação da área
+- Aplicação do topcoat
+- Descida para o chão
+- Descida da corda
+- Organização dos materiais
+- Colocado máquina em operação
+- Ida para a base
+
+**Próxima atividade:** Início do dano na VIII-17
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+**Observação:** Reparo da Blade 961 finalizado.
