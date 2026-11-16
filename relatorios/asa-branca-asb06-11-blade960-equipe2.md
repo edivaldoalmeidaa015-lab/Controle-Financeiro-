@@ -40,3 +40,27 @@ MegaWind/Invenergy
 **Próxima atividade:** Ajuste do núcleo, lixamento e laminação
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 2º dia – 11/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Subida dos técnicos
+- Posicionamento no reparo
+- Ajuste do núcleo
+- Registro do gap
+- Laminação
+- Descida para o chão
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Pós-cura e acabamento
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em manutenção ⚠️
