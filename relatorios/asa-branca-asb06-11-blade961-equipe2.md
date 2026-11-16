@@ -209,6 +209,6 @@ MegaWind/Invenergy
 
 ## Reparo finalizado
 
-**Período:** 03/11/2026 a 13/11/2026 (5 dias)
+**Período:** 03/11/2026 a 13/11/2026 (6 dias)
 **Turbina:** ASB06-11 – BLADE 961
 **Status final:** Reparo finalizado – Turbina em operação ✅
