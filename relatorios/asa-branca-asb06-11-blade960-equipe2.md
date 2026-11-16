@@ -64,33 +64,3 @@ MegaWind/Invenergy
 **Próxima atividade:** Pós-cura e acabamento
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em manutenção ⚠️
-
----
-
-## 3º dia – 12/11/2026
-
-**Chegada no parque:** 07:00
-**Saída do parque:** 17:30 + 1 hora de almoço
-
-**Resumo da atividade:**
-- SIPAT Invenergy
-- Deslocamento para a torre ASB06-11
-- DDS
-- Preenchimento de documentação
-- Pesagem dos químicos
-- Subida dos técnicos
-- Posicionamento no reparo
-- Remoção dos consumíveis
-- Pós-cura
-- Teste de dureza
-- Preparação da área
-- Aplicação do putty
-- Descida para o chão
-- Descida da corda
-- Organização dos materiais
-- Colocado máquina em operação
-- Ida para a base
-
-**Próxima atividade:** Pintura
-**Standby:** ( ) Sim (X) Não
-**Parada de máquina:** Turbina em operação ✅
