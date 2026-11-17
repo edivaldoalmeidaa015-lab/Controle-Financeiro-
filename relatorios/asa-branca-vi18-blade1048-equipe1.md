@@ -4,6 +4,7 @@
 MegaWind/Invenergy
 
 **Data de início da atividade:** 09/11/2026
+**Data de término da atividade:** 16/11/2026
 
 **Equipe A:**
 - Tec. 01 - ILIAN N3
@@ -137,3 +138,34 @@ MegaWind/Invenergy
 **Próxima atividade:** Aplicação de putty e topcoat
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação
+
+---
+
+## 6º dia – 16/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 18:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS cliente + time MegaWind
+- Mobilização para a torre
+- Preenchimento dos documentos
+- Subida dos técnicos
+- Realização das ancoragens
+- Descida dos técnicos
+- Acesso ao dano 20.000
+- Pós-cura
+- Teste de dureza
+- Aplicação do putty
+- Aplicação do topcoat
+- Reparo finalizado
+- Descida dos técnicos da torre
+- Organização dos materiais
+- 5S realizado
+
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+
+---
+
+## REPARO FINALIZADO – TURBINA VI-18 EM OPERAÇÃO ✅
