@@ -1,0 +1,128 @@
+# Equipe 2
+
+**PARQUE EÓLICO ASA BRANCA**
+MegaWind/Invenergy
+
+**Equipe 2:**
+- Tec. Rep. N2 - HENRIQUE FELIX
+- Tec. Rep. N1 - VICTOR EMANOEL
+- Tec. Rep. N1 - FCO LANGERTON
+
+**Atividade:** ( ) Interna ( x ) Externa
+**Turbina:** ASB06-11
+**BLADE:** C #960
+**Início:** 10/11/2026
+**Final:** 17/11/2026
+
+---
+
+## 1º dia – 10/11/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 17:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Subida dos técnicos
+- Montagem das ancoragens
+- Posicionamento no reparo
+- Inspeção
+- Lixamento BOD
+- Remoção do núcleo
+- Pesagem dos químicos
+- Colagem do núcleo
+- Vácuo
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Ajuste do núcleo, lixamento e laminação
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 2º dia – 11/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Subida dos técnicos
+- Posicionamento no reparo
+- Ajuste do núcleo
+- Registro do gap
+- Laminação
+- Descida para o chão
+- Organização dos materiais
+- Ida para a base
+
+**Próxima atividade:** Pós-cura e acabamento
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em manutenção ⚠️
+
+---
+
+## 3º dia – 12/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 17:30 + 1 hora de almoço
+
+**Resumo da atividade:**
+- SIPAT Invenergy
+- Deslocamento para a torre ASB06-11
+- DDS
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Posicionamento no reparo
+- Remoção dos consumíveis
+- Pós-cura
+- Teste de dureza
+- Preparação da área
+- Aplicação do putty
+- Descida para o chão
+- Descida da corda
+- Organização dos materiais
+- Colocado máquina em operação
+- Ida para a base
+
+**Próxima atividade:** Pintura
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+
+---
+
+## 4º dia – 17/11/2026
+
+**Equipe 1:**
+- Tec. Rep. N3 - ILIAN BERGMAN
+- Tec. Rep. N1 - PEDRO JORGE
+- Tec. Rep. N1 - ANTÔNIO FRANCISCO
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS Invenergy + time MegaWind
+- Deslocamento para a torre ASB06-11
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Posicionamento no reparo
+- Lixamento do putty
+- Aplicação do topcoat (1ª e 2ª demão)
+- Descida para o chão
+- Descida da corda
+- Organização dos materiais
+- Colocado máquina em operação
+- Ida para a base
+
+**Próxima atividade:** Finalizada
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+**Observação:** Reparo da Blade C #960 finalizado.
