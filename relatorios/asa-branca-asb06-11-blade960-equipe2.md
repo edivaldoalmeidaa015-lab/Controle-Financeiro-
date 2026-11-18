@@ -12,7 +12,7 @@ MegaWind/Invenergy
 **Turbina:** ASB06-11
 **BLADE:** C #960
 **Início:** 10/11/2026
-**Final:**
+**Final:** 17/11/2026
 
 ---
 
@@ -94,3 +94,35 @@ MegaWind/Invenergy
 **Próxima atividade:** Pintura
 **Standby:** ( ) Sim (X) Não
 **Parada de máquina:** Turbina em operação ✅
+
+---
+
+## 4º dia – 17/11/2026
+
+**Equipe 1:**
+- Tec. Rep. N3 - ILIAN BERGMAN
+- Tec. Rep. N1 - PEDRO JORGE
+- Tec. Rep. N1 - ANTÔNIO FRANCISCO
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 16:00 + 1 hora de almoço
+
+**Resumo da atividade:**
+- DDS Invenergy + time MegaWind
+- Deslocamento para a torre ASB06-11
+- Preenchimento de documentação
+- Pesagem dos químicos
+- Subida dos técnicos
+- Posicionamento no reparo
+- Lixamento do putty
+- Aplicação do topcoat (1ª e 2ª demão)
+- Descida para o chão
+- Descida da corda
+- Organização dos materiais
+- Colocado máquina em operação
+- Ida para a base
+
+**Próxima atividade:** Finalizada
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+**Observação:** Reparo da Blade C #960 finalizado.
