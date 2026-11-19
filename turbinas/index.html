@@ -475,6 +475,16 @@ small .mc { display: inline; }
 @media (max-width: 600px) { .an-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .an-g { padding: 10px 12px; } .an-g .k-val { font-size: 22px; } .an-g .k-sub { font-size: 12px; } }
 .an-g .k-val { font-size: 26px; font-weight: 700; }
 .an-cats .st-btn { text-align: left; }
+.ajuda { padding: 0; } .ajuda summary { cursor: pointer; padding: 14px 18px; font-weight: 700; font-size: 15px; list-style-position: inside; }
+.ajuda .aj-corpo { padding: 0 18px 16px; font-size: 14px; line-height: 1.5; color: var(--ink-2); overflow-wrap: anywhere; }
+.ajuda h4 { margin: 12px 0 4px; font-size: 14px; color: var(--ink); } .ajuda p { margin: 4px 0; }
+.ajuda ul { margin: 4px 0; padding-left: 0; list-style: none; } .ajuda li { margin: 6px 0; }
+.aj-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.aj-tag { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
+.aj-tag.ok { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--ink); }
+.aj-tag.conf { background: color-mix(in srgb, var(--s4) 22%, transparent); color: var(--ink); }
+.aj-tag.cob { background: color-mix(in srgb, var(--critical) 18%, transparent); color: var(--ink); }
+.aj-dica { margin-top: 10px !important; color: var(--ink) !important; }
 .app-android [data-imprimir], .app-android #btn-instalar { display: none !important; }
 .an-item { display: grid; align-content: start; gap: 3px; width: 100%; text-align: left; font: inherit; color: var(--ink); }
 .an-item.clic { cursor: pointer; } .an-item.clic:hover { background: var(--hover); }
@@ -925,12 +935,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-13.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-19.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): na aba Turbinas, quadros "HSS com defeito" e "Yaw pucks" (troca feita, incompleta ou pedida); na Prog., "Realizadas × material baixado" e ano pelo ciclo.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): na aba Trocas, explicação "Como ler esta tela"; na aba Turbinas, quadros "HSS com defeito" e "Yaw pucks"; na Prog., "Realizadas × material baixado".' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3454,6 +3464,32 @@ function paginaComponentes(pg, soExtras) {
 }
 
 /* ---------- Trocas e materiais: em qual turbina trocou, qual peça e qual material saiu para a OM ---------- */
+/* "Como ler esta tela": aberta na primeira visita; depois de fechada, fica fechada (lembra no aparelho). */
+var CHAVE_AJUDA_TROCAS = 'turbinas-ajuda-trocas-fechada';
+function ajudaTrocas() {
+  var fechada = false; try { fechada = localStorage.getItem(CHAVE_AJUDA_TROCAS) === '1'; } catch (e) { /* sem armazenamento */ }
+  var bola = function (k) { return h('i', { class: 'aj-bola', style: 'background:' + CONF[k].cor }); };
+  var linha = function (k, oque, prob) { return h('li', null, bola(k), h('b', null, CONF[k].curto), ': ' + oque + ' ', h('span', { class: 'aj-tag ' + (prob === 'ok' ? 'ok' : prob === 'conferir' ? 'conf' : 'cob') }, prob === 'ok' ? 'tudo certo' : prob === 'conferir' ? 'conferir' : 'cobrar')); };
+  var d = h('details', { class: 'card s12 ajuda' },
+    h('summary', null, '❓ Como ler esta tela'),
+    h('div', { class: 'aj-corpo' },
+      h('p', null, 'Esta aba responde uma pergunta: ', h('b', null, 'o que o técnico escreveu que trocou bate com o material que saiu do almoxarifado?')),
+      h('h4', null, 'Trocas por turbina'),
+      h('p', null, 'Cada linha é uma turbina. Ex.: ', h('b', null, 'AB-VIII10 · 13 · R$ 225 mil'), ' com "Placa eletrônica (6), Escovas (2) · 1 sem baixa" quer dizer: 13 OMs com troca de peça; a placa eletrônica foi trocada 6 vezes; saiu R$ 225 mil de material; e em 1 OM o técnico disse que trocou, mas nada saiu no Manusis. Toque na turbina para ver só as trocas dela.'),
+      h('h4', null, 'Os botões da lista de trocas'),
+      h('ul', null,
+        linha('ok', 'o texto diz que trocou e saiu o mesmo material.', 'ok'),
+        linha('parcial', 'parte bate, parte não (ex.: trocou 2 peças e só 1 tem baixa).', 'conferir'),
+        linha('diverge', 'o texto diz uma peça e o material baixado é outro (ex.: diz pastilha, baixou mangueira).', 'cobrar'),
+        linha('soTexto', 'OM fechada, o texto diz que trocou e nenhum material saiu: ou faltou lançar a baixa, ou a troca não aconteceu.', 'cobrar'),
+        linha('soBaixa', 'saiu material para a OM e o texto não diz onde foi usado.', 'cobrar')),
+      h('h4', null, 'Os cartões'),
+      h('p', null, h('b', null, 'Trocou:'), ' o que o técnico escreveu no serviço executado. ', h('b', null, 'Material baixado:'), ' o que saiu do almoxarifado para a OM, com quantidade e valor. Cartão sem cor é OM ainda aberta: a baixa ainda pode ser lançada.'),
+      h('p', { class: 'aj-dica' }, '👉 Para cobrar a empresa de manutenção: toque em ', h('b', null, CONF.soTexto.curto), ', ', h('b', null, CONF.soBaixa.curto), ' ou ', h('b', null, CONF.diverge.curto), ' e depois em ', h('b', null, 'CSV'), ' para baixar a lista.')));
+  d.open = !fechada;
+  d.addEventListener('toggle', function () { try { localStorage.setItem(CHAVE_AJUDA_TROCAS, d.open ? '0' : '1'); } catch (e) { /* sem armazenamento */ } });
+  return d;
+}
 var trocaSel = { w: null, sit: null, pag: 0 };
 var SIT_TROCA = ['ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
 function paginaTrocas(pg) {
@@ -3473,6 +3509,7 @@ function paginaTrocas(pg) {
 
   pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Trocas e materiais'),
     h('p', null, 'Em qual turbina foi trocada a peça, o que o técnico escreveu no serviço executado e qual material saiu do almoxarifado para a OM. Toque numa turbina para ver só as trocas dela, e numa troca para abrir a OM.')));
+  pg.append(ajudaTrocas());
   if (!CONS && M.fonte === 'manusis') pg.append(h('div', { class: 'faixa-aviso', role: 'note' },
     h('span', null, 'Carregue o consumo de materiais do Manusis para ver o material baixado em cada troca.'),
     h('button', { class: 'btn', type: 'button', onclick: escolherArquivo }, icone('enviar'), 'Carregar consumo')));
