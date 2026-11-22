@@ -935,7 +935,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-22.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-22.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -2479,7 +2479,7 @@ function paginaMateriais(pg) {
     desenhar: function (el) {
       if (!itW.length) { el.append(h('div', { class: 'vazio' }, 'Nenhum consumo nos filtros atuais.')); return; }
       var caixa = h('div', { style: 'max-height:520px;overflow:auto' }); el.append(caixa);
-      barrasH(caixa, itW, { larguraRotulo: '46%', fmt: misto ? function (v) { return fMoeda(v); } : function (v) { return Number.isInteger(v) ? fInt(v) : nf1.format(v); }, unidade: misto ? '' : 'baixados', onClick: function (k) { abrirTurbina(k); }, dica: 'Clique para ver a turbina' });
+      barrasH(caixa, itW, { larguraRotulo: '46%', fmt: misto ? function (v) { return fMoeda(v); } : function (v) { return Number.isInteger(v) ? fInt(v) : nf1.format(v); }, unidade: misto ? '' : 'consumidos', onClick: function (k) { abrirTurbina(k); }, dica: 'Clique para ver a turbina' });
     },
     dados: { cols: [{ k: 'rot', rot: 'Aerogerador' }].concat(misto ? [] : [{ k: 'qtd', rot: 'Quantidade', num: true, fmt: fInt }]).concat([ { k: 'oms', rot: 'OMs', num: true, fmt: fInt }, { k: 'valor', rot: 'Valor', num: true, fmt: fMoedaCompleta }]), linhas: itW }
   }));
