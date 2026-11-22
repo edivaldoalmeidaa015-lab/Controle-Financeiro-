@@ -434,6 +434,9 @@ small .mc { display: inline; }
 .tab.baixas tr.consumivel b { font-weight: 500; color: var(--ink-2); }
 .pag { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 18px 0; font-size: 12.5px; color: var(--ink-2); }
 .barra-tab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.sel-consumo { flex: 0 1 220px; min-width: 0; }
+.lnk-wtg { font: inherit; font-weight: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+@media (max-width: 700px) { .sel-consumo { flex: 1 1 40%; } }
 .barra-tab .campo { max-width: 340px; }
 
 /* destaques */
@@ -938,12 +941,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-22.3'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-22.4'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba nova "Consumo", com uma linha por material consumido: turbina, data, OM, status, quantidade, unidade e custo.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba "Consumo" com filtro de parque e turbina (ou toque no nome da turbina na tabela); uma linha por material consumido: turbina, data, OM, status, quantidade, unidade e custo.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3801,7 +3804,35 @@ function paginaOrdens(pg) {
 /* ---------- Consumo: uma linha por material consumido numa OM ---------- */
 function paginaConsumo(pg) {
   if (!CONS) { avisoSemConsumo(pg, 'Consumo de materiais'); return; }
-  var C = M.consumo, E = estado.consumo;
+  var C = M.consumo, E = estado.consumo, F = estado.f;
+  // opções dos seletores: contam as linhas sem o próprio filtro de parque/turbina
+  var passaSem = function (i, ign) { for (var d = 0; d < DIMS.length; d++) if (ign.indexOf(DIMS[d]) < 0 && !atendeDim(DIMS[d], i)) return false; return true; };
+  var nPq = new Map(), nW = new Map();
+  for (var j = 0; j < N; j++) {
+    if (!CONS[j] || O.wtg[j] < 0) continue;
+    var nj = CONS[j].filter(function (k) { return CDIA[k] !== null && noPeriodo(CDIA[k]); }).length;
+    if (!nj) continue;
+    var pqj = parqueDoWtg[O.wtg[j]];
+    if (passaSem(j, ['parque', 'wtg'])) nPq.set(pqj, (nPq.get(pqj) || 0) + nj);
+    if (passaSem(j, ['wtg'])) nW.set(O.wtg[j], (nW.get(O.wtg[j]) || 0) + nj);
+  }
+  var filtrarWtg = function (w) { F.wtg.clear(); if (w !== null) F.wtg.add(w); E.pag = 0; atualizar(); };
+  function seletor(rotTodos, mapa, nome, setF, aoMudar) {
+    var ks = Array.from(mapa.keys()).sort(function (a, b) { return nome(a).localeCompare(nome(b), 'pt-BR', { numeric: true }); });
+    var sel = h('select', { class: 'campo sel-consumo', 'aria-label': rotTodos });
+    sel.append(h('option', { value: '' }, rotTodos));
+    if (setF.size > 1) sel.append(h('option', { value: '*', selected: true }, 'Várias (' + setF.size + ')'));
+    ks.forEach(function (k) { sel.append(h('option', { value: String(k), selected: setF.size === 1 && setF.has(k) ? true : null }, nome(k) + ' (' + fInt(mapa.get(k)) + ')')); });
+    sel.addEventListener('change', function () { if (sel.value !== '*') aoMudar(sel.value === '' ? null : +sel.value); });
+    return sel;
+  }
+  var selPq = seletor('Todos os parques', nPq, function (k) { return M.parques[k]; }, F.parque, function (k) {
+    F.parque.clear(); if (k !== null) F.parque.add(k);
+    // turbina escolhida de outro parque sai do filtro
+    if (k !== null) F.wtg.forEach(function (w) { if (parqueDoWtg[w] !== k) F.wtg.delete(w); });
+    E.pag = 0; atualizar();
+  });
+  var selW = seletor('Todas as turbinas', nW, function (k) { return M.dic.wtg[k]; }, F.wtg, filtrarWtg);
   var todas = [];
   for (var i = 0; i < N; i++) {
     if (!CONS[i] || !passaDims(i)) continue;
@@ -3833,7 +3864,7 @@ function paginaConsumo(pg) {
   var num = function (v) { return v === null || v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','); };
   var card = h('section', { class: 'card s12' },
     h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Material consumido por OM'), h('p', null, fInt(linhas.length) + ' linhas · ' + fInt(nOms) + ' OMs'))),
-    h('div', { class: 'barra-tab' }, busca,
+    h('div', { class: 'barra-tab' }, selPq, selW, busca,
       h('button', { class: 'btn', type: 'button', onclick: function () {
         baixarCSV('consumo-de-materiais.csv', ['WTG', 'Data', 'OM', 'Status da OM', 'Código', 'Material consumido', 'Quantidade', 'Unidade', 'Custo total (R$)', 'Preço a validar'],
           linhas.map(function (r) { return [r.wtg, fData(r.data), r.om, r.statusTxt, r.cod, r.material, num(r.qtd), r.un, num(r.custo), r.susp ? 'Sim' : '']; }));
@@ -3843,7 +3874,9 @@ function paginaConsumo(pg) {
   pg.append(card);
   aposRender.push(function () {
     tabela(corpo, {
-      cols: [{ k: 'wtg', rot: 'WTG', classe: 'forte' }, { k: 'data', rot: 'Data', fmt: fData },
+      cols: [{ k: 'wtg', rot: 'WTG', classe: 'forte', fmt: function (v, r) {
+          return O.wtg[r.i] < 0 ? v : h('button', { type: 'button', class: 'lnk-wtg', title: 'Filtrar só esta turbina', onclick: function (ev) { ev.stopPropagation(); filtrarWtg(O.wtg[r.i]); } }, v); } },
+        { k: 'data', rot: 'Data', fmt: fData },
         { k: 'omTxt', rot: 'OM', ord: function (r) { return r.om; } },
         { k: 'status', rot: 'Status da falha', fmt: function (v) { return pillStatus(v); }, ord: function (r) { return r.statusTxt; } },
         { k: 'material', rot: 'Material consumido', classe: 'quebra', fmt: function (v, r) { return h('span', null, v || '–', r.cod ? h('small', { class: 'nota' }, ' ' + r.cod) : null); } },
