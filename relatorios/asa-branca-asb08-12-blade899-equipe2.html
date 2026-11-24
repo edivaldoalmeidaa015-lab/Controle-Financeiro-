@@ -1,0 +1,67 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório Equipe 2</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#666;--btn:#1a5fd0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b1b;--fg:#eee;--mut:#aaa;--btn:#4c8dff}}
+body{background:var(--bg);color:var(--fg);font:16px/1.45 Calibri,Arial,sans-serif;margin:0;padding:16px;max-width:760px}
+.bar{position:sticky;top:0;background:var(--bg);padding:8px 0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:var(--btn);color:#fff;border:0;border-radius:6px;padding:10px 14px;font-size:15px;cursor:pointer}
+#msg{color:var(--mut);font-size:14px}
+#rel ul{margin:4px 0;padding-left:24px} #rel hr{border:0;border-top:1px solid #999;margin:12px 0} #rel p{margin:0}
+</style></head><body>
+<div class="bar"><button id="c1">Copiar com negrito (Word / e-mail)</button><button id="c2">Copiar para WhatsApp</button><span id="msg"></span></div>
+<div id="rel">
+<p><b>Equipe 2</b></p>
+<br>
+<div><b>PARQUE EÓLICO ASA BRANCA</b></div>
+<div>MegaWind – Cliente: Invenergy/Essentia</div>
+<br>
+<div><b>Equipe 2:</b></div>
+<ul>
+<li>Tec. Rep. N2 - HENRIQUE FELIX</li>
+<li>Tec. Rep. N1 - FCO LANGERTON</li>
+<li>Tec. Rep. N1 - VICTOR EMANOEL</li>
+</ul>
+<br>
+<div><b>Atividade:</b> ( ) Interna ( x ) Externa</div>
+<div><b>Turbina:</b> ASB08-12</div>
+<div><b>BLADE:</b> A #899</div>
+<div><b>Defeito:</b> Trinca</div>
+<div><b>Início:</b> 23/11/2026</div>
+<div><b>Final:</b></div>
+<br>
+<hr>
+<br>
+<p><b>1º dia – 23/11/2026</b></p>
+<br>
+<div><b>Chegada no parque:</b> 07:00</div>
+<div><b>Saída do parque:</b> 17:00</div>
+<br>
+<div><b>Resumo da atividade:</b></div>
+<ul>
+<li>DDS Invenergy</li>
+<li>Mobilização para a torre ASB08-12</li>
+<li>Liberação dos documentos Invenergy e time MegaWind</li>
+<li>Subida dos materiais e cordas</li>
+<li>Subida dos técnicos</li>
+<li>Montagem das ancoragens</li>
+<li>Descida dos técnicos</li>
+<li>Posicionamento no reparo</li>
+<li>Inspeção</li>
+<li>Descida dos técnicos da torre</li>
+<li>Limpeza e organização</li>
+<li>Mobilização para a base</li>
+</ul>
+<br>
+<div><b>Standby:</b> ( ) Sim (X) Não</div>
+</div>
+<script>
+const WA="*Equipe 2*\n\n*PARQUE EÓLICO ASA BRANCA*\nMegaWind – Cliente: Invenergy/Essentia\n\n*Equipe 2:*\n• Tec. Rep. N2 - HENRIQUE FELIX\n• Tec. Rep. N1 - FCO LANGERTON\n• Tec. Rep. N1 - VICTOR EMANOEL\n\n*Atividade:* ( ) Interna ( x ) Externa\n*Turbina:* ASB08-12\n*BLADE:* A #899\n*Defeito:* Trinca\n*Início:* 23/11/2026\n*Final:*\n\n━━━━━━━━━━━━━━━━━━\n\n*1º dia – 23/11/2026*\n\n*Chegada no parque:* 07:00\n*Saída do parque:* 17:00\n\n*Resumo da atividade:*\n• DDS Invenergy\n• Mobilização para a torre ASB08-12\n• Liberação dos documentos Invenergy e time MegaWind\n• Subida dos materiais e cordas\n• Subida dos técnicos\n• Montagem das ancoragens\n• Descida dos técnicos\n• Posicionamento no reparo\n• Inspeção\n• Descida dos técnicos da torre\n• Limpeza e organização\n• Mobilização para a base\n\n*Standby:* ( ) Sim (X) Não";
+const msg=t=>{document.getElementById('msg').textContent=t};
+function selCopy(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);let ok=false;try{ok=document.execCommand('copy')}catch(e){}return ok}
+document.getElementById('c1').onclick=async()=>{const el=document.getElementById('rel');
+ try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([el.innerHTML],{type:'text/html'}),'text/plain':new Blob([el.innerText],{type:'text/plain'})})]);msg('Copiado! Cole com Ctrl+V.');return}catch(e){}
+ msg(selCopy(el)?'Copiado! Cole com Ctrl+V.':'Texto selecionado: aperte Ctrl+C.')};
+document.getElementById('c2').onclick=async()=>{try{await navigator.clipboard.writeText(WA);msg('Copiado para WhatsApp! Cole com Ctrl+V.');return}catch(e){}
+ const t=document.createElement('textarea');t.value=WA;document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();msg(ok?'Copiado para WhatsApp! Cole com Ctrl+V.':'Não consegui copiar automaticamente.')};
+</script></body></html>
