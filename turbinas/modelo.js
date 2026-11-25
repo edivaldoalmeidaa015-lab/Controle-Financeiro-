@@ -838,6 +838,108 @@
     return aplicarConsumo(M);
   }
 
+  /* ---------- Base acumulada: junta várias exportações do Manusis numa planilha só ---------- */
+  var ABA_ESPEC = 'Especialidades', ABA_PARADAS = 'Paradas de máquinas';
+  /** Momento da exportação pelo nome do Manusis ("…_20102026161718_…" = 20/10/2026 16:17:18); null se não tiver. */
+  function momentoExportacao(nome) {
+    var m = /_(\d{2})(\d{2})(\d{4})(\d{2})(\d{2})(\d{2})_/.exec(String(nome || ''));
+    return m ? Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +m[6]) : null;
+  }
+  // "22/10/2025 13:55" | Date | serial do Excel -> 20251022
+  function diaChave(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (v instanceof Date) return isNaN(v) ? null : v.getFullYear() * 10000 + (v.getMonth() + 1) * 100 + v.getDate();
+    if (typeof v === 'number') { var d = new Date(EPOCA_EXCEL + Math.floor(v) * DIA_MS); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); }
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(v).trim());
+    if (m) return +m[3] * 10000 + +m[2] * 100 + +m[1];
+    m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v).trim());
+    return m ? +m[1] * 10000 + +m[2] * 100 + +m[3] : null;
+  }
+  function textoDia(k) { return k ? String(k % 100).padStart(2, '0') + '/' + String(Math.floor(k / 100) % 100).padStart(2, '0') + '/' + Math.floor(k / 10000) : ''; }
+  /** Só dá para juntar exportações do Manusis 4 (a base antiga do Power BI não tem as mesmas abas). */
+  function podeJuntar(wb) { return !!(wb.Sheets[ABA_MANUSIS] || wb.Sheets[ABA_CONSUMO] || wb.Sheets[ABA_PENDENCIAS]) && !wb.Sheets['fato_ordens']; }
+  /**
+   * Junta planilhas do Manusis (OMs, consumo, pendências; uma ou várias abas cada) numa planilha só.
+   * lista: [{ wb, base }] em ordem, da mais antiga para a mais nova (a base guardada primeiro, com base: true).
+   * O que vem depois prevalece: OM e pendência pelo número; Especialidades e Paradas pela OM;
+   * consumo pelo período de "Utilizado em" (o arquivo novo substitui os dias que ele cobre).
+   */
+  function juntarPlanilhas(lista, XLSX) {
+    var st = { omNovas: 0, omAtualizadas: 0, consLinhas: 0, consSubstituidas: 0, consDe: null, consAte: null, pendNovas: 0, pendAtualizadas: 0, omDe: null, omAte: null };
+    var cab = {}; // aba -> colunas, na ordem em que aparecem
+    function linhasDe(wb, aba) {
+      var ws = wb.Sheets[aba]; if (!ws) return null;
+      var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+      if (!aoa.length) return [];
+      var h = aoa[0].map(function (x) { return String(x); }), c = cab[aba] || (cab[aba] = []);
+      h.forEach(function (x) { if (x && c.indexOf(x) < 0) c.push(x); });
+      return aoa.slice(1).filter(function (l) { return l.some(function (v) { return v !== '' && v !== null && v !== undefined; }); })
+        .map(function (l) { var o = {}; h.forEach(function (x, j) { if (x) o[x] = l[j] === undefined ? '' : l[j]; }); return o; });
+    }
+    var chaveOM = function (r) { return String(r['Número de ordem'] || '').trim(); };
+    var oms = new Map(), porOM = {}, cons = [], pend = new Map();
+    porOM[ABA_ESPEC] = new Map(); porOM[ABA_PARADAS] = new Map();
+    lista.forEach(function (it) {
+      var wb = it.wb, conta = !it.base;
+      var o = linhasDe(wb, ABA_MANUSIS);
+      if (o) o.forEach(function (r) {
+        var k = chaveOM(r); if (!k) return;
+        if (conta) { if (oms.has(k)) st.omAtualizadas++; else st.omNovas++; }
+        oms.delete(k); oms.set(k, r);
+      });
+      [ABA_ESPEC, ABA_PARADAS].forEach(function (aba) {
+        var rs = linhasDe(wb, aba); if (!rs) return;
+        var g = new Map();
+        rs.forEach(function (r) { var k = chaveOM(r); if (!k) return; if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
+        g.forEach(function (v, k) { porOM[aba].set(k, v); });
+      });
+      var c = linhasDe(wb, ABA_CONSUMO);
+      if (c && c.length) {
+        var dias = c.map(function (r) { return diaChave(r['Utilizado em']); });
+        var de = null, ate = null;
+        dias.forEach(function (d) { if (d === null) return; if (de === null || d < de) de = d; if (ate === null || d > ate) ate = d; });
+        var sem = new Set(c.filter(function (_, j) { return dias[j] === null; }).map(function (r) { return JSON.stringify(r); }));
+        var antes = cons.length;
+        cons = cons.filter(function (r) {
+          var d = diaChave(r['Utilizado em']);
+          return d === null ? !sem.has(JSON.stringify(r)) : !(de !== null && d >= de && d <= ate);
+        });
+        if (conta) {
+          st.consSubstituidas += antes - cons.length; st.consLinhas += c.length;
+          if (de !== null && (st.consDe === null || de < st.consDe)) st.consDe = de;
+          if (ate !== null && (st.consAte === null || ate > st.consAte)) st.consAte = ate;
+        }
+        cons = cons.concat(c);
+      }
+      var p = linhasDe(wb, ABA_PENDENCIAS);
+      if (p) p.forEach(function (r) {
+        var k = String(r['Número'] || '').trim(); if (!k) return;
+        if (conta) { if (pend.has(k)) st.pendAtualizadas++; else st.pendNovas++; }
+        pend.delete(k); pend.set(k, r);
+      });
+    });
+    var wb = XLSX.utils.book_new();
+    // célula vazia não é gravada (a planilha fica bem menor)
+    function aba(nome, rs) {
+      if (!cab[nome]) return;
+      var aoa = [cab[nome]].concat(rs.map(function (r) { return cab[nome].map(function (c) { var v = r[c]; return v === '' || v === undefined ? null : v; }); }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), nome);
+    }
+    var rsOM = Array.from(oms.values());
+    aba(ABA_MANUSIS, rsOM);
+    [ABA_ESPEC, ABA_PARADAS].forEach(function (a) {
+      var rs = []; porOM[a].forEach(function (v, k) { if (!rsOM.length || oms.has(k)) rs = rs.concat(v); });
+      aba(a, rs);
+    });
+    aba(ABA_CONSUMO, cons);
+    aba(ABA_PENDENCIAS, Array.from(pend.values()));
+    rsOM.forEach(function (r) { var d = diaChave(r['Data de abertura']); if (d === null) return; if (st.omDe === null || d < st.omDe) st.omDe = d; if (st.omAte === null || d > st.omAte) st.omAte = d; });
+    st.consTotDe = null; cons.forEach(function (r) { var d = diaChave(r['Utilizado em']); if (d !== null && (st.consTotDe === null || d < st.consTotDe)) st.consTotDe = d; });
+    st.oms = rsOM.length; st.consumo = cons.length; st.pendencias = pend.size;
+    ['omDe', 'omAte', 'consDe', 'consAte', 'consTotDe'].forEach(function (k) { st[k + 'Txt'] = textoDia(st[k]); });
+    return { wb: wb, stats: st };
+  }
+
   /** Lê o workbook (SheetJS) e devolve o modelo colunar. */
   function montar(wb, XLSX) {
     var ordens, ativos, apont = [], mov = [], tiposAp = [];
@@ -975,5 +1077,5 @@
     };
   }
 
-  return { montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, temPendencias: temPendencias, juntarPendencias: juntarPendencias, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, atividadeManut: atividadeManut, ATIVIDADES: ATIVIDADES.map(function (a) { return [a[0], a[1]]; }), COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
+  return { juntarPlanilhas: juntarPlanilhas, podeJuntar: podeJuntar, momentoExportacao: momentoExportacao, montar: montar, relerRegras: relerRegras, temConsumo: temConsumo, temOrdens: temOrdens, temPendencias: temPendencias, juntarPendencias: juntarPendencias, categoriasMaterial: categoriasMaterial, juntarConsumo: juntarConsumo, aplicarConsumo: aplicarConsumo, custoAtipico: custoAtipico, deManusis: deManusis, textoManusis: textoManusis, extrairFalhas: extrairFalhas, componentesTrocados: componentesTrocados, atividadeManut: atividadeManut, ATIVIDADES: ATIVIDADES.map(function (a) { return [a[0], a[1]]; }), COMPONENTES: COMPONENTES, VERSAO_PECAS: VERSAO_PECAS, CAMPOS: CAMPOS, CAMPOS_AP: CAMPOS_AP };
 });

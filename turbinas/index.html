@@ -194,6 +194,14 @@ button { cursor: pointer; }
 .pop .acoes-pop { display: flex; justify-content: space-between; padding: 2px 12px 6px; font-size: 12px; }
 .pop .acoes-pop button { border: 0; background: none; color: var(--accent-ink); font-weight: 600; padding: 2px 0; }
 .pop .lista { overflow: auto; padding: 0 6px 8px; }
+.pop-atualizar { width: min(340px, calc(100vw - 16px)); padding: 6px; }
+.item-atualizar { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 10px; color: var(--ink); cursor: pointer; font: inherit; }
+.item-atualizar:hover, .item-atualizar:focus-visible { background: var(--hover); }
+.item-atualizar svg { flex: none; width: 20px; height: 20px; margin-top: 1px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.item-atualizar b { display: block; font-size: 14px; }
+.item-atualizar small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 2px; }
+.item-atualizar.perigo b { color: var(--serious, #c0392b); }
+.pop-atualizar .dica { margin: 4px 10px 8px; font-size: 12px; color: var(--muted); line-height: 1.4; }
 .opc {
   display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; width: 100%;
   border: 0; background: transparent; text-align: left; padding: 6px 8px; border-radius: 6px; font-size: 13px;
@@ -941,12 +949,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-22.4'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-25.1'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba "Consumo" com filtro de parque e turbina (ou toque no nome da turbina na tabela); uma linha por material consumido: turbina, data, OM, status, quantidade, unidade e custo.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): agora dá para juntar os anos e somar o mês. Em “Atualizar base”, escolha de uma vez os arquivos de 2025 e 2026 (OMs, consumo e pendências); depois, todo mês, some só os arquivos novos. “Baixar base completa” gera um arquivo só com tudo.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -3905,10 +3913,10 @@ function exportarCSV(linhas) {
    O CSV vai para o "Compartilhar" do Android (Drive, WhatsApp, e-mail, Arquivos). */
 function appAndroid() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
 if (appAndroid()) document.documentElement.classList.add('app-android');
-function compartilharArquivo(nome, txt) {
+function compartilharArquivo(nome, txt, base64) {
   var Pl = window.Capacitor.Plugins || {}, FS = Pl.Filesystem, SH = Pl.Share;
   if (!FS || !SH) { alert('Não foi possível exportar neste aparelho.'); return; }
-  FS.writeFile({ path: nome, data: txt, directory: 'CACHE', encoding: 'utf8' })
+  FS.writeFile(base64 ? { path: nome, data: txt, directory: 'CACHE' } : { path: nome, data: txt, directory: 'CACHE', encoding: 'utf8' })
     .then(function (r) { return SH.share({ title: nome, files: [r.uri], dialogTitle: 'Salvar ou enviar ' + nome }); })
     .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) alert('Não foi possível exportar: ' + (e && e.message || e)); });
 }
@@ -4386,7 +4394,7 @@ function abrirPop(botao, construir, id) {
   var el = h('div', { class: 'pop', role: 'dialog' });
   document.body.append(el);
   var r = botao.getBoundingClientRect();
-  el.style.left = Math.max(8, Math.min(r.left, innerWidth - (id === 'busca-om' ? Math.min(388, innerWidth - 8) : 316))) + 'px';
+  el.style.left = Math.max(8, Math.min(r.left, innerWidth - (id === 'busca-om' ? Math.min(388, innerWidth - 8) : id === 'atualizar' ? Math.min(348, innerWidth - 8) : 316))) + 'px';
   el.style.top = (r.bottom + 6) + 'px';
   var fora = function (ev) { if (!el.contains(ev.target) && !botao.contains(ev.target)) fecharPop(); };
   var esc = function (ev) { if (ev.key === 'Escape') { fecharPop(); botao.focus(); } };
@@ -4666,7 +4674,7 @@ function montarApp() {
       h('button', { class: 'btn', type: 'button', id: 'btn-analise', onclick: abrirAnaliseGeral, 'aria-label': 'Análise geral', title: 'Analisar tudo de uma vez: consumo de material, pendências, custos e OMs fechadas' }, icone('analise'), h('span', { class: 'txt' }, 'Análise geral')),
       h('button', { class: 'btn', type: 'button', 'data-imprimir': '', onclick: function () { window.print(); }, title: 'Imprimir ou salvar em PDF' }, icone('imprimir'), h('span', { class: 'txt' }, 'PDF')),
       botaoInstalar(),
-      h('button', { class: 'btn prim', type: 'button', onclick: escolherArquivo, title: 'Carregar a planilha de OMs mais recente' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
+      h('button', { class: 'btn prim', type: 'button', id: 'btn-atualizar', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', onclick: function (ev) { abrirPop(ev.currentTarget, popAtualizar, 'atualizar'); }, title: 'Somar os arquivos novos do Manusis, baixar a base completa ou começar do zero' }, icone('enviar'), h('span', { class: 'txt' }, 'Atualizar base')),
       h('button', { class: 'btn icone', type: 'button', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro', title: 'Tema claro/escuro' }, icone(temaEscuro() ? 'sol' : 'lua'))));
   var filtros = h('div', { class: 'filtros' });
   var pagina = h('main', { class: 'pagina', id: 'pagina', tabindex: '-1' });
@@ -4895,8 +4903,42 @@ function maisRecente(a, b) {
  * Lê uma ou mais planilhas (ou .zip com elas): a exportação de OMs (Manusis ou Base Power BI) e,
  * opcional, o consumo de materiais do Manusis, que se liga às OMs pelo número.
  */
-function lerArquivo(arquivos, aoErro) {
+/* ---- Base acumulada (planilha juntada de todas as exportações), guardada no aparelho para somar o mês seguinte ---- */
+function lerAcumulado() {
+  return abrirBanco().then(function (db) {
+    return new Promise(function (ok) {
+      var req = db.transaction('base', 'readonly').objectStore('base').get('acumulado');
+      req.onsuccess = function () { ok(req.result || null); };
+      req.onerror = function () { ok(null); };
+    });
+  }).catch(function () { return null; });
+}
+function guardarAcumulado(reg) {
+  return abrirBanco().then(function (db) {
+    return new Promise(function (ok) {
+      var tx = db.transaction('base', 'readwrite');
+      if (reg) tx.objectStore('base').put(reg, 'acumulado'); else tx.objectStore('base').delete('acumulado');
+      tx.oncomplete = function () { ok(true); };
+      tx.onerror = tx.onabort = function () { ok(false); };
+    });
+  }).catch(function () { return false; });
+}
+// "dd/mm/aaaa" do dia do painel -> aaaammdd
+function chaveDoDia(dia) { var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(fData(dia) || ''); return m ? +(m[3] + m[2] + m[1]) : null; }
+function diasEntre(a, b) { // aaaammdd
+  var d = function (k) { return Date.UTC(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100); };
+  return Math.round((d(b) - d(a)) / 864e5);
+}
+
+/**
+ * Lê uma ou mais planilhas (ou .zip com elas) do Manusis: OMs, consumo de materiais e pendências,
+ * de um ou vários anos. Com modo 'somar' (padrão), junta com a base acumulada guardada no aparelho:
+ * a exportação mais nova prevalece (OM e pendência pelo número; consumo pelos dias que o arquivo cobre).
+ * Com modo 'zero', a base passa a ser só o que foi escolhido. A base antiga do Power BI substitui, como antes.
+ */
+function lerArquivo(arquivos, aoErro, modo) {
   arquivos = Array.prototype.slice.call(arquivos.length !== undefined ? arquivos : [arquivos]);
+  modo = modo || 'somar';
   // imagem = logo da empresa
   var ehImagem = function (a) { return /^image\//.test(a.type || '') || /\.(png|jpe?g|webp|svg)$/i.test(a.name || ''); };
   var imagens = arquivos.filter(ehImagem);
@@ -4908,56 +4950,65 @@ function lerArquivo(arquivos, aoErro) {
     }, function (e) { avisar('❌ ' + e.message, 'erro', true); });
     if (!arquivos.length) return;
   }
-  var nomes = arquivos.map(function (a) { return '“' + a.name + '”'; }).join(' e ');
+  var nomes = arquivos.map(function (a) { return '“' + a.name + '”'; }).join(', ');
   avisar('Lendo ' + nomes + '… Pode levar alguns segundos.', 'info', true);
+  var XL, cancelado = false;
   // deixa o aviso aparecer antes do processamento pesado
   new Promise(function (ok) { setTimeout(ok, 60); })
     .then(carregarSheetJS)
     .then(function (XLSX) {
+      XL = XLSX;
       return Promise.all(arquivos.map(function (a) {
         return lerBytes(a).then(planilhasDoZip).then(function (bufs) {
           return bufs.map(function (buf) {
-            try { return XLSX.read(buf, { type: 'array' }); }
+            try { return { wb: XLSX.read(buf, { type: 'array' }), nome: a.name || '', quando: a.lastModified || 0 }; }
             catch (e) { throw new Error('Não consegui abrir “' + a.name + '” como planilha do Excel (.xlsx).'); }
           });
         });
-      })).then(function (listas) {
-        var wbs = [].concat.apply([], listas);
-        // a mesma planilha pode trazer as ordens e o consumo (base única do painel)
-        var temPend = ModeloTurbinas.temPendencias;
-        var deOMs = wbs.filter(function (wb) { return ModeloTurbinas.temOrdens(wb) || (!ModeloTurbinas.temConsumo(wb) && !temPend(wb)); });
-        var deConsumo = wbs.filter(function (wb) { return ModeloTurbinas.temConsumo(wb); });
-        var dePend = wbs.filter(temPend);
-        var modelo = deOMs.length ? ModeloTurbinas.montar(deOMs[deOMs.length - 1], XLSX) : M;
-        if (!modelo) throw new Error('Carregue primeiro a exportação de OMs do Manusis; o consumo de materiais e as pendências se ligam a ela pelo número da OM.');
-        if (deOMs.length && M && M.consumo && !deConsumo.length && modelo.fonte === 'manusis') {
-          // base de OMs nova: o consumo já carregado continua valendo para as OMs que ele cita
-          modelo.ordens.custoOM = modelo.ordens.custoTot.slice();
-          modelo.consumo = M.consumo; ModeloTurbinas.aplicarConsumo(modelo);
+      }));
+    })
+    .then(function (listas) {
+      var lidas = [].concat.apply([], listas);
+      var juntar = lidas.every(function (x) { return ModeloTurbinas.podeJuntar(x.wb); });
+      if (!juntar) return montarSemJuntar(XL, lidas.map(function (x) { return x.wb; }));
+      return (modo === 'somar' ? lerAcumulado() : Promise.resolve(null)).then(function (acum) {
+        var momento = function (x) { var m = ModeloTurbinas.momentoExportacao(x.nome); return m === null ? x.quando : m; };
+        lidas.sort(function (a, b) { return momento(a) - momento(b); });
+        var lista = lidas.map(function (x) { return { wb: x.wb }; });
+        if (acum && acum.bytes) lista.unshift({ wb: XL.read(acum.bytes, { type: 'array' }), base: true });
+        var j = ModeloTurbinas.juntarPlanilhas(lista, XL), st = j.stats, wb = j.wb;
+        // se o resultado começa bem depois da base atual (ex.: só o mês, sem a base completa guardada), perderia o histórico: confirma antes
+        if (modo === 'somar' && M && M.fonte === 'manusis') {
+          var ini = chaveDoDia(diaMin), trocas = [];
+          if (ModeloTurbinas.temOrdens(wb) && st.omDe && ini && diasEntre(ini, st.omDe) > 31) trocas.push('as OMs (hoje desde ' + fData(diaMin) + ') só pelas abertas de ' + st.omDeTxt + ' a ' + st.omAteTxt);
+          if (ModeloTurbinas.temConsumo(wb) && M.consumo && st.consTotDe) {
+            var dc = M.consumo.data.map(function (d) { var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(d || ''); return m ? +(m[3] + m[2] + m[1]) : 0; }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+            if (dc && diasEntre(dc, st.consTotDe) > 31) trocas.push('o consumo de materiais só pelo de ' + st.consTotDeTxt + ' em diante');
+          }
+          if (trocas.length && !confirm('Este aparelho ainda não tem a base completa guardada para somar.\n\nIsso vai trocar ' + trocas.join(' e ') +
+            '.\n\nPara somar sem perder o histórico, cancele e escolha juntos os arquivos de 2025 e 2026 (ou a “base completa” .xlsx) e os do mês.\n\nTrocar mesmo assim?')) {
+            cancelado = true; return null;
+          }
         }
-        if (deOMs.length && M && M.pendencias && !dePend.length) modelo.pendencias = M.pendencias; // idem para as pendências
-        var stats = null, statsP = null;
-        if (deConsumo.length) {
-          if (modelo.fonte !== 'manusis') throw new Error('O consumo de materiais só se liga à exportação de OMs do Manusis. Carregue as duas planilhas.');
-          stats = ModeloTurbinas.juntarConsumo(modelo, deConsumo[deConsumo.length - 1], XLSX);
-        }
-        if (dePend.length) statsP = ModeloTurbinas.juntarPendencias(modelo, dePend[dePend.length - 1], XLSX);
-        modelo.gerado = new Date().toISOString();
-        var uriLogo = wbs.map(logoDaPlanilha).filter(Boolean)[0];
-        var logoPronta = uriLogo ? aplicarLogoUrl(uriLogo).catch(function () { /* segue sem logo */ }) : Promise.resolve();
-        return logoPronta.then(function () { return guardarBase(modelo); }).then(function (guardou) {
-          fecharTodasCamadas();
-          try { location.hash = ''; } catch (e) { /* sem histórico */ }
-          iniciar(modelo);
-          window.scrollTo(0, 0);
-          var msg = '✅ Base atualizada: ' + fInt(N) + ' OMs, dados até ' + fData(diaMax) + '.';
-          if (stats) msg += ' Consumo de materiais: ' + fInt(stats.linhas) + ' consumos em ' + fInt(stats.oms) + ' OMs' +
-            (stats.fora ? ' (' + fInt(stats.fora) + ' OMs do consumo não estão na base de OMs — puxe as duas do mesmo período).' : ', todas ligadas à base.');
-          else if (modelo.consumo) msg += ' O consumo de materiais carregado antes continua ligado.';
-          if (statsP) msg += ' Pendências: ' + fInt(statsP.linhas) + '.';
-          if (guardou) avisar(msg, stats && stats.fora ? 'alerta' : 'ok', !!(stats || statsP));
-          else avisar(msg + ' Atenção: este aplicativo não guarda dados — ao fechar, volta a base anterior. Abra o painel pelo Chrome para manter a atualização.', 'alerta', true);
-        });
+        return montarJuntada(XL, wb, st, !!acum);
+      });
+    })
+    .then(function (r) {
+      if (cancelado || !r) { avisar('Nada foi alterado.', 'info'); return; }
+      var modelo = r.modelo;
+      modelo.gerado = new Date().toISOString();
+      var uriLogo = r.wbs.map(logoDaPlanilha).filter(Boolean)[0];
+      var logoPronta = uriLogo ? aplicarLogoUrl(uriLogo).catch(function () { /* segue sem logo */ }) : Promise.resolve();
+      return logoPronta.then(function () { return guardarBase(modelo); }).then(function (guardou) {
+        return (r.acumulado ? guardarAcumulado(r.acumulado) : modo === 'zero' ? guardarAcumulado(null) : Promise.resolve()).then(function () { return guardou; });
+      }).then(function (guardou) {
+        fecharTodasCamadas();
+        try { location.hash = ''; } catch (e) { /* sem histórico */ }
+        iniciar(modelo);
+        window.scrollTo(0, 0);
+        var msg = r.msg(), alerta = r.alerta;
+        if (guardou) avisar(msg, alerta ? 'alerta' : 'ok', true);
+        else avisar(msg + ' Atenção: este aplicativo não guarda dados — ao fechar, volta a base anterior. Abra o painel pelo Chrome para manter a atualização.', 'alerta', true);
       });
     })
     .catch(function (e) {
@@ -4967,14 +5018,113 @@ function lerArquivo(arquivos, aoErro) {
     });
 }
 
+/** Monta o modelo a partir da planilha juntada (Manusis) e prepara a mensagem. */
+function montarJuntada(XLSX, wb, st, somou) {
+  var temOM = ModeloTurbinas.temOrdens(wb);
+  var modelo = temOM ? ModeloTurbinas.montar(wb, XLSX) : M;
+  if (!modelo) throw new Error('Carregue primeiro a exportação de OMs do Manusis; o consumo de materiais e as pendências se ligam a ela pelo número da OM.');
+  if (!temOM && modelo.fonte !== 'manusis') throw new Error('O consumo de materiais e as pendências só se ligam à exportação de OMs do Manusis. Carregue as planilhas de OMs também.');
+  if (temOM && M && M.consumo && !ModeloTurbinas.temConsumo(wb) && modelo.fonte === 'manusis') {
+    // base de OMs nova: o consumo já carregado continua valendo para as OMs que ele cita
+    modelo.ordens.custoOM = modelo.ordens.custoTot.slice();
+    modelo.consumo = M.consumo; ModeloTurbinas.aplicarConsumo(modelo);
+  }
+  if (temOM && M && M.pendencias && !ModeloTurbinas.temPendencias(wb)) modelo.pendencias = M.pendencias;
+  var sc = ModeloTurbinas.temConsumo(wb) ? ModeloTurbinas.juntarConsumo(modelo, wb, XLSX) : null;
+  var sp = ModeloTurbinas.temPendencias(wb) ? ModeloTurbinas.juntarPendencias(modelo, wb, XLSX) : null;
+  // a planilha juntada só vira base acumulada quando tem as OMs (sem elas não dá para remontar o painel)
+  var acumulado = temOM ? { bytes: XLSX.write(wb, { type: 'array', bookType: 'xlsx', compression: true, bookSST: true }), gerado: new Date().toISOString(), stats: st } : null;
+  return {
+    modelo: modelo, wbs: [wb], acumulado: acumulado, alerta: !!(sc && sc.fora && !somou),
+    msg: function () {
+      var p = [];
+      if (somou) {
+        p.push('✅ Base somada.');
+        if (temOM) p.push('OMs: ' + fInt(st.omNovas) + ' novas e ' + fInt(st.omAtualizadas) + ' atualizadas.');
+        if (sc && st.consLinhas) p.push('Consumo de ' + st.consDeTxt + ' a ' + st.consAteTxt + ': ' + fInt(st.consLinhas) + ' linhas' + (st.consSubstituidas ? ' (' + fInt(st.consSubstituidas) + ' desses dias já estavam e foram trocadas)' : '') + '.');
+        if (sp && (st.pendNovas || st.pendAtualizadas)) p.push('Pendências: ' + fInt(st.pendNovas) + ' novas e ' + fInt(st.pendAtualizadas) + ' atualizadas.');
+      } else p.push('✅ Base atualizada.');
+      p.push('A base tem ' + fInt(N) + ' OMs, abertas de ' + fData(diaMin) + ' a ' + fData(diaMax) + (CONS ? ', ' + fInt(M.consumo.om.length) + ' consumos' : '') + (M.pendencias ? ' e ' + fInt(M.pendencias.num.length) + ' pendências' : '') + '.');
+      if (!somou && sc && sc.fora) p.push(fInt(sc.fora) + ' OMs do consumo não estão na base de OMs — puxe as OMs do mesmo período.');
+      if (acumulado) p.push('No mês que vem, carregue só os arquivos novos: eles são somados a esta base.');
+      return p.join(' ');
+    }
+  };
+}
+
+/** Base antiga do Power BI (ou planilha que não é do Manusis): substitui, como antes. */
+function montarSemJuntar(XLSX, wbs) {
+  var temPend = ModeloTurbinas.temPendencias;
+  var deOMs = wbs.filter(function (wb) { return ModeloTurbinas.temOrdens(wb) || (!ModeloTurbinas.temConsumo(wb) && !temPend(wb)); });
+  var deConsumo = wbs.filter(function (wb) { return ModeloTurbinas.temConsumo(wb); });
+  var dePend = wbs.filter(temPend);
+  var modelo = deOMs.length ? ModeloTurbinas.montar(deOMs[deOMs.length - 1], XLSX) : M;
+  if (!modelo) throw new Error('Carregue primeiro a exportação de OMs do Manusis; o consumo de materiais e as pendências se ligam a ela pelo número da OM.');
+  var stats = null, statsP = null;
+  if (deConsumo.length) {
+    if (modelo.fonte !== 'manusis') throw new Error('O consumo de materiais só se liga à exportação de OMs do Manusis. Carregue as duas planilhas.');
+    stats = ModeloTurbinas.juntarConsumo(modelo, deConsumo[deConsumo.length - 1], XLSX);
+  }
+  if (dePend.length) statsP = ModeloTurbinas.juntarPendencias(modelo, dePend[dePend.length - 1], XLSX);
+  return {
+    modelo: modelo, wbs: wbs, acumulado: null, alerta: !!(stats && stats.fora),
+    msg: function () {
+      var msg = '✅ Base atualizada: ' + fInt(N) + ' OMs, dados até ' + fData(diaMax) + '.';
+      if (stats) msg += ' Consumo de materiais: ' + fInt(stats.linhas) + ' consumos em ' + fInt(stats.oms) + ' OMs' +
+        (stats.fora ? ' (' + fInt(stats.fora) + ' OMs do consumo não estão na base de OMs — puxe as duas do mesmo período).' : ', todas ligadas à base.');
+      if (statsP) msg += ' Pendências: ' + fInt(statsP.linhas) + '.';
+      return msg;
+    }
+  };
+}
+
+/** Baixa (ou compartilha, no app) a base completa juntada, para guardar ou abrir em outro aparelho. */
+function baixarBaseCompleta() {
+  lerAcumulado().then(function (acum) {
+    if (!acum || !acum.bytes) { avisar('Este aparelho ainda não tem a base completa. Carregue juntos os arquivos de 2025 e 2026 (OMs, consumo e pendências) pelo botão “Atualizar base”.', 'alerta', true); return; }
+    var d = new Date(acum.gerado || Date.now()), nome = 'Base_Manusis_completa_' + ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear() + '.xlsx';
+    var bytes = new Uint8Array(acum.bytes);
+    if (appAndroid()) {
+      var bin = ''; for (var k = 0; k < bytes.length; k += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(k, k + 32768));
+      compartilharArquivo(nome, btoa(bin), true); return;
+    }
+    var a = h('a', { href: URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })), download: nome });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  });
+}
+
+/** Menu do botão "Atualizar base": somar o mês, baixar a base completa ou começar do zero. */
+function popAtualizar(el) {
+  var item = function (ic, tit, sub, fn, cls) {
+    return h('button', { type: 'button', class: 'item-atualizar' + (cls ? ' ' + cls : ''), onclick: function () { fecharPop(); fn(); } },
+      icone(ic), h('span', null, h('b', null, tit), h('small', null, sub)));
+  };
+  var info = h('p', { class: 'dica' }, 'Verificando a base guardada…');
+  el.classList.add('pop-atualizar');
+  el.append(
+    item('enviar', 'Somar arquivos à base', 'Escolha os arquivos novos do Manusis (OMs, consumo e pendências, .xlsx ou .zip). Pode escolher vários de uma vez.', function () { escolherArquivo('somar'); }),
+    item('baixar', 'Baixar base completa (.xlsx)', 'Tudo junto num arquivo só, para guardar ou abrir no notebook.', baixarBaseCompleta),
+    item('alerta', 'Começar do zero', 'Troca a base inteira só pelos arquivos que você escolher.', function () {
+      if (confirm('A base guardada neste aparelho será trocada só pelos arquivos que você escolher agora. Continuar?')) escolherArquivo('zero');
+    }, 'perigo'),
+    info);
+  lerAcumulado().then(function (acum) {
+    info.textContent = acum && acum.stats
+      ? 'Base completa guardada: ' + fInt(acum.stats.oms) + ' OMs (abertas de ' + acum.stats.omDeTxt + ' a ' + acum.stats.omAteTxt + '), ' + fInt(acum.stats.consumo) + ' consumos e ' + fInt(acum.stats.pendencias) + ' pendências. Todo mês, puxe do Manusis do mês anterior até hoje e some aqui: o que se repete não duplica.'
+      : 'Ainda não há base completa neste aparelho. Para juntar os anos, escolha de uma vez os arquivos de 2025 e de 2026 (OMs, consumo e pendências). Depois, todo mês, some só os arquivos novos.';
+  });
+}
+
 function fecharTodasCamadas() { while (pilha.length) removerTopo(); }
 
-function escolherArquivo() {
+function escolherArquivo(modo) {
+  if (typeof modo !== 'string') modo = 'somar';
   var antigo = document.getElementById('escolher-base');
   if (antigo) antigo.remove();
   // Alguns aplicativos de celular ignoram um seletor de arquivo que não está na página.
   var inp = h('input', { type: 'file', id: 'escolher-base', multiple: true, accept: '.xlsx,.xlsm,.xls,.zip,.png,.jpg,.jpeg,.webp,.svg,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/zip,application/x-zip-compressed', style: 'position:fixed;left:-9999px;opacity:0' });
-  inp.addEventListener('change', function () { var fs = inp.files && Array.prototype.slice.call(inp.files); inp.remove(); if (fs && fs.length) lerArquivo(fs); });
+  inp.addEventListener('change', function () { var fs = inp.files && Array.prototype.slice.call(inp.files); inp.remove(); if (fs && fs.length) lerArquivo(fs, null, modo); });
   document.body.append(inp);
   inp.click();
 }
