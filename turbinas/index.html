@@ -441,6 +441,7 @@ small .mc { display: inline; }
 .tab.baixas td small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
 .tab.baixas tr.consumivel b { font-weight: 500; color: var(--ink-2); }
 .pag { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 18px 0; font-size: 12.5px; color: var(--ink-2); }
+.ver-aba { width: auto; padding: 4px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .barra-tab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .sel-consumo { flex: 0 1 220px; min-width: 0; }
 .lnk-wtg { font: inherit; font-weight: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
@@ -701,6 +702,7 @@ function sv(tag, attrs) {
 }
 var ICONES = {
   caixa: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
+  painel: '<path d="M3 4h18v16H3zM3 10h18M10 10v10"/>',
   visao: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z"/>',
   turbinas: '<path d="M12 12v10M9 22h6"/><circle cx="12" cy="11" r="1.6"/><path d="M12 9.4 11 2.5c2.6.4 3.3 3.8 1 6.9M13.4 11.8l6.5 2.6c-1.6 2-4.9 1-6.5-2.6M10.6 11.8 4.1 14.4c.2-2.6 3.3-4 6.5-2.6"/>',
   hh: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><path d="M16 4.8a3.2 3.2 0 0 1 0 6.4M18 14.6c1.5.7 2.4 2.4 2.6 4.9"/>',
@@ -771,7 +773,7 @@ var IDX = { tipo: {}, grupo: {}, status: {}, faixa: {}, entrega: {}, categoria: 
 var DIMS = ['complexo', 'parque', 'wtg', 'tipo', 'sistema', 'falha', 'peca', 'status', 'parada'];
 var ROTULO_DIM = { complexo: 'Complexo', parque: 'Parque', wtg: 'Turbina', tipo: 'Tipo de serviço', sistema: 'Sistema', status: 'Status', parada: 'Máquina parada', peca: 'Componente', falha: 'Falha' };
 var estado = {
-  pagina: 'visao',
+  pagina: 'resumo',
   per: { chave: 'tudo', ini: 0, fim: 0 },
   f: { complexo: new Set(), parque: new Set(), wtg: new Set(), tipo: new Set(), sistema: new Set(), falha: new Set(), peca: new Set(), status: new Set(), parada: new Set() },
   pecasTab: { ordem: 'abertura', desc: true, pag: 0 },
@@ -949,12 +951,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-25.3'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-25.4'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): no filtro Período, opções “Ano 2026” e “Ano 2025”, e trimestres do mais recente para o mais antigo. Para juntar os anos, em “Atualizar base” → “Somar arquivos à base”, escolha de uma vez os arquivos de 2025 e 2026 (OMs, consumo e pendências).' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): aba nova “Painel único”, com o resumo de OMs, preventivas por ciclo, consumo, pendências e custos numa tela só; no filtro Período, opções “Ano 2026” e “Ano 2025”.' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -1654,6 +1656,138 @@ function secaoMais(pg, chave, resumo, desenhar) {
       h('span', { 'aria-hidden': 'true' }, on ? '▴' : '▾'))));
   if (on) desenhar(pg);
 }
+/* =====================================================================
+   Painel único: o resumo de todas as abas numa tela só (segue os filtros do topo)
+   ===================================================================== */
+function paginaResumo(pg) {
+  var B = base();
+  var verMais = function (aba, rot) { return h('button', { type: 'button', class: 'mini-btn ver-aba', onclick: function () { irPara(aba); } }, rot || 'Ver detalhes', ' →'); };
+  pg.append(h('div', { class: 'titulo-pag' }, h('h2', null, 'Painel único'),
+    h('p', null, 'Resumo de OMs, preventivas, consumo, pendências e custos numa tela só. Segue os filtros do topo (período, complexo, parque, turbina…). Toque em “Ver detalhes” para abrir a aba.')));
+
+  /* ---- OMs ---- */
+  var gConc = IDX.grupo['Concluída'], gCanc = IDX.grupo['Cancelada'];
+  var nFech = contar(B, function (i) { return O.grupo[i] === gConc; }), nCanc = contar(B, function (i) { return O.grupo[i] === gCanc; }), nAb = B.length - nFech - nCanc;
+  var nCorr = contar(B, function (i) { return O.tipo[i] === IDX.tipo['Corretiva']; });
+  pg.append(h('div', { class: 'kpis k5' },
+    kpi({ rot: 'OMs', valor: fInt(B.length), valorTexto: fInt(B.length), sub: 'no período e filtros' }),
+    kpi({ rot: 'Fechadas', valor: fInt(nFech), valorTexto: fInt(nFech), sub: B.length ? fPct(nFech / B.length) + ' do total' : '' }),
+    kpi({ rot: 'Em aberto', valor: fInt(nAb), valorTexto: fInt(nAb), sub: B.length ? fPct(nAb / B.length) + ' do total' : '' }),
+    kpi({ rot: 'Canceladas', valor: fInt(nCanc), valorTexto: fInt(nCanc), sub: B.length ? fPct(nCanc / B.length) + ' do total' : '' }),
+    kpi({ rot: 'Corretivas', valor: fInt(nCorr), valorTexto: fInt(nCorr), sub: B.length ? fPct(nCorr / B.length) + ' das OMs' : '' })));
+  var cS = new Map(); B.forEach(function (i) { cS.set(O.status[i], (cS.get(O.status[i]) || 0) + 1); });
+  var itS = Array.from(cS.entries()).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) { return { k: e[0], rot: M.dic.status[e[0]], v: e[1], cor: corStatusOM(e[0]), extra: B.length ? fPct(e[1] / B.length) : '' }; });
+  pg.append(cartao({ id: 'res-status', span: 's6', titulo: 'OMs por status', sub: 'Status no Manusis · toque para filtrar', ferramentas: [verMais('ordens')],
+    desenhar: function (el) { barrasH(el, itS, { larguraRotulo: '46%', unidade: 'OMs', ativo: estado.f.status.size ? estado.f.status : null, onClick: function (k) { alternarFiltro('status', k); } }); },
+    dados: { cols: [{ k: 'rot', rot: 'Status' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'extra', rot: '%' }], linhas: itS } }));
+  var itT = tiposPresentes(B).map(function (t) { return { k: t.k, rot: t.nome, v: t.v, cor: t.cor, extra: B.length ? fPct(t.v / B.length) : '' }; });
+  pg.append(cartao({ id: 'res-tipo', span: 's6', titulo: 'OMs por tipo de serviço', sub: 'Toque para filtrar', ferramentas: [verMais('ordens')],
+    desenhar: function (el) { barrasH(el, itT, { larguraRotulo: '46%', unidade: 'OMs', ativo: estado.f.tipo.size ? estado.f.tipo : null, onClick: function (k) { alternarFiltro('tipo', k); } }); },
+    dados: { cols: [{ k: 'rot', rot: 'Tipo' }, { k: 'v', rot: 'OMs', num: true, fmt: fInt }, { k: 'extra', rot: '%' }], linhas: itT } }));
+
+  /* ---- Preventivas e atividades programadas, por ciclo (status de hoje) ---- */
+  var AT = ModeloTurbinas.ATIVIDADES, at = atividadesOM();
+  var anoCiclo = function (i) { var m = /20\d\d/.exec(O.desc[i] || ''); return m ? +m[0] : O.dProg && O.dProg[i] !== null && O.dProg[i] !== undefined ? dataDe(O.dProg[i]).getUTCFullYear() : null; };
+  var ciclos = new Map();
+  for (var i = 0; i < N; i++) {
+    if (at[i] < 0 || !passaDims(i, 'status')) continue;
+    if (O.grupo[i] === gCanc) continue;
+    var ano = anoCiclo(i), pq = O.wtg[i] >= 0 ? parqueDoWtg[O.wtg[i]] : -1, cx = pq >= 0 ? M.parqueComplexo[pq] : -1;
+    var key = at[i] + '|' + ano + '|' + cx;
+    var r = ciclos.get(key) || { k: key, ativ: at[i], grupo: AT[at[i]][0], rot: AT[at[i]][1], ano: ano, cx: cx, cxTxt: cx >= 0 ? M.complexos[cx] : '–', tot: 0, feitas: 0, ag: 0, ab: 0 };
+    r.tot++;
+    if (O.grupo[i] === gConc) r.feitas++; else if (M.dic.status[O.status[i]] === 'Apontamentos concluídos') r.ag++; else r.ab++;
+    ciclos.set(key, r);
+  }
+  var anoHoje = dataDe(diaMax).getUTCFullYear();
+  var linC = Array.from(ciclos.values()).filter(function (r) { return r.ano !== null && r.ano >= anoHoje - 1 && r.ano <= anoHoje; })
+    .map(function (r) { r.pct = r.tot ? r.feitas / r.tot : 0; r.ciclo = r.rot + ' ' + r.ano; return r; })
+    .sort(function (a, b) { return b.ano - a.ano || a.ativ - b.ativ || a.cx - b.cx; });
+  var corPct = function (v) { return v >= 0.9 ? 'var(--good)' : v >= 0.5 ? 'var(--s4)' : 'var(--critical, #d03b3b)'; };
+  pg.append(cartao({ id: 'res-ciclos', span: 's12', titulo: 'Preventivas e atividades programadas por ciclo',
+    sub: 'Ciclos de ' + (anoHoje - 1) + ' e ' + anoHoje + ' · status de hoje, sem contar as canceladas · segue complexo, parque e turbina do topo · toque numa linha para abrir na Programação',
+    ferramentas: [verMais('programacao')],
+    desenhar: function (el) {
+      if (!linC.length) { el.append(h('p', { class: 'nota' }, 'Nenhuma atividade programada nos filtros.')); return; }
+      tabela(el, {
+        cols: [{ k: 'ciclo', rot: 'Ciclo', classe: 'forte' }, { k: 'grupo', rot: 'Grupo' }].concat(M.complexos.length > 1 ? [{ k: 'cxTxt', rot: 'Complexo' }] : [], [
+          { k: 'tot', rot: 'Programadas', num: true, fmt: fInt }, { k: 'feitas', rot: 'Fechadas', num: true, fmt: fInt },
+          { k: 'ag', rot: 'Aguardando fechar', num: true, fmt: function (v) { return v ? fInt(v) : '–'; } },
+          { k: 'ab', rot: 'Em aberto', num: true, fmt: function (v) { return v ? h('b', null, fInt(v)) : '–'; } },
+          { k: 'pct', rot: 'Feito', num: true, fmt: function (v) { return h('span', { class: 'pill' }, h('i', { style: 'background:' + corPct(v) }), fPct(v)); } }]),
+        linhas: linC, altura: 460,
+        onLinha: function (r) { progF = PROG_F0(); progF.ativ = r.ativ; progF.ano = r.ano; if (r.cx >= 0 && M.complexos.length > 1) progF.complexo = r.cx; irPara('programacao'); }
+      });
+    } }));
+
+  /* ---- Consumo de materiais ---- */
+  if (CONS) {
+    var C = M.consumo, matT = new Map(), wT = new Map(), nLin = 0, oms = new Set(), tot = 0, nSusp = 0;
+    for (var j = 0; j < N; j++) {
+      if (!CONS[j] || !passaDims(j)) continue;
+      CONS[j].forEach(function (k) {
+        if (CDIA[k] === null || !noPeriodo(CDIA[k])) return;
+        nLin++; oms.add(j);
+        if (C.suspeito[k] && !estado.atipicos) { nSusp++; return; }
+        var v = C.vTot[k] || 0; tot += v;
+        matT.set(C.mat[k], (matT.get(C.mat[k]) || 0) + v);
+        if (O.wtg[j] >= 0) wT.set(O.wtg[j], (wT.get(O.wtg[j]) || 0) + v);
+      });
+    }
+    var itM = Array.from(matT.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8).map(function (e) { var nm = separarMaterial(C.materiais[e[0]]); return { k: e[0], rot: nm.desc, v: e[1], nota: nm.cod, cor: 'var(--s1)' }; });
+    pg.append(cartao({ id: 'res-consumo', span: 's6', titulo: 'Consumo de materiais: ' + fMoeda(tot),
+      sub: fInt(nLin) + ' consumos em ' + fInt(oms.size) + ' OMs · data do consumo no período' + (nSusp ? ' · ' + fInt(nSusp) + ' com preço a validar fora do total' : '') + ' · os 8 materiais de maior valor',
+      ferramentas: [verMais('consumo')],
+      desenhar: function (el) { barrasH(el, itM, { larguraRotulo: '56%', fmt: function (v) { return fMoeda(v); }, onClick: function (k) { matSel.clear(); matSel.add(k); irPara('trocas'); }, dica: 'Toque para analisar o material' }); },
+      dados: { cols: [{ k: 'rot', rot: 'Material' }, { k: 'nota', rot: 'Código' }, { k: 'v', rot: 'Valor', num: true, fmt: fMoedaCompleta }], linhas: itM } }));
+  } else {
+    pg.append(h('section', { class: 'card s6' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Consumo de materiais'), h('p', null, 'Carregue o consumo de materiais do Manusis em “Atualizar base”.')))));
+  }
+
+  /* ---- Pendências ---- */
+  if (PEND && M.pendencias) {
+    var P = M.pendencias, stP = new Map(), wP = new Map(), nP = 0;
+    for (var q = 0; q < P.num.length; q++) {
+      if (!pendNoLocal(q) || !noPeriodo(PEND.dAb[q])) continue;
+      nP++;
+      var st = P.status[q] || '–'; stP.set(st, (stP.get(st) || 0) + 1);
+      if (!/^(conclu|cancel)/i.test(st) && PEND.w[q] >= 0) wP.set(PEND.w[q], (wP.get(PEND.w[q]) || 0) + 1);
+    }
+    var corP = function (st) { return /^conclu/i.test(st) ? 'var(--good)' : /^cancel/i.test(st) ? 'var(--neutral)' : /execu/i.test(st) ? 'var(--s1)' : 'var(--s4)'; };
+    var itP = Array.from(stP.entries()).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) { return { k: e[0], rot: e[0], v: e[1], cor: corP(e[0]), extra: nP ? fPct(e[1] / nP) : '' }; });
+    var nAbP = Array.from(wP.values()).reduce(function (t, v) { return t + v; }, 0);
+    var itWP = Array.from(wP.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 5).map(function (e) { return { k: e[0], rot: M.dic.wtg[e[0]], v: e[1], cor: 'var(--s4)' }; });
+    pg.append(cartao({ id: 'res-pend', span: 's6', titulo: 'Pendências: ' + fInt(nP),
+      sub: 'Abertas no período · ' + fInt(nAbP) + ' ainda não concluídas · embaixo, as turbinas com mais pendências em aberto',
+      ferramentas: [verMais('pendencias')],
+      desenhar: function (el) {
+        barrasH(el, itP, { larguraRotulo: '46%', unidade: 'pendências' });
+        if (itWP.length) { el.append(h('p', { class: 'nota', style: 'margin:14px 0 6px' }, 'Turbinas com mais pendências em aberto')); barrasH(el, itWP, { larguraRotulo: '46%', unidade: 'em aberto', onClick: function (k) { abrirTurbina(k); }, dica: 'Toque para ver a turbina' }); }
+      },
+      dados: { cols: [{ k: 'rot', rot: 'Status' }, { k: 'v', rot: 'Pendências', num: true, fmt: fInt }, { k: 'extra', rot: '%' }], linhas: itP } }));
+  } else {
+    pg.append(h('section', { class: 'card s6' }, h('div', { class: 'card-h' }, h('div', { class: 'tt' }, h('h3', null, 'Pendências'), h('p', null, 'Carregue as pendências do Manusis em “Atualizar base”.')))));
+  }
+
+  /* ---- Custos ---- */
+  var CV = B.filter(custoValido);
+  var cTot = soma(CV, O.custoTot), cMat = soma(CV, O.custoMat), cMO = soma(CV, O.custoMO);
+  var cW = new Map(); CV.forEach(function (i) { if (O.wtg[i] >= 0 && O.custoTot[i]) cW.set(O.wtg[i], (cW.get(O.wtg[i]) || 0) + O.custoTot[i]); });
+  var itCW = Array.from(cW.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8).map(function (e) { return { k: e[0], rot: M.dic.wtg[e[0]], v: e[1], nota: M.parques[parqueDoWtg[e[0]]], cor: 'var(--s2)' }; });
+  pg.append(cartao({ id: 'res-custo', span: 's6', titulo: 'Custos: ' + fMoeda(cTot),
+    sub: 'Material ' + fMoeda(cMat) + ' · mão de obra ' + fMoeda(cMO) + (estado.atipicos ? ' · inclui atípicos' : ' · sem custos atípicos') + ' · as 8 turbinas de maior custo',
+    ferramentas: [verMais('custos')],
+    desenhar: function (el) { barrasH(el, itCW, { larguraRotulo: '40%', fmt: function (v) { return fMoeda(v); }, onClick: function (k) { abrirTurbina(k); }, dica: 'Toque para ver a turbina' }); },
+    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'nota', rot: 'Parque' }, { k: 'v', rot: 'Custo', num: true, fmt: fMoedaCompleta }], linhas: itCW } }));
+
+  /* ---- Turbinas com mais corretivas ---- */
+  var corW = new Map(); B.forEach(function (i) { if (O.wtg[i] >= 0 && O.tipo[i] === IDX.tipo['Corretiva']) corW.set(O.wtg[i], (corW.get(O.wtg[i]) || 0) + 1); });
+  var itCor = Array.from(corW.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8).map(function (e) { return { k: e[0], rot: M.dic.wtg[e[0]], v: e[1], nota: M.parques[parqueDoWtg[e[0]]], cor: 'var(--s3)' }; });
+  pg.append(cartao({ id: 'res-corr', span: 's6', titulo: 'Turbinas com mais corretivas', sub: 'OMs corretivas no período · toque para ver a turbina', ferramentas: [verMais('turbinas')],
+    desenhar: function (el) { barrasH(el, itCor, { larguraRotulo: '40%', unidade: 'corretivas', onClick: function (k) { abrirTurbina(k); } }); },
+    dados: { cols: [{ k: 'rot', rot: 'Turbina' }, { k: 'nota', rot: 'Parque' }, { k: 'v', rot: 'Corretivas', num: true, fmt: fInt }], linhas: itCor } }));
+}
+
 function paginaVisao(pg) {
   var B = base(), b = baldes();
   var bkl = B.filter(function (i) { return O.grupo[i] === IDX.grupo['Backlog']; });
@@ -4641,6 +4775,7 @@ function lerHash() {
    Montagem da aplicação
    ===================================================================== */
 var PAGINAS = {
+  resumo: { rot: 'Painel único', curto: 'Resumo', icone: 'painel', fn: paginaResumo },
   visao: { rot: 'Visão geral', curto: 'Visão', icone: 'visao', fn: paginaVisao },
   turbinas: { rot: 'Turbinas', icone: 'turbinas', fn: paginaTurbinas },
   trocas: { rot: 'Trocas e materiais', curto: 'Trocas', icone: 'componentes', fn: paginaTrocas },
