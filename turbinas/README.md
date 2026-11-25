@@ -33,7 +33,8 @@ junta tudo numa planilha só, guarda no aparelho e, nos meses seguintes, soma s�
 
 - OM e pendência pelo número: a exportação mais nova (pelo carimbo `_ddmmaaaahhmmss_` do nome) prevalece;
 - Especialidades e Paradas pela OM;
-- consumo pelos dias de "Utilizado em" que o arquivo novo cobre (repetir um período não duplica).
+- consumo pela OM: o Manusis exporta o consumo das OMs do período, então a OM que vem no arquivo novo
+  fica com todos os materiais dele (repetir um período não duplica).
 
 **Baixar base completa (.xlsx)** gera esse arquivo único, para guardar ou abrir em outro aparelho.
 **Começar do zero** troca a base só pelos arquivos escolhidos.
