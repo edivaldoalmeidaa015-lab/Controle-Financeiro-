@@ -25,6 +25,19 @@ do Manusis 4 (aba "Consumo de materiais", do mesmo período). Cada baixa se liga
 - as baixas com preço unitário fora do padrão (ex.: óleo cadastrado por litro
   com o preço do tambor), que ficam fora dos totais até o cadastro ser corrigido.
 
+### Juntar anos e somar o mês (base acumulada)
+
+O Manusis exporta um ano por vez. No botão **Atualizar base → Somar arquivos à base** dá para escolher
+de uma vez várias exportações (OMs, consumo e pendências; `.xlsx` ou `.zip`, de anos diferentes). O painel
+junta tudo numa planilha só, guarda no aparelho e, nos meses seguintes, soma só os arquivos novos:
+
+- OM e pendência pelo número: a exportação mais nova (pelo carimbo `_ddmmaaaahhmmss_` do nome) prevalece;
+- Especialidades e Paradas pela OM;
+- consumo pelos dias de "Utilizado em" que o arquivo novo cobre (repetir um período não duplica).
+
+**Baixar base completa (.xlsx)** gera esse arquivo único, para guardar ou abrir em outro aparelho.
+**Começar do zero** troca a base só pelos arquivos escolhidos.
+
 Também opcional: as **pendências** do Manusis 4 (aba "Pendências", abertas e fechadas; pode ser
 um período maior que o das OMs, ex.: 2 anos). A aba **Pendências** usa só esse arquivo, no estilo
 Power BI: filtros de data de abertura, status (Aberta, Em andamento, Fechada, Cancelada) e descrição;
@@ -74,6 +87,13 @@ celular) atualizam só naquela abertura — o aviso informa; use o Chrome.
 ```bash
 npm install xlsx
 node turbinas/scripts/gerar-com-dados.js Base_PowerBI_Ordens.xlsx painel-com-dados.html
+```
+
+Com o Manusis, passe todas as planilhas (OMs, consumo e pendências, de um ou vários anos, `.xlsx` ou `.zip`)
+e, por último, o HTML de saída. `--base-completa=base.xlsx` grava também a planilha juntada:
+
+```bash
+node turbinas/scripts/gerar-com-dados.js ordens_2025.xlsx ordens_2026.xlsx consumo_2025.xlsx consumo_2026.xlsx pendencias.xlsx painel.html --base-completa=base.xlsx
 ```
 
 Gera um único HTML com os dados e o leitor de Excel dentro, que abre e atualiza sem internet. Não publique
