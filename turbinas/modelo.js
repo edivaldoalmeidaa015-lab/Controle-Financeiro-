@@ -862,10 +862,10 @@
    * Junta planilhas do Manusis (OMs, consumo, pendências; uma ou várias abas cada) numa planilha só.
    * lista: [{ wb, base }] em ordem, da mais antiga para a mais nova (a base guardada primeiro, com base: true).
    * O que vem depois prevalece: OM e pendência pelo número; Especialidades e Paradas pela OM;
-   * consumo pelo período de "Utilizado em" (o arquivo novo substitui os dias que ele cobre).
+   * consumo pela OM (o Manusis exporta o consumo das OMs do período; a OM que vem no arquivo novo é trocada inteira).
    */
   function juntarPlanilhas(lista, XLSX) {
-    var st = { omNovas: 0, omAtualizadas: 0, consLinhas: 0, consSubstituidas: 0, consDe: null, consAte: null, pendNovas: 0, pendAtualizadas: 0, omDe: null, omAte: null };
+    var st = { omNovas: 0, omAtualizadas: 0, consLinhas: 0, consOMsNovas: 0, consOMsAtualizadas: 0, consDe: null, consAte: null, pendNovas: 0, pendAtualizadas: 0, omDe: null, omAte: null };
     var cab = {}; // aba -> colunas, na ordem em que aparecem
     function linhasDe(wb, aba) {
       var ws = wb.Sheets[aba]; if (!ws) return null;
@@ -877,7 +877,8 @@
         .map(function (l) { var o = {}; h.forEach(function (x, j) { if (x) o[x] = l[j] === undefined ? '' : l[j]; }); return o; });
     }
     var chaveOM = function (r) { return String(r['Número de ordem'] || '').trim(); };
-    var oms = new Map(), porOM = {}, cons = [], pend = new Map();
+    var oms = new Map(), porOM = {}, cons = new Map(), pend = new Map();
+    var chaveConsumo = function (r) { var n = String(r['Ordem de manutenção'] || '').replace(/\D/g, ''); return n ? String(+n) : '?'; };
     porOM[ABA_ESPEC] = new Map(); porOM[ABA_PARADAS] = new Map();
     lista.forEach(function (it) {
       var wb = it.wb, conta = !it.base;
@@ -895,21 +896,18 @@
       });
       var c = linhasDe(wb, ABA_CONSUMO);
       if (c && c.length) {
-        var dias = c.map(function (r) { return diaChave(r['Utilizado em']); });
-        var de = null, ate = null;
-        dias.forEach(function (d) { if (d === null) return; if (de === null || d < de) de = d; if (ate === null || d > ate) ate = d; });
-        var sem = new Set(c.filter(function (_, j) { return dias[j] === null; }).map(function (r) { return JSON.stringify(r); }));
-        var antes = cons.length;
-        cons = cons.filter(function (r) {
-          var d = diaChave(r['Utilizado em']);
-          return d === null ? !sem.has(JSON.stringify(r)) : !(de !== null && d >= de && d <= ate);
+        // o Manusis exporta o consumo pelas OMs do período (não pela data de uso):
+        // a OM que vem no arquivo novo fica com todos os materiais dele
+        var g = new Map();
+        c.forEach(function (r) { var k = chaveConsumo(r); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
+        g.forEach(function (v, k) {
+          if (conta) { if (cons.has(k)) st.consOMsAtualizadas++; else st.consOMsNovas++; }
+          cons.delete(k); cons.set(k, v);
         });
         if (conta) {
-          st.consSubstituidas += antes - cons.length; st.consLinhas += c.length;
-          if (de !== null && (st.consDe === null || de < st.consDe)) st.consDe = de;
-          if (ate !== null && (st.consAte === null || ate > st.consAte)) st.consAte = ate;
+          st.consLinhas += c.length;
+          c.forEach(function (r) { var d = diaChave(r['Utilizado em']); if (d === null) return; if (st.consDe === null || d < st.consDe) st.consDe = d; if (st.consAte === null || d > st.consAte) st.consAte = d; });
         }
-        cons = cons.concat(c);
       }
       var p = linhasDe(wb, ABA_PENDENCIAS);
       if (p) p.forEach(function (r) {
@@ -931,11 +929,12 @@
       var rs = []; porOM[a].forEach(function (v, k) { if (!rsOM.length || oms.has(k)) rs = rs.concat(v); });
       aba(a, rs);
     });
-    aba(ABA_CONSUMO, cons);
+    var rsCons = []; cons.forEach(function (v) { rsCons = rsCons.concat(v); });
+    aba(ABA_CONSUMO, rsCons);
     aba(ABA_PENDENCIAS, Array.from(pend.values()));
     rsOM.forEach(function (r) { var d = diaChave(r['Data de abertura']); if (d === null) return; if (st.omDe === null || d < st.omDe) st.omDe = d; if (st.omAte === null || d > st.omAte) st.omAte = d; });
-    st.consTotDe = null; cons.forEach(function (r) { var d = diaChave(r['Utilizado em']); if (d !== null && (st.consTotDe === null || d < st.consTotDe)) st.consTotDe = d; });
-    st.oms = rsOM.length; st.consumo = cons.length; st.pendencias = pend.size;
+    st.consTotDe = null; rsCons.forEach(function (r) { var d = diaChave(r['Utilizado em']); if (d !== null && (st.consTotDe === null || d < st.consTotDe)) st.consTotDe = d; });
+    st.oms = rsOM.length; st.consumo = rsCons.length; st.pendencias = pend.size;
     ['omDe', 'omAte', 'consDe', 'consAte', 'consTotDe'].forEach(function (k) { st[k + 'Txt'] = textoDia(st[k]); });
     return { wb: wb, stats: st };
   }

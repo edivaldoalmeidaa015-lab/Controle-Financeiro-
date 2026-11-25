@@ -949,7 +949,7 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-25.1'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-25.2'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
@@ -5041,7 +5041,7 @@ function montarJuntada(XLSX, wb, st, somou) {
       if (somou) {
         p.push('✅ Base somada.');
         if (temOM) p.push('OMs: ' + fInt(st.omNovas) + ' novas e ' + fInt(st.omAtualizadas) + ' atualizadas.');
-        if (sc && st.consLinhas) p.push('Consumo de ' + st.consDeTxt + ' a ' + st.consAteTxt + ': ' + fInt(st.consLinhas) + ' linhas' + (st.consSubstituidas ? ' (' + fInt(st.consSubstituidas) + ' desses dias já estavam e foram trocadas)' : '') + '.');
+        if (sc && st.consLinhas) p.push('Consumo: ' + fInt(st.consLinhas) + ' linhas de ' + fInt(st.consOMsNovas + st.consOMsAtualizadas) + ' OMs' + (st.consOMsAtualizadas ? ' (' + fInt(st.consOMsAtualizadas) + ' OMs já tinham consumo e foram atualizadas)' : '') + '.');
         if (sp && (st.pendNovas || st.pendAtualizadas)) p.push('Pendências: ' + fInt(st.pendNovas) + ' novas e ' + fInt(st.pendAtualizadas) + ' atualizadas.');
       } else p.push('✅ Base atualizada.');
       p.push('A base tem ' + fInt(N) + ' OMs, abertas de ' + fData(diaMin) + ' a ' + fData(diaMax) + (CONS ? ', ' + fInt(M.consumo.om.length) + ' consumos' : '') + (M.pendencias ? ' e ' + fInt(M.pendencias.num.length) + ' pendências' : '') + '.');
