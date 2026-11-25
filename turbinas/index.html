@@ -949,12 +949,12 @@ var SISTEMA_UTIL = true;
 /* Consumo de materiais (Manusis): baixas de cada OM, ligadas pelo número. CONS[i] = índices das baixas da OM i. */
 var CONS = null;
 // Data desta versão do painel: aparece na barra lateral e avisa quando o aplicativo é atualizado.
-var VERSAO_PAINEL = '2026-11-25.2'; // data, e .N quando sai mais de uma no mesmo dia
+var VERSAO_PAINEL = '2026-11-25.3'; // data, e .N quando sai mais de uma no mesmo dia
 function fDataVersao() { var p = VERSAO_PAINEL.split(/[-.]/); return p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' · ' + p[3] : ''); }
 function avisarVersaoNova() {
   var antiga = null;
   try { antiga = localStorage.getItem('turbinas-versao-vista'); localStorage.setItem('turbinas-versao-vista', VERSAO_PAINEL); } catch (e) { return; }
-  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): agora dá para juntar os anos e somar o mês. Em “Atualizar base”, escolha de uma vez os arquivos de 2025 e 2026 (OMs, consumo e pendências); depois, todo mês, some só os arquivos novos. “Baixar base completa” gera um arquivo só com tudo.' +
+  if (antiga !== VERSAO_PAINEL) avisar('✅ Painel atualizado (versão de ' + fDataVersao() + '): no filtro Período, opções “Ano 2026” e “Ano 2025”, e trimestres do mais recente para o mais antigo. Para juntar os anos, em “Atualizar base” → “Somar arquivos à base”, escolha de uma vez os arquivos de 2025 e 2026 (OMs, consumo e pendências).' +
     (CONS ? '' : ' Carregue o consumo de materiais em “Atualizar base” para ver tudo.'), 'ok', !CONS);
 }
 function montarIndiceConsumo() {
@@ -4517,6 +4517,12 @@ function presetsPeriodo() {
   r.push({ chave: 'u30', rot: 'Últimos 30 dias', ini: Math.max(diaMin, diaMax - 29), fim: diaMax });
   r.push({ chave: 'u90', rot: 'Últimos 90 dias', ini: Math.max(diaMin, diaMax - 89), fim: diaMax });
   var dIni = dataDe(diaMin), dFim = dataDe(diaMax);
+  // ano inteiro (o mais recente primeiro), para ver 2025 e 2026 separados
+  var anos = [];
+  for (var an = dFim.getUTCFullYear(); an >= dIni.getUTCFullYear(); an--) {
+    var aa = diaDe(new Date(Date.UTC(an, 0, 1))), ba = diaDe(new Date(Date.UTC(an + 1, 0, 1))) - 1;
+    anos.push({ chave: 'a' + an, rot: 'Ano ' + an + (ba > diaMax ? ' (até ' + fData(diaMax).slice(0, 5) + ')' : ''), ini: Math.max(aa, diaMin), fim: Math.min(ba, diaMax), grupo: 'Anos' });
+  }
   var tri = [];
   for (var ano = dIni.getUTCFullYear(); ano <= dFim.getUTCFullYear(); ano++) for (var t = 0; t < 4; t++) {
     var a = diaDe(new Date(Date.UTC(ano, t * 3, 1))), b = diaDe(new Date(Date.UTC(ano, t * 3 + 3, 1))) - 1;
@@ -4530,7 +4536,7 @@ function presetsPeriodo() {
     meses.push({ chave: 'm' + ano2 + '-' + (mes + 1), rot: MESES_LONGO[mes].charAt(0).toUpperCase() + MESES_LONGO[mes].slice(1) + ' ' + ano2, ini: Math.max(a2, diaMin), fim: Math.min(b2, diaMax), grupo: 'Meses' });
     mes++; if (mes > 11) { mes = 0; ano2++; }
   }
-  return r.concat(tri, meses.reverse());
+  return r.concat(anos, tri.reverse(), meses.reverse());
 }
 function textoPeriodo() {
   var p = presetsPeriodo().filter(function (x) { return x.chave === estado.per.chave; })[0];
@@ -5000,13 +5006,14 @@ function lerArquivo(arquivos, aoErro, modo) {
       var uriLogo = r.wbs.map(logoDaPlanilha).filter(Boolean)[0];
       var logoPronta = uriLogo ? aplicarLogoUrl(uriLogo).catch(function () { /* segue sem logo */ }) : Promise.resolve();
       return logoPronta.then(function () { return guardarBase(modelo); }).then(function (guardou) {
-        return (r.acumulado ? guardarAcumulado(r.acumulado) : modo === 'zero' ? guardarAcumulado(null) : Promise.resolve()).then(function () { return guardou; });
+        return (r.acumulado ? guardarAcumulado(r.acumulado) : modo === 'zero' ? guardarAcumulado(null) : Promise.resolve(true)).then(function (ok) { r.acumOk = ok !== false; return guardou; });
       }).then(function (guardou) {
         fecharTodasCamadas();
         try { location.hash = ''; } catch (e) { /* sem histórico */ }
         iniciar(modelo);
         window.scrollTo(0, 0);
         var msg = r.msg(), alerta = r.alerta;
+        if (r.acumulado && !r.acumOk) { msg += ' Atenção: não consegui guardar a base completa neste aparelho (pouco espaço?). No mês que vem, escolha junto a “base completa” .xlsx e os arquivos novos.'; alerta = true; }
         if (guardou) avisar(msg, alerta ? 'alerta' : 'ok', true);
         else avisar(msg + ' Atenção: este aplicativo não guarda dados — ao fechar, volta a base anterior. Abra o painel pelo Chrome para manter a atualização.', 'alerta', true);
       });
