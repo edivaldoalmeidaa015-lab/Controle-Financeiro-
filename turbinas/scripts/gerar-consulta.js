@@ -217,6 +217,8 @@ var D = {
 var json = JSON.stringify(D);
 var modelo = fs.readFileSync(path.join(__dirname, '..', 'consulta.html'), 'utf8');
 var sheetjs = fs.readFileSync(path.join(__dirname, '..', 'vendor', 'xlsx.mini.min.js'), 'utf8');
+// bytes de controle (só aparecem dentro de textos do SheetJS) viram \uXXXX: mesmo código, HTML sem bytes de controle
+sheetjs = sheetjs.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, function (c) { return '\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4); });
 modelo = modelo.replace('<script src="vendor/xlsx.mini.min.js"></script>', function () { return '<script>' + sheetjs.replace(/<\/(script)/gi, '<\\/$1') + '</script>'; });
 var marca = '/*__DADOS__*/null';
 if (opc.logo) {
