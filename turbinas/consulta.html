@@ -1085,7 +1085,7 @@ var DADOS = /*__DADOS__*/null;
   }
   var COLS = {
     cons: [['cd', 'Usado em'], ['com', 'OM'], ['cat', 'Ativo (WTG)'], ['cmat', 'Material'], ['cq', 'Quantidade'], ['cv', 'Custo'], ['ccf', 'Conferência']],
-    pend: [['pn', 'Nº'], ['pst', 'Status'], ['pdt', 'Abertura'], ['pdias', 'Dias em aberto'], ['pat', 'Ativo (WTG)'], ['pdesc', 'Descrição da pendência'], ['pus', 'Registrada por'], ['pom', 'OM']],
+    pend: [['pom', 'OM'], ['pst', 'Status'], ['pdt', 'Abertura'], ['pdias', 'Dias em aberto'], ['pat', 'Ativo (WTG)'], ['pdesc', 'Descrição da pendência'], ['pus', 'Registrada por']],
     consulta: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Data de abertura'], ['st', 'Status'], ['tp', 'Tipo de serviço'], ['desc', 'Descrição'], ['mat', 'Materiais usados'], ['pend', 'Pendências']],
     conf: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Abertura'], ['st', 'Status'], ['cons', 'Consumido'], ['nc', 'Não consumido'], ['pp', 'Pendente'], ['np', 'Não pendente'], ['se', 'Conferência']]
   };
@@ -1249,14 +1249,13 @@ var DADOS = /*__DADOS__*/null;
     if (P.ori[k] >= 0) oms.push('<button type="button" class="btn" data-om="' + P.ori[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de origem">' + omLabel(D.O.om[P.ori[k]]) + '</button>');
     if (P.exe[k] >= 0 && P.exe[k] !== P.ori[k]) oms.push('<button type="button" class="btn" data-om="' + P.exe[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de execução">' + omLabel(D.O.om[P.exe[k]]) + ' <span class="nada">exec.</span></button>');
     return '<tr' + (o >= 0 ? ' data-i="' + o + '" tabindex="0"' : '') + '>' +
-      '<td class="mono">' + esc(P.n[k]) + '</td>' +
+      '<td style="white-space:nowrap">' + (oms.length ? oms.join('<br>') : '<span class="nada">sem OM</span>') + '<div class="nada mono" style="font-size:.7rem;margin-top:3px">pend. ' + realce(P.n[k], tq) + '</div></td>' +
       '<td><span class="pill ' + (aberta ? 'a' : /conclu/i.test(D.statusPend[P.st[k]]) ? 'f' : 'c') + '">' + esc(D.statusPend[P.st[k]]) + '</span></td>' +
       '<td class="num" style="white-space:nowrap">' + dataBR(P.dt[k]) + '</td>' +
       '<td class="num" style="white-space:nowrap' + (aberta && dias > 90 ? ';color:var(--bad);font-weight:600' : '') + '">' + (dias === '' ? '<span class="nada">—</span>' : dias) + (aberta || !P.dc[k] ? '' : ' <span class="nada">(fechou ' + dataBR(P.dc[k]) + ')</span>') + '</td>' +
       '<td style="white-space:nowrap;font-weight:500">' + realce(P.at[k], tq) + '</td>' +
       '<td class="desc"><div class="d1">' + realce(P.desc[k], tq) + '</div></td>' +
-      '<td style="color:var(--fg-2);white-space:nowrap" title="' + esc(P.us[k]) + '">' + realce(nomeCurto(P.us[k]), tq) + '</td>' +
-      '<td>' + (oms.length ? oms.join(' ') : '<span class="nada">—</span>') + '</td></tr>';
+      '<td style="color:var(--fg-2);white-space:nowrap" title="' + esc(P.us[k]) + '">' + realce(nomeCurto(P.us[k]), tq) + '</td></tr>';
   }
   function barraPend() {
     if (!$('#pq-pend')) {
