@@ -266,7 +266,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 /* modo Celular: uma coluna, filtros recolhidos e tabelas em fichas */
 #btn-filtros, #ord-cel { display: none; }
 body.cel #btn-filtros, body.cel #ord-cel { display: inline-flex; }
-body.cel .filters:not(.aberto) { display: none; }
+body.cel .filters.recolhido { display: none; }
+body.cel .filters { padding-top: 4px; }
+body.cel .filters .fgroup { width: 100%; }
+body.cel .filters .flabel { min-width: 104px; }
 body.cel .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 body.cel .viz, body.cel .viz2 { grid-template-columns: minmax(0, 1fr); }
 body.cel .viz .p-mes { grid-column: auto; order: 0; }
@@ -314,7 +317,7 @@ body.pc #app { min-width: 1000px; }
       <input id="q" type="search" placeholder="Pesquisar: JOA XII-09, Pitch, Gearbox, vazamento, OM 01105…" autocomplete="off" aria-label="Pesquisar na descrição e no serviço executado">
       <span class="hint">Descrição + Serviço executado · use "aspas" para frase exata</span>
     </label>
-    <button class="btn" id="btn-filtros" type="button" aria-expanded="false">Filtros</button>
+    <button class="btn" id="btn-filtros" type="button" aria-expanded="true">Esconder filtros</button>
     <button class="btn" id="limpar" type="button">Limpar filtros</button>
     <button class="btn" id="btn-base" type="button" title="Carregar planilhas novas do Manusis">Atualizar base</button>
     <input type="file" id="arq" accept=".xlsx,.zip" multiple hidden>
@@ -369,9 +372,12 @@ var DADOS = /*__DADOS__*/null;
   }
   aplicarModo(lerModo() || (window.innerWidth < 820 ? 'cel' : 'pc'));
   $('#seg-modo').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) aplicarModo(v, true); };
+  // no celular os filtros aparecem abertos; o botão só recolhe para ganhar espaço
   $('#btn-filtros').onclick = function () {
-    var f = $('#filtros'), ab = !f.classList.contains('aberto');
-    f.classList.toggle('aberto', ab); this.setAttribute('aria-expanded', ab); this.textContent = ab ? 'Fechar filtros' : 'Filtros';
+    var f = $('#filtros'), recolher = !f.classList.contains('recolhido');
+    f.classList.toggle('recolhido', recolher); this.setAttribute('aria-expanded', !recolher);
+    var n = $('#ativos').children.length;
+    this.textContent = recolher ? 'Mostrar filtros' + (n ? ' (' + n + ' ativos)' : '') : 'Esconder filtros';
   };
   var toastT;
   function aviso(msg) {
