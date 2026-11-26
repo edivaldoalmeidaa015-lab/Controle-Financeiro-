@@ -1,4 +1,4 @@
-# Monta o app Android (APK) do Painel de Turbinas.
+# Monta o app Android (APK) da Consulta de OMs.
 # O app é uma casca (Capacitor) que abre o painel publicado no GitHub Pages:
 # as mudanças do painel chegam sozinhas; o APK só precisa ser refeito quando mudar o app em si.
 name: App Android (APK)
@@ -43,22 +43,22 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Copiar o APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Painel-Turbinas.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Consulta-OMs.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Painel-Turbinas-apk
-          path: android-app/Painel-Turbinas.apk
+          name: Consulta-OMs-apk
+          path: android-app/Consulta-OMs.apk
 
       - name: Publicar para baixar no celular
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app-android
-          name: App Android – Painel de Turbinas
+          name: App Android – Consulta de OMs
           make_latest: true
-          files: android-app/Painel-Turbinas.apk
+          files: android-app/Consulta-OMs.apk
           body: |
-            App Android do Painel de Turbinas (versão 1.${{ github.run_number }}).
-            Baixe o arquivo Painel-Turbinas.apk no celular, permita instalar de fontes desconhecidas e instale.
+            App Android da Consulta de OMs (versão 1.${{ github.run_number }}).
+            Baixe o arquivo Consulta-OMs.apk no celular, permita instalar de fontes desconhecidas e instale.
             O app abre o painel publicado: as atualizações do painel chegam sozinhas, sem reinstalar.

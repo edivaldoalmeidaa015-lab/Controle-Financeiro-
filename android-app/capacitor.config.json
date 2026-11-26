@@ -1,14 +1,14 @@
 {
   "appId": "br.essentia.painelturbinas",
-  "appName": "Painel de Turbinas",
+  "appName": "Consulta de OMs",
   "webDir": "www",
   "server": {
-    "url": "https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/",
+    "url": "https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/consulta.html",
     "androidScheme": "https",
     "cleartext": false
   },
   "android": {
     "allowMixedContent": false,
-    "backgroundColor": "#f3f3f0"
+    "backgroundColor": "#edf3f5"
   }
 }

@@ -5,6 +5,10 @@
 passam a mostrá-la sem reinstalar. A base da Consulta é carregada de novo uma vez (toque em
 **Escolher planilhas**): ela não usa a base guardada pelo painel antigo.
 
+**App Android:** o APK (`android-app/`, montado pelo GitHub Actions em `.github/workflows/apk.yml`) se chama
+"Consulta de OMs" e abre `…/turbinas/consulta.html`. A cada mudança em `android-app/` que chega na `main`, o APK novo
+sai em *Releases → app-android* (`Consulta-OMs.apk`); ele instala por cima do antigo (mesmo `appId` e mesma assinatura).
+
 O Painel de Turbinas antigo continua em `painel-antigo.html` (mesmo endereço + `painel-antigo.html`),
 fora do aplicativo. O texto abaixo, até a seção "Consulta de OMs", descreve o painel antigo.
 
