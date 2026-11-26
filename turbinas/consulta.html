@@ -192,8 +192,11 @@ th[aria-sort="descending"]::after { content: " ▼"; font-size: .6rem; }
 td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tbody tr { cursor: pointer; }
 tbody tr:hover td { background: var(--surface-2); }
-td.desc { min-width: 240px; max-width: 420px; }
-td.desc .d1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* descrição inteira, numa coluna larga: a linha fica mais baixa */
+td.desc { min-width: 380px; max-width: 760px; }
+td.desc .d1 { display: block; overflow-wrap: anywhere; }
+.mini td.mdesc { min-width: 280px; max-width: 520px; }
+.mscroll { overflow-x: auto; }
 td.mat { min-width: 180px; max-width: 280px; color: var(--fg-2); font-size: .78rem; }
 td.mat .m1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: .72rem; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
@@ -1047,7 +1050,7 @@ var DADOS = /*__DADOS__*/null;
       '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
       '<td style="white-space:nowrap;font-weight:500">' + esc(D.ativos[O.at[i]]) + '</td>' +
       '<td class="num" style="white-space:nowrap">' + dataBR(O.dt[i]) + '</td>' +
-      '<td><span class="pill ' + ['f', 'a', 'c'][g] + '">' + esc(D.status[O.st[i]]) + '</span><div class="d1" style="margin-top:4px;font-size:.74rem;color:var(--fg-2);max-width:220px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + realce(O.desc[i]) + '</div></td>' +
+      '<td><span class="pill ' + ['f', 'a', 'c'][g] + '">' + esc(D.status[O.st[i]]) + '</span><div style="margin-top:4px;font-size:.74rem;color:var(--fg-2);min-width:260px;max-width:420px">' + realce(O.desc[i]) + '</div></td>' +
       '<td class="cl">' + lista(cons, 4) + (cons.length ? '<div class="num" style="font-size:.76rem;margin-top:2px">' + fmtR.format(custoOM(i).v) + '</div>' : '') + '</td>' +
       '<td class="cl">' + lista(nc, 4) + '</td>' +
       '<td class="cl">' + lista(ps[0].map(pl), 3) + '</td>' +
@@ -1169,8 +1172,8 @@ var DADOS = /*__DADOS__*/null;
       '<td class="num" style="white-space:nowrap">' + dataBR(P.dt[k]) + '</td>' +
       '<td class="num" style="white-space:nowrap' + (aberta && dias > 90 ? ';color:var(--bad);font-weight:600' : '') + '">' + (dias === '' ? '<span class="nada">—</span>' : dias) + (aberta || !P.dc[k] ? '' : ' <span class="nada">(fechou ' + dataBR(P.dc[k]) + ')</span>') + '</td>' +
       '<td style="white-space:nowrap;font-weight:500">' + realce(P.at[k], tq) + '</td>' +
-      '<td class="desc"><div class="d1">' + realce(trechoBusca(P.desc[k], tq), tq) + '</div></td>' +
-      '<td style="color:var(--fg-2)">' + realce(P.us[k], tq) + '</td>' +
+      '<td class="desc"><div class="d1">' + realce(P.desc[k], tq) + '</div></td>' +
+      '<td style="color:var(--fg-2);white-space:nowrap" title="' + esc(P.us[k]) + '">' + realce(nomeCurto(P.us[k]), tq) + '</td>' +
       '<td>' + (oms.length ? oms.join(' ') : '<span class="nada">—</span>') + '</td></tr>';
   }
   function barraPend() {
@@ -1676,9 +1679,9 @@ var DADOS = /*__DADOS__*/null;
       }
       mats += '</tbody></table><div style="margin-top:6px;font-size:.82rem">Total no custo: <b class="num">' + fmtR2.format(c.v) + '</b></div>';
     } else mats = '<div style="color:var(--fg-3);font-size:.85rem">' + (O.cmCol[i] ? 'Custo de material na OM: ' + fmtR2.format(O.cmCol[i]) + ' (sem linhas na planilha de consumo)' : 'Nenhum material consumido nesta OM.') + '</div>';
-    var pends = pend.length ? '<table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Aberta por</th></tr></thead><tbody>' + pend.map(function (k) {
-      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td>' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2)" title="' + esc(D.P.us[k]) + '">' + esc(nomeCurto(D.P.us[k])) + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<div style="color:var(--fg-3);font-size:.85rem">Nenhuma pendência ligada a esta OM.</div>';
+    var pends = pend.length ? '<div class="mscroll"><table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Aberta por</th></tr></thead><tbody>' + pend.map(function (k) {
+      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td class="mdesc">' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2);white-space:nowrap" title="' + esc(D.P.us[k]) + '">' + esc(nomeCurto(D.P.us[k])) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div style="color:var(--fg-3);font-size:.85rem">Nenhuma pendência ligada a esta OM.</div>';
     var ents = entradas(O.exec[i]);
     var execH = ents.length ? ents.map(function (e) { return '<div class="entry">' + (e.h ? '<div class="eh">' + esc(e.h) + '</div>' : '') + '<p>' + realce(e.txt) + '</p></div>'; }).join('') : '<div style="color:var(--fg-3)">Sem serviço executado registrado.</div>';
     var fl = O.fl[i].map(function (k) { return '<span class="chip sm" style="cursor:default">' + esc(D.falhas[k]) + '</span>'; }).join(' ');
