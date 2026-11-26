@@ -1676,10 +1676,8 @@ var DADOS = /*__DADOS__*/null;
       }
       mats += '</tbody></table><div style="margin-top:6px;font-size:.82rem">Total no custo: <b class="num">' + fmtR2.format(c.v) + '</b></div>';
     } else mats = '<div style="color:var(--fg-3);font-size:.85rem">' + (O.cmCol[i] ? 'Custo de material na OM: ' + fmtR2.format(O.cmCol[i]) + ' (sem linhas na planilha de consumo)' : 'Nenhum material consumido nesta OM.') + '</div>';
-    var pends = pend.length ? '<table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Papel</th></tr></thead><tbody>' + pend.map(function (k) {
-      var papel = D.P.ori[k] === i && D.P.exe[k] === i ? 'origem e execução' : D.P.ori[k] === i ? 'aberta nesta OM' : 'executada nesta OM';
-      var outra = D.P.ori[k] === i && D.P.exe[k] >= 0 && D.P.exe[k] !== i ? ' · execução: ' + omLabel(O.om[D.P.exe[k]]) : D.P.exe[k] === i && D.P.ori[k] >= 0 && D.P.ori[k] !== i ? ' · origem: ' + omLabel(O.om[D.P.ori[k]]) : '';
-      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td>' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2);font-size:.74rem">' + papel + outra + '</td></tr>';
+    var pends = pend.length ? '<table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Aberta por</th></tr></thead><tbody>' + pend.map(function (k) {
+      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td>' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2)" title="' + esc(D.P.us[k]) + '">' + esc(nomeCurto(D.P.us[k])) + '</td></tr>';
     }).join('') + '</tbody></table>' : '<div style="color:var(--fg-3);font-size:.85rem">Nenhuma pendência ligada a esta OM.</div>';
     var ents = entradas(O.exec[i]);
     var execH = ents.length ? ents.map(function (e) { return '<div class="entry">' + (e.h ? '<div class="eh">' + esc(e.h) + '</div>' : '') + '<p>' + realce(e.txt) + '</p></div>'; }).join('') : '<div style="color:var(--fg-3)">Sem serviço executado registrado.</div>';
@@ -1701,6 +1699,8 @@ var DADOS = /*__DADOS__*/null;
     scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
     var m = dr.querySelector('.db mark'); if (m) setTimeout(function () { m.scrollIntoView({ block: 'center' }); }, 30);
   }
+  // "Ewerton Francinaldo do Nascimento Silva" -> "Ewerton Silva"
+  function nomeCurto(n) { var p = String(n || '').trim().split(/\s+/); return p.length > 2 ? p[0] + ' ' + p[p.length - 1] : p.join(' '); }
   function fichaConf(i) {
     var O = D.O, se = SELOS[O.se[i]], itens = O.pi[i];
     if (!itens.length && !se) return '';
