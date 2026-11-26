@@ -173,3 +173,18 @@ histórico ("já havia sido substituído"), remontagem em relatórios de grande
 corretiva, peças de outra turbina e a mesma troca lançada em duas OMs da mesma
 turbina (preventiva + corretiva, ou texto que cita a outra OM). Ao mudar as
 regras, suba `VERSAO_PECAS`: o app relê as bases já guardadas no aparelho.
+
+## Consulta de OMs (painel de uma página)
+
+`consulta.html` é um painel mais simples, de consulta: pesquisa na descrição e no serviço executado,
+filtros (parque, turbina, ano, mês, status sem as canceladas, tipo de serviço e alarme da descrição),
+cartões (OMs fechadas e em aberto, custo de materiais, pendências ligadas), ranking de turbinas,
+evolução mensal, materiais mais usados e a tabela com a ficha completa da OM. Tudo cruzado pelo número da OM.
+
+```bash
+npm install xlsx
+node turbinas/scripts/gerar-consulta.js base.xlsx consulta-com-dados.html
+```
+
+Aceita a base única ou as exportações de OMs, consumo e pendências separadas. Consumos com preço unitário
+fora do padrão (ex.: óleo por litro com preço do tambor) ficam fora do custo total. Não publique o HTML gerado.
