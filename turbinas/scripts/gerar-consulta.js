@@ -3,6 +3,7 @@
  * Gera o painel "Consulta de OMs" (turbinas/consulta.html) com os dados embutidos.
  *
  * Uso: node gerar-consulta.js <planilhas .xlsx> <saida.html> [--json=dados.json]
+ *      [--logo=simbolo.png --logo-nome="Nome da empresa"]   (o símbolo fica só no HTML gerado)
  *
  * Aceita a base única (abas "Ordens de manutenção", "Consumo de materiais" e "Pendências")
  * ou as três exportações do Manusis separadas, de um ou vários anos. Tudo é cruzado pelo
@@ -148,6 +149,13 @@ var D = {
 var json = JSON.stringify(D);
 var modelo = fs.readFileSync(path.join(__dirname, '..', 'consulta.html'), 'utf8');
 var marca = '/*__DADOS__*/null';
+if (opc.logo) {
+  var tipo = /\.svg$/i.test(opc.logo) ? 'svg+xml' : /\.jpe?g$/i.test(opc.logo) ? 'jpeg' : 'png';
+  var uri = 'data:image/' + tipo + ';base64,' + fs.readFileSync(opc.logo).toString('base64');
+  var nomeEmp = (opc['logo-nome'] || 'Logo').replace(/"/g, '&quot;');
+  modelo = modelo.replace(/<!--LOGO-->[\s\S]*?<!--\/LOGO-->/, function () { return '<img src="' + uri + '" alt="' + nomeEmp + '" title="' + nomeEmp + '">'; })
+    .replace('<title>', function () { return '<link rel="icon" href="' + uri + '">\n<title>'; });
+}
 if (modelo.indexOf(marca) < 0) { console.error('consulta.html sem a marca ' + marca); process.exit(1); }
 if (opc.json) {
   fs.writeFileSync(opc.json, json);
