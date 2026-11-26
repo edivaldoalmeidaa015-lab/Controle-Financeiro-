@@ -163,6 +163,22 @@ td.mat .m1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: ve
 .pager .pg { display: flex; gap: 6px; align-items: center; }
 .pager button:disabled { opacity: .4; cursor: default; }
 
+/* mapa das turbinas */
+.mapa { display: grid; gap: 3px; align-items: center; }
+.mapa .mc { font-size: 10px; color: var(--fg-3); text-align: center; font-variant-numeric: tabular-nums; }
+.mapa .ml { font-size: .76rem; font-weight: 600; color: var(--fg-2); white-space: nowrap; padding-right: 8px; border: 0; background: none; text-align: left; }
+.mapa .ml:hover { color: var(--accent); }
+.mapa .cx { grid-column: 1 / -1; font-family: var(--f-display); font-size: .95rem; font-weight: 600; color: var(--fg); padding: 8px 0 2px; }
+.wtg { height: 26px; min-width: 0; border: 0; border-radius: 4px; padding: 0; display: grid; place-items: center; font-size: .66rem; font-weight: 600; font-variant-numeric: tabular-nums; position: relative; }
+.wtg:hover { z-index: 2; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--fg); }
+.wtg.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); z-index: 1; }
+.wtg.dim { opacity: .3; }
+.mbloco { display: grid; gap: 3px; margin-bottom: 8px; }
+.mbloco .ml { padding: 0 0 2px; }
+.mleg { display: flex; align-items: center; gap: 10px; font-size: .74rem; color: var(--fg-2); flex-wrap: wrap; }
+.mleg .grad { width: 150px; height: 10px; border-radius: 3px; }
+.mleg .vz { width: 12px; height: 12px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); display: inline-block; vertical-align: -2px; margin-right: 4px; }
+
 /* materiais e pendências */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 14px; overflow-x: auto; }
 .tabs button { border: 0; background: transparent; padding: 10px 12px 9px; font-family: var(--f-display); font-size: 1.05rem; font-weight: 600; color: var(--fg-3); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
@@ -301,7 +317,7 @@ var DADOS = /*__DADOS__*/null;
 
   var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs, pAt, hayP;
   var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null, de: '', ate: '' };
-  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas' };
+  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms' };
   var sel = null; // índices filtrados
 
   function lerModo() { try { return localStorage.getItem('consulta-oms-modo'); } catch (e) { return null; } }
@@ -310,7 +326,7 @@ var DADOS = /*__DADOS__*/null;
     document.body.classList.toggle('cel', m === 'cel'); document.body.classList.toggle('pc', m === 'pc');
     var b = $('#seg-modo').children; for (var j = 0; j < b.length; j++) b[j].setAttribute('aria-pressed', b[j].getAttribute('data-v') === m);
     if (salvar) try { localStorage.setItem('consulta-oms-modo', m); } catch (e) {}
-    if (D) { desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); desenharTabela(); }
+    if (D) { desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); desenharTabela(); }
   }
   aplicarModo(lerModo() || (window.innerWidth < 820 ? 'cel' : 'pc'));
   $('#seg-modo').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) aplicarModo(v, true); };
@@ -553,6 +569,9 @@ var DADOS = /*__DADOS__*/null;
       '<section class="kpis" aria-label="Indicadores">' +
         '<div class="card kpi" id="k-om"></div><div class="card kpi" id="k-custo"></div><div class="card kpi" id="k-pend"></div><div class="card kpi" id="k-wtg"></div>' +
       '</section>' +
+      '<section class="card panel" aria-label="Mapa das turbinas"><div class="ph"><div><h2>Mapa das turbinas</h2><p>Cada quadrado é um aerogerador, na sua posição no parque (esquema, não geográfico) · toque para filtrar a turbina</p></div>' +
+        '<select id="mapa-met" class="dt-in" aria-label="O que o mapa mostra"></select></div>' +
+        '<div id="c-mapa"></div></section>' +
       '<section class="viz">' +
         '<div class="card panel p-rank"><div class="ph"><div><h2>Ranking de turbinas</h2><p>Turbinas com mais OMs · toque para filtrar</p></div>' +
           '<div class="seg" id="seg-rank"><button type="button" data-v="todas">Todas</button><button type="button" data-v="corr">Só corretivas</button></div></div>' +
@@ -584,6 +603,9 @@ var DADOS = /*__DADOS__*/null;
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
     $('#exp-xlsx').onclick = exportar;
+    $('#mapa-met').innerHTML = Object.keys(MET_MAPA).map(function (k) { return '<option value="' + k + '">' + MET_MAPA[k].rot + '</option>'; }).join('');
+    $('#mapa-met').value = UI.mapa;
+    $('#mapa-met').onchange = function (e) { UI.mapa = e.target.value; desenharMapa(); };
     $('#ord-cel').onchange = function (e) { var v = e.target.value.split('|'); UI.sort = { col: v[0], dir: +v[1] }; UI.page = 0; desenharTabela(); };
     $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: 'dt', dir: -1 }; desenharTabela(); } };
     $('#qf').onclick = function (e) { var b = e.target.closest('[data-q]'); if (b) { var v = b.getAttribute('data-q'); UI.qf = UI.qf === v ? 'todas' : v; UI.page = 0; desenharTabela(); } };
@@ -595,14 +617,14 @@ var DADOS = /*__DADOS__*/null;
     };
     $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
     $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
-    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
+    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
 
   function atualizar(semFecharPop) {
     if (!semFecharPop) fecharPop();
     filtrar();
     chipsFiltro(); barraAtivos();
-    desenharKPIs(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
+    desenharKPIs(); desenharMapa(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
     try { history.replaceState(null, '', Object.keys(F.ativo).length === 1 ? '#' + D.ativos[Object.keys(F.ativo)[0]].replace(/[^\w-]/g, '_') : location.pathname + location.search); } catch (e) {}
   }
 
@@ -1075,12 +1097,99 @@ var DADOS = /*__DADOS__*/null;
     });
   }
 
+  // ---------------- mapa das turbinas ----------------
+  var MET_MAPA = {
+    oms: { rot: 'Total de OMs', om: function () { return 1; } },
+    abertas: { rot: 'OMs em aberto', om: function (i) { return grupo[i] === 1 ? 1 : 0; } },
+    corr: { rot: 'OMs corretivas', om: function (i) { return /corret/i.test(D.tipos[D.O.tp[i]]) ? 1 : 0; } },
+    custo: { rot: 'Custo de materiais', om: function (i) { return custoOM(i).v; }, moeda: true },
+    semcons: { rot: 'Trocas sem consumo (OM fechada)', om: function (i) { return grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; }) ? 1 : 0; } },
+    pend: { rot: 'Pendências abertas', pend: true }
+  };
+  var RAMPA_L = ['#cce3fd', '#b6d5f8', '#9dc8f7', '#84b9f3', '#6aabf1', '#519ced', '#338ced', '#257de0', '#2370cd', '#1b64be', '#1757ac', '#0f4a96', '#0e3d7e'];
+  var ROM = { I: 1, V: 5, X: 10, L: 50 };
+  function romano(r) { var t = 0; for (var j = 0; j < r.length; j++) { var a = ROM[r[j]], b = ROM[r[j + 1]] || 0; t += a < b ? -a : a; } return t; }
+  var MAPA = null;
+  function montarMapa() {
+    var grupos = {}, pqDe = {};
+    D.O.at.forEach(function (a, i) { if (!(a in pqDe)) pqDe[a] = D.O.pq[i]; });
+    D.ativos.forEach(function (nome, k) {
+      var m = /^(AB)-([IVXL]+)(\d+)$/.exec(nome) || /^([A-Z]{2,4}) ([IVXL]+)-(\d+)$/.exec(nome);
+      if (!m) return;
+      var g = m[1] === 'AB' ? 'AB-' + m[2] : m[1] + ' ' + m[2];
+      var r = grupos[g] || (grupos[g] = { nome: g, pre: m[1], num: romano(m[2]), pq: pqDe[k], pos: {} });
+      r.pos[+m[3]] = k;
+    });
+    var lista = Object.keys(grupos).map(function (g) { return grupos[g]; });
+    var maxPos = 0; lista.forEach(function (g) { Object.keys(g.pos).forEach(function (p) { maxPos = Math.max(maxPos, +p); }); });
+    lista.sort(function (a, b) { return String(D.parques[a.pq]).localeCompare(String(D.parques[b.pq]), 'pt-BR') || a.pre.localeCompare(b.pre) || a.num - b.num; });
+    MAPA = { grupos: lista, maxPos: maxPos };
+  }
+  function temaEscuro() {
+    var t = document.documentElement.getAttribute('data-theme');
+    return t ? t === 'dark' : window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function desenharMapa() {
+    if (!MAPA) montarMapa();
+    var met = MET_MAPA[UI.mapa] || MET_MAPA.oms, v = new Float64Array(D.ativos.length), outros = {};
+    // o mapa mostra todas as turbinas: o filtro de turbina só destaca
+    if (met.pend) pendFiltradas(true).forEach(function (k) { if (PEND_ABERTA(k) && pAt[k] >= 0) v[pAt[k]]++; });
+    else for (var i = 0; i < N; i++) if (passa(i, 'ativo')) v[D.O.at[i]] += met.om(i);
+    var max = 0; for (var k = 0; k < v.length; k++) if (v[k] > max) max = v[k];
+    var fmt = function (x) { return met.moeda ? compacto(x) : fmtN.format(x); };
+    var rampa = temaEscuro() ? RAMPA_L.slice(2).reverse() : RAMPA_L;
+    var cor = function (x) { var t = max ? x / max : 0, j = Math.min(rampa.length - 1, Math.round(Math.sqrt(t) * (rampa.length - 1))); return { bg: rampa[j], claro: temaEscuro() ? j < 6 : j >= 6 }; };
+    var el = $('#c-mapa'), W = el.clientWidth || 900, mp = MAPA.maxPos, compacto_ = UI.modo === 'cel' || W < 640;
+    var colRot = 70, cel = (W - colRot - 3 * mp) / mp, mostrar = cel >= 24 && !met.moeda, temFiltro = !vazio(F.ativo);
+    var celula = function (k) {
+      if (k === undefined) return '<div></div>';
+      var x = v[k], c = x > 0 ? cor(x) : null, sel = F.ativo[k], dim = temFiltro && !sel;
+      return '<button type="button" class="wtg' + (sel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-k="' + k + '" aria-label="' + esc(D.ativos[k]) + ': ' + fmt(x) + '" style="background:' + (c ? c.bg : 'var(--surface-2)') +
+        ';color:' + (c ? (c.claro ? '#ffffff' : '#0b1a2c') : 'var(--fg-3)') + '">' + ((compacto_ ? W / 10 >= 26 && !met.moeda : mostrar) && x > 0 ? fmtN.format(x) : '') + '</button>';
+    };
+    var h = '', pqAnt = null;
+    if (!compacto_) {
+      h = '<div class="mapa" style="grid-template-columns:' + colRot + 'px repeat(' + mp + ', minmax(0, 1fr))"><div></div>';
+      for (var p = 1; p <= mp; p++) h += '<div class="mc">' + String(p).padStart(2, '0') + '</div>';
+      MAPA.grupos.forEach(function (g) {
+        if (g.pq !== pqAnt) { h += '<div class="cx">' + esc(D.parques[g.pq]) + '</div>'; pqAnt = g.pq; }
+        h += '<span class="ml">' + esc(g.nome) + '</span>';
+        for (var p = 1; p <= mp; p++) h += celula(g.pos[p]);
+      });
+      h += '</div>';
+    } else {
+      MAPA.grupos.forEach(function (g) {
+        if (g.pq !== pqAnt) { h += '<div class="mapa"><div class="cx">' + esc(D.parques[g.pq]) + '</div></div>'; pqAnt = g.pq; }
+        h += '<div class="mbloco"><span class="ml" style="font-size:.76rem;font-weight:600;color:var(--fg-2)">' + esc(g.nome) + '</span><div class="mapa" style="grid-template-columns:repeat(10, minmax(0, 1fr))">';
+        for (var p = 1; p <= mp; p++) if (g.pos[p] !== undefined || p <= Math.max.apply(null, Object.keys(g.pos).map(Number))) h += celula(g.pos[p]);
+        h += '</div></div>';
+      });
+    }
+    var grad = rampa.join(',');
+    h += '<div class="mleg" style="margin-top:12px"><span><span class="vz"></span>sem registro</span><span class="num">' + fmt(0) + '</span><span class="grad" style="background:linear-gradient(90deg,' + grad + ')"></span><span class="num">' + fmt(max) + '</span>' +
+      '<span style="margin-left:auto">' + esc(met.rot) + (met.pend ? ' (Pendente + Em execução)' : '') + ' · posições 01–' + mp + '</span></div>';
+    el.innerHTML = h;
+    el.onclick = function (e) {
+      var b = e.target.closest('.wtg'); if (!b) return;
+      var k = +b.getAttribute('data-k'); esconderTip();
+      if (F.ativo[k] && Object.keys(F.ativo).length === 1) delete F.ativo[k]; else { F.ativo = {}; F.ativo[k] = 1; }
+      UI.page = 0; atualizar();
+    };
+    el.onmousemove = function (e) {
+      var b = e.target.closest('.wtg'); if (!b) { esconderTip(); return; }
+      var k = +b.getAttribute('data-k');
+      mostrarTip(e, '<b>' + esc(D.ativos[k]) + '</b> · ' + esc(D.parques[MAPA.grupos.filter(function (g) { return Object.keys(g.pos).some(function (p) { return g.pos[p] === k; }); })[0].pq]) +
+        '<br>' + esc(met.rot) + ': <b>' + fmt(v[k]) + '</b><br><span style="opacity:.75">' + (F.ativo[k] ? 'Toque para tirar o filtro' : 'Toque para filtrar esta turbina') + '</span>');
+    };
+    el.onmouseleave = esconderTip;
+  }
+
   // ---------------- pendências abertas por pessoa ----------------
-  function pendFiltradas() {
+  function pendFiltradas(semAtivo) {
     var out = [], P = D.P;
     for (var k = 0; k < P.n.length; k++) {
       if (!vazio(F.parque) && !F.parque[P.pq[k]]) continue;
-      if (!vazio(F.ativo) && !F.ativo[pAt[k]]) continue;
+      if (!semAtivo && !vazio(F.ativo) && !F.ativo[pAt[k]]) continue;
       var d = P.dt[k];
       if ((F.de || F.ate) && (!d || (F.de && d < F.de) || (F.ate && d > F.ate))) continue;
       if (!vazio(F.ano) && !F.ano[+String(d).slice(0, 4)]) continue;

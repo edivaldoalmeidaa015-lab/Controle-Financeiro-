@@ -199,3 +199,6 @@ botão **Exportar Excel** (abas OMs, Materiais, Pendências e Filtros, com os fi
 programado = data de início da programação no período, realizado = fechada no período, aderência = programadas já
 fechadas, atrasada = programada há mais de 30 dias e aberta); **Pendências abertas por pessoa** (Pendente + Em execução,
 pela coluna "Usuário", com a lista de cada pessoa).
+**Mapa das turbinas**: esquema por parque (linha) e posição (coluna), lido do nome do ativo (AB-IV04, JOA XII-09),
+com métrica selecionável (total de OMs, em aberto, corretivas, custo de materiais, trocas sem consumo, pendências abertas);
+tocar numa turbina filtra o painel.
