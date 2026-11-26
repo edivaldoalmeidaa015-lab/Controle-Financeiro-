@@ -181,6 +181,10 @@ filtros (parque, turbina, ano, mês, status sem as canceladas, tipo de serviço 
 cartões (OMs fechadas e em aberto, custo de materiais, pendências ligadas), ranking de turbinas,
 evolução mensal, materiais mais usados e a tabela com a ficha completa da OM. Tudo cruzado pelo número da OM.
 
+A aba **Materiais e pendências** mostra, por OM: o que foi consumido; o que não foi consumido (peça que o
+serviço executado diz que trocou, sem consumo do mesmo tipo, pelas regras de `componentesTrocados`/conferência
+do Painel de Turbinas); as pendências pendentes (Pendente, Em execução) e as não pendentes (Concluído, Cancelado).
+
 ```bash
 npm install xlsx
 node turbinas/scripts/gerar-consulta.js base.xlsx consulta-com-dados.html

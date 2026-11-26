@@ -107,12 +107,17 @@ O.fl = falhas.falhas;
 // ---- consumo -------------------------------------------------------------------------
 var UN_GRANEL = /^(L|LT|LITRO|KG|ML|M|MT)$/i;
 var MATERIAL_GRANDE = /GERADOR|GEARBOX|MULTIPLICADORA|TRANSFORMADOR|MAIN ?BEARING|ROLAMENTO PRINCIPAL|MAIN ?SHAFT|EIXO PRINCIPAL|\bPAS?\b|BLADE|CONVERSOR|NACELE/i;
-var C = { o: [], m: [], q: [], u: [], v: [], s: [], d: [] };
+// mesmas regras do Painel de Turbinas (modelo.js): material de consumo não é peça trocada
+var FAMILIA_CONSUMIVEL = /MATERIAL DE CONSUMO|CONSUMIVEL/i;
+var NOME_CONSUMIVEL = /LOCTITE|ADESIVO|\bFITA\b|SPRAY|COMPOSTO|\bARAME\b|SILICONE|DESENGRIP|TRAPO|GRAXA|[AÁ]LCOOL|LIMPA|\bCOLA\b|\bTINTA\b|\bLUVAS?\b/i;
+var C = { o: [], m: [], q: [], u: [], v: [], s: [], d: [], cf: [] };
 var cons = [];
 Object.keys(linhasCons).forEach(function (n) {
   if (!(n in posOM)) return;
   linhasCons[n].forEach(function (r) {
-    cons.push({ o: posOM[n], nome: texto(r['Material']), q: numBR(r['Quantidade']), u: texto(r['Unidade de medida']),
+    var familia = texto(r['Família de materiais']) + ' ' + texto(r['Complemento']), nomeM = texto(r['Material']);
+    cons.push({ o: posOM[n], nome: nomeM, q: numBR(r['Quantidade']), u: texto(r['Unidade de medida']),
+      peca: (FAMILIA_CONSUMIVEL.test(familia) && !/MERCADORIA|GRANDE COMPONENTE/i.test(familia)) || NOME_CONSUMIVEL.test(nomeM) ? 0 : 1,
       vu: numBR(r['Custo unitário']), v: numBR(r['Custo total']), d: dataISO(r['Utilizado em']) });
   });
 });
@@ -125,6 +130,64 @@ cons.sort(function (a, b) { return a.o - b.o; }).forEach(function (c) {
     (mediana[c.nome] > 0 && c.vu > 20 * mediana[c.nome] && c.v >= 50000);
   C.o.push(c.o); C.m.push(dMat.id(c.nome)); C.q.push(Math.round(c.q * 1000) / 1000); C.u.push(c.u);
   C.v.push(Math.round(c.v * 100) / 100); C.s.push(susp ? 1 : 0); C.d.push(c.d);
+  C.cf.push(c.peca ? 0 : 2); // 0 confirmada · 1 peça sem troca no texto · 2 consumível/acessório · 3 tipo não reconhecido
+});
+
+// ---- conferência: peças que o serviço executado diz que trocou × peças consumidas ------
+// Peças do texto pelo modelo do Painel de Turbinas (já sem a mesma troca lançada em duas OMs).
+// todas as OMs (de um ou vários arquivos) numa planilha só, no formato da exportação do Manusis
+var livroOM = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(livroOM, XLSX.utils.json_to_sheet(nums.map(function (n) { return linhasOM[n]; })), 'Ordens de manutenção');
+var M = Modelo.montar(livroOM, XLSX);
+var COMP = M.componentes, OUTRAS = COMP.length - 1;
+var itensPorOM = {};
+M.ordens.om.forEach(function (n, j) { itensPorOM[n] = M.ordens.pecasItens[j]; });
+var ACESS = [COMP.indexOf('Parafusos / fixação'), COMP.indexOf('Óleo / graxa')];
+var JUNTOS = [['Slip ring', 'Escovas'], ['Bateria', 'Carregador / fonte', 'UPS / nobreak'], ['Linha de vida', 'Cabo / conector']];
+function junto(a, c) { return a === c || JUNTOS.some(function (g) { return g.indexOf(COMP[a]) >= 0 && g.indexOf(COMP[c]) >= 0; }); }
+var catCache = {};
+function catsBaixa(k) {
+  var nome = dMat.lista[C.m[k]];
+  if (/ESCOVA/i.test(nome)) return [COMP.indexOf('Escovas')];
+  return catCache[nome] || (catCache[nome] = Modelo.categoriasMaterial(nome));
+}
+var porOMc = {};
+C.o.forEach(function (o, k) { (porOMc[o] = porOMc[o] || []).push(k); });
+var idxFech = dStatus.lista.indexOf('Fechadas');
+O.pi = []; O.se = [];
+var SELOS = ['', 'ok', 'parcial', 'diverge', 'soTexto', 'soBaixa'];
+nums.forEach(function (n, i) {
+  var itens = itensPorOM[n] || [], ks = (porOMc[i] || []).filter(function (k) { return C.cf[k] === 0; });
+  var fechada = O.st[i] === idxFech, texto = itens.length > 0, peloTitulo = false;
+  var cod = itens.map(function () { return 1; }); // 0 confirmada · 1 sem consumo · 2 conferir
+  var batem = 0, baixaOk = 0, semTexto = 0, semTipo = 0, acess = 0;
+  if (!texto && ks.length && /substitui|\btroca|\btrocad/i.test(O.desc[i])) texto = peloTitulo = true;
+  if (ks.length) {
+    var tipados = itens.filter(function (it) { return it[0] !== OUTRAS; }), achados = [];
+    var geral = peloTitulo || (texto && !tipados.length);
+    ks.forEach(function (k) {
+      var cb = catsBaixa(k).filter(function (c) { return c >= 0; });
+      var ac = cb.length && cb.every(function (c) { return ACESS.indexOf(c) >= 0; });
+      if (!texto) { if (ac) { C.cf[k] = 2; acess++; } else { C.cf[k] = 1; semTexto++; } return; }
+      if (geral) { baixaOk++; return; }
+      if (!cb.length) { C.cf[k] = 3; semTipo++; return; }
+      var bate = false;
+      tipados.forEach(function (it) { if (cb.some(function (c) { return junto(it[0], c); })) { bate = true; if (achados.indexOf(it[0]) < 0) achados.push(it[0]); } });
+      if (bate) baixaOk++; else if (ac) { C.cf[k] = 2; acess++; } else { C.cf[k] = 1; semTexto++; }
+    });
+    itens.forEach(function (it, j) {
+      if (geral) cod[j] = 0;
+      else if (it[0] === OUTRAS) cod[j] = 2;
+      else if (achados.indexOf(it[0]) >= 0) { cod[j] = 0; batem++; }
+      else cod[j] = semTipo ? 2 : 1;
+    });
+  }
+  var nb = ks.length - acess;
+  if (!nb) cod = itens.map(function () { return 1; });
+  var selo = !texto ? (nb ? 'soBaixa' : '') : !nb ? (fechada ? 'soTexto' : '') :
+    (!batem && !baixaOk && semTexto) ? 'diverge' : (semTexto || (fechada && cod.indexOf(1) >= 0)) ? 'parcial' : 'ok';
+  O.pi.push(itens.map(function (it, j) { return [it[0], it[1], cod[j]]; }));
+  O.se.push(SELOS.indexOf(selo));
 });
 
 // ---- pendências ----------------------------------------------------------------------
@@ -144,7 +207,7 @@ var D = {
   periodo: [datas[0], datas[datas.length - 1]],
   status: dStatus.lista, parques: dParque.lista, ativos: dAtivo.lista,
   ativosNome: dAtivo.lista.map(function (a) { return dAtivoNome[a] || a; }),
-  tipos: dTipo.lista, falhas: falhas.rotulos, materiais: dMat.lista, statusPend: dStPend.lista,
+  tipos: dTipo.lista, falhas: falhas.rotulos, componentes: COMP, materiais: dMat.lista, statusPend: dStPend.lista,
   O: O, C: C, P: P
 };
 var json = JSON.stringify(D);

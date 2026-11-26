@@ -20,6 +20,8 @@
   --warn-bg: #fff3dc;
   --warn-fg: #8a5a00;
   --mark: #ffe58a;
+  --good: #1f8a3a;
+  --bad: #c9302c;
   --logo-ground: #ffffff; /* fundo próprio do logo da empresa, igual nos dois temas */
   --shadow: 0 1px 2px rgba(23, 33, 43, .06), 0 2px 8px rgba(23, 33, 43, .04);
   --f-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
@@ -31,7 +33,7 @@
     --bg: #11171d; --surface: #19212a; --surface-2: #1f2832; --line: #2e3a46;
     --fg: #e8edf2; --fg-2: #a3aeb9; --fg-3: #74808c; --accent: #4fb3d4; --accent-soft: #173543;
     --s-fechada: #338ced; --s-aberta: #e76624; --s-cancel: #5b6672;
-    --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12;
+    --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12; --good: #3fb760; --bad: #ef6461;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
   }
 }
@@ -39,7 +41,7 @@
   --bg: #11171d; --surface: #19212a; --surface-2: #1f2832; --line: #2e3a46;
   --fg: #e8edf2; --fg-2: #a3aeb9; --fg-3: #74808c; --accent: #4fb3d4; --accent-soft: #173543;
   --s-fechada: #338ced; --s-aberta: #e76624; --s-cancel: #5b6672;
-  --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12;
+  --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12; --good: #3fb760; --bad: #ef6461;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -159,6 +161,24 @@ td.mat .m1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: ve
 .pager .pg { display: flex; gap: 6px; align-items: center; }
 .pager button:disabled { opacity: .4; cursor: default; }
 
+/* materiais e pendências */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 14px; overflow-x: auto; }
+.tabs button { border: 0; background: transparent; padding: 10px 12px 9px; font-family: var(--f-display); font-size: 1.05rem; font-weight: 600; color: var(--fg-3); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.qf { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 10px; }
+.cell-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: .78rem; }
+.cell-list li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cell-list .q { font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.cell-list .more { color: var(--fg-3); }
+td.cl { min-width: 190px; max-width: 280px; }
+.nada { color: var(--fg-3); }
+.ic { display: inline-block; width: 1.1em; text-align: center; font-weight: 700; margin-right: 2px; }
+.ic.ok { color: var(--good); } .ic.no { color: var(--bad); } .ic.pe { color: var(--s-aberta); } .ic.ch { color: var(--fg-3); }
+.selo { display: inline-flex; gap: 5px; align-items: center; border-radius: 4px; padding: 2px 7px; font-size: .72rem; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); }
+.selo.ok { border-color: color-mix(in srgb, var(--good) 50%, transparent); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.selo.alerta { border-color: color-mix(in srgb, var(--s-aberta) 50%, transparent); background: color-mix(in srgb, var(--s-aberta) 12%, transparent); }
+.selo.ruim { border-color: color-mix(in srgb, var(--bad) 50%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+
 /* ficha da OM */
 .scrim { position: fixed; inset: 0; background: rgba(10, 15, 20, .45); z-index: 50; }
 .drawer { position: fixed; z-index: 51; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: var(--surface); box-shadow: -8px 0 30px rgba(0,0,0,.2); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
@@ -247,7 +267,7 @@ var DADOS = /*__DADOS__*/null;
 
   var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs;
   var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null };
-  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25 };
+  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas' };
   var sel = null; // índices filtrados
 
   function iniciar(dados) {
@@ -460,20 +480,23 @@ var DADOS = /*__DADOS__*/null;
           '<label class="chk"><input type="checkbox" id="so-pecas"> Só peças (sem graxa, óleo, trapo e frascos)</label>' +
           '<div class="mlist" id="c-mat"></div></div>' +
       '</section>' +
-      '<section class="card tpanel" aria-label="Tabela de consulta rápida"><div class="ph"><div><h2>Consulta rápida</h2><p id="t-sub"></p></div>' +
+      '<section class="card tpanel" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
+          '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button></div>' +
+        '<div class="ph"><div><p id="t-sub"></p></div>' +
         '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div></div>' +
-        '<div class="tscroll"><table><thead><tr>' +
-          '<th data-s="om">Nº de ordem</th><th data-s="at">Ativo (WTG)</th><th data-s="dt">Data de abertura</th><th data-s="st">Status</th><th data-s="tp">Tipo de serviço</th><th data-s="desc">Descrição</th><th data-s="mat">Materiais usados</th><th data-s="pend">Pendências</th>' +
-        '</tr></thead><tbody id="tb"></tbody></table></div><div class="pager" id="pager"></div></section>';
+        '<div class="qf" id="qf"></div>' +
+        '<div class="tscroll"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div><div class="pager" id="pager"></div></section>';
     $('#seg-rank').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.rank = v; desenharRank(); } };
     $('#seg-mat').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.mat = v; desenharMat(); } };
     $('#seg-pp').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.porPag = +v; UI.page = 0; desenharTabela(); } };
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
+    $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: 'dt', dir: -1 }; desenharTabela(); } };
+    $('#qf').onclick = function (e) { var b = e.target.closest('[data-q]'); if (b) { var v = b.getAttribute('data-q'); UI.qf = UI.qf === v ? 'todas' : v; UI.page = 0; desenharTabela(); } };
     document.querySelector('.tpanel thead').onclick = function (e) {
       var th = e.target.closest('th'); if (!th) return;
       var c = th.getAttribute('data-s');
-      UI.sort = { col: c, dir: UI.sort.col === c ? -UI.sort.dir : (c === 'dt' || c === 'om' || c === 'mat' || c === 'pend' ? -1 : 1) };
+      UI.sort = { col: c, dir: UI.sort.col === c ? -UI.sort.dir : (/^(dt|om|mat|pend|cons|nc|pp|np)$/.test(c) ? -1 : 1) };
       UI.page = 0; desenharTabela();
     };
     $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
@@ -690,21 +713,96 @@ var DADOS = /*__DADOS__*/null;
       case 'desc': return O.desc[i].toLowerCase();
       case 'mat': return custoOM(i).v;
       case 'pend': return pendDe[i] ? pendDe[i].length : 0;
+      case 'cons': return consIni[i] < 0 ? 0 : consFim[i] - consIni[i];
+      case 'nc': return naoConsumido(i).length;
+      case 'pp': return pendSplit(i)[0].length;
+      case 'np': return pendSplit(i)[1].length;
+      case 'se': return SELO_ORD[D.O.se[i]];
     }
   }
+  var COLS = {
+    consulta: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Data de abertura'], ['st', 'Status'], ['tp', 'Tipo de serviço'], ['desc', 'Descrição'], ['mat', 'Materiais usados'], ['pend', 'Pendências']],
+    conf: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Abertura'], ['st', 'Status'], ['cons', 'Consumido'], ['nc', 'Não consumido'], ['pp', 'Pendente'], ['np', 'Não pendente'], ['se', 'Conferência']]
+  };
+  // selo da conferência (mesmas regras do Painel de Turbinas)
+  var SELOS = [null,
+    { rot: 'Troca confirmada', cls: 'ok', ic: '✓', dica: 'Cada peça que o serviço executado diz que trocou tem consumo do mesmo tipo.' },
+    { rot: 'Confirmada em parte', cls: 'alerta', ic: '!', dica: 'Parte bate com o consumo; sobra peça descrita sem consumo ou peça consumida sem a troca descrita.' },
+    { rot: 'Difere do consumo', cls: 'ruim', ic: '≠', dica: 'O texto cita um tipo de peça e o consumo é de outro: confira qual foi trocada.' },
+    { rot: 'Troca sem consumo', cls: 'ruim', ic: '✕', dica: 'OM fechada: o texto diz que trocou, mas nenhuma peça foi consumida. Falta lançar o consumo ou a troca não aconteceu.' },
+    { rot: 'Consumo sem troca no texto', cls: 'alerta', ic: '?', dica: 'Saiu peça para a OM, mas o serviço executado não diz que ela foi trocada.' }];
+  var SELO_ORD = [0, 1, 3, 5, 6, 4];
+  var PEND_ABERTA = function (k) { return !/conclu|cancel|fechad|finaliz/i.test(D.statusPend[D.P.st[k]]); };
+  function pendSplit(i) {
+    var a = [], b = []; (pendDe[i] || []).forEach(function (k) { (PEND_ABERTA(k) ? a : b).push(k); }); return [a, b];
+  }
+  function naoConsumido(i) { return D.O.pi[i].filter(function (it) { return it[2] !== 0; }); }
+  function temConsumoPeca(i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] !== 2) return true; return false; }
+  var QF = [
+    ['todas', 'Todas', function () { return true; }],
+    ['comcons', 'Com consumo', function (i) { return consIni[i] >= 0; }],
+    ['semcons', 'Sem consumo', function (i) { return consIni[i] < 0; }],
+    ['nc', 'Troca descrita não consumida', function (i) { return naoConsumido(i).some(function (it) { return it[2] === 1; }); }],
+    ['cst', 'Consumo sem troca no texto', function (i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) return true; return false; }],
+    ['pp', 'Com pendência pendente', function (i) { return pendSplit(i)[0].length > 0; }],
+    ['np', 'Sem pendência pendente', function (i) { return !pendSplit(i)[0].length; }],
+    ['ok', 'Troca confirmada', function (i) { return D.O.se[i] === 1; }]
+  ];
+  function lista(itens, max) {
+    if (!itens.length) return '<span class="nada">—</span>';
+    return '<ul class="cell-list">' + itens.slice(0, max).join('') + (itens.length > max ? '<li class="more">+ ' + (itens.length - max) + ' (abra a OM)</li>' : '') + '</ul>';
+  }
+  function linhaConf(i) {
+    var O = D.O, g = grupo[i], cons = [], ps = pendSplit(i), se = SELOS[O.se[i]];
+    if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) {
+      var cf = D.C.cf[k], ic = cf === 1 ? '<span class="ic pe" title="Consumida sem troca descrita no texto">?</span>' : cf === 0 && O.pi[i].length ? '<span class="ic ok" title="Bate com a troca descrita">✓</span>' : '';
+      cons.push('<li title="' + esc(D.materiais[D.C.m[k]]) + '">' + ic + '<span class="q">' + fmtQ.format(D.C.q[k]) + ' ' + esc(D.C.u[k]) + '</span> ' + esc(partesMaterial(D.materiais[D.C.m[k]]).nome) + '</li>');
+    }
+    var nc = naoConsumido(i).map(function (it) {
+      var conf = it[2] === 2;
+      return '<li title="' + (conf ? 'Há consumo de tipo não reconhecido: confira se é esta peça' : g === 1 ? 'OM em aberto: o consumo ainda pode ser lançado' : 'Descrita como trocada no serviço executado, sem consumo') + '"><span class="ic ' + (conf ? 'ch' : g === 1 ? 'pe' : 'no') + '">' + (conf ? '?' : g === 1 ? '…' : '✕') + '</span>' + esc(D.componentes[it[0]]) + (it[1] && it[1].toLowerCase() !== D.componentes[it[0]].toLowerCase() ? ': ' + esc(it[1]) : '') + '</li>';
+    });
+    var pl = function (k) { return '<li title="' + esc(D.P.desc[k]) + '"><span class="q mono">' + esc(D.P.n[k]) + '</span> ' + esc(D.P.desc[k]) + ' <span class="nada">(' + esc(D.statusPend[D.P.st[k]].toLowerCase()) + ')</span></li>'; };
+    return '<tr data-i="' + i + '" tabindex="0">' +
+      '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
+      '<td style="white-space:nowrap;font-weight:500">' + esc(D.ativos[O.at[i]]) + '</td>' +
+      '<td class="num" style="white-space:nowrap">' + dataBR(O.dt[i]) + '</td>' +
+      '<td><span class="pill ' + ['f', 'a', 'c'][g] + '">' + esc(D.status[O.st[i]]) + '</span><div class="d1" style="margin-top:4px;font-size:.74rem;color:var(--fg-2);max-width:220px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + realce(O.desc[i]) + '</div></td>' +
+      '<td class="cl">' + lista(cons, 4) + (cons.length ? '<div class="num" style="font-size:.76rem;margin-top:2px">' + fmtR.format(custoOM(i).v) + '</div>' : '') + '</td>' +
+      '<td class="cl">' + lista(nc, 4) + '</td>' +
+      '<td class="cl">' + lista(ps[0].map(pl), 3) + '</td>' +
+      '<td class="cl">' + lista(ps[1].map(pl), 3) + '</td>' +
+      '<td>' + (se ? '<span class="selo ' + se.cls + '" title="' + esc(se.dica) + '">' + se.ic + ' ' + se.rot + '</span>' : '<span class="nada" title="Sem troca de peça descrita e sem peça consumida">—</span>') + '</td></tr>';
+  }
   function desenharTabela() {
+    var cols = COLS[UI.vista];
+    $('#th').innerHTML = '<tr>' + cols.map(function (c) { return '<th data-s="' + c[0] + '">' + c[1] + '</th>'; }).join('') + '</tr>';
+    var tb = $('#tabs').children; for (var t = 0; t < tb.length; t++) tb[t].setAttribute('aria-selected', tb[t].getAttribute('data-v') === UI.vista);
+    var base = sel;
+    if (UI.vista === 'conf') {
+      var f = QF.filter(function (q) { return q[0] === UI.qf; })[0] || QF[0];
+      $('#qf').hidden = false;
+      $('#qf').innerHTML = QF.map(function (q) {
+        var n = 0; sel.forEach(function (i) { if (q[2](i)) n++; });
+        return '<button type="button" class="chip sm" data-q="' + q[0] + '" aria-pressed="' + (UI.qf === q[0]) + '">' + q[1] + '<span class="c num">' + fmtN.format(n) + '</span></button>';
+      }).join('');
+      base = sel.filter(function (i) { return f[2](i); });
+    } else $('#qf').hidden = true;
     var s = UI.sort, ths = document.querySelectorAll('.tpanel th');
     ths.forEach(function (th) { th.setAttribute('aria-sort', th.getAttribute('data-s') === s.col ? (s.dir > 0 ? 'ascending' : 'descending') : 'none'); });
     var pp = $('#seg-pp').children; for (var j = 0; j < pp.length; j++) pp[j].setAttribute('aria-pressed', +pp[j].getAttribute('data-v') === UI.porPag);
-    var chaves = new Map(); sel.forEach(function (i) { chaves.set(i, chaveSort(i, s.col)); });
-    var ord = sel.slice().sort(function (a, b) {
+    var chaves = new Map(); base.forEach(function (i) { chaves.set(i, chaveSort(i, s.col)); });
+    var ord = base.slice().sort(function (a, b) {
       var x = chaves.get(a), y = chaves.get(b);
       return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true })) * s.dir;
     });
     var pags = Math.max(1, Math.ceil(ord.length / UI.porPag)); UI.page = Math.min(UI.page, pags - 1);
     var pag = ord.slice(UI.page * UI.porPag, (UI.page + 1) * UI.porPag), O = D.O;
-    $('#t-sub').textContent = fmtN.format(ord.length) + ' OMs · toque numa linha para ler o serviço executado completo';
-    $('#tb').innerHTML = pag.length ? pag.map(function (i) {
+    $('#t-sub').textContent = fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
+      ? '"Não consumido" = peça que o serviço executado diz que trocou e não tem consumo do mesmo tipo · "Pendente" = pendência pendente ou em execução · toque numa linha para ver a OM'
+      : 'toque numa linha para ler o serviço executado completo');
+    if (UI.vista === 'conf') $('#t-sub').innerHTML = esc($('#t-sub').textContent) + '<br><span class="ic ok">✓</span>bate com a troca descrita · <span class="ic no">✕</span>sem consumo (OM fechada) · <span class="ic pe">…</span>sem consumo ainda (OM em aberto) · <span class="ic pe">?</span>consumida sem troca no texto · <span class="ic ch">?</span>conferir';
+    $('#tb').innerHTML = !pag.length ? '<tr><td colspan="9"><div class="empty">Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.</div></td></tr>' : UI.vista === 'conf' ? pag.map(linhaConf).join('') : pag.map(function (i) {
       var g = grupo[i], m = resumoMat(i), pn = pendDe[i] ? pendDe[i].length : 0;
       return '<tr data-i="' + i + '" tabindex="0">' +
         '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
@@ -715,7 +813,7 @@ var DADOS = /*__DADOS__*/null;
         '<td class="desc"><div class="d1">' + realce(O.desc[i]) + '</div></td>' +
         '<td class="mat">' + (m.n ? '<div class="m1">' + esc(m.txt) + '</div><div class="num" style="color:var(--fg)">' + fmtR.format(m.v) + '</div>' : (m.v ? '<span class="num">' + fmtR.format(m.v) + '</span>' : '—')) + '</td>' +
         '<td><span class="pcount num' + (pn ? ' has' : '') + '">' + pn + '</span></td></tr>';
-    }).join('') : '<tr><td colspan="8"><div class="empty">Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.</div></td></tr>';
+    }).join('');
     $('#pager').innerHTML = '<span class="num">Página ' + (UI.page + 1) + ' de ' + pags + '</span><span class="pg">' +
       '<button type="button" class="btn" data-p="0"' + (UI.page ? '' : ' disabled') + '>« Primeira</button>' +
       '<button type="button" class="btn" data-p="' + (UI.page - 1) + '"' + (UI.page ? '' : ' disabled') + '>‹ Anterior</button>' +
@@ -782,13 +880,27 @@ var DADOS = /*__DADOS__*/null;
         '<div><span>Custo de material</span><b class="num">' + fmtR2.format(c.v) + '</b></div></div>' +
         '<section><h4>Descrição</h4><div class="dtext">' + realce(O.desc[i]) + '</div>' + (fl ? '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + fl + '</div>' : '') + '</section>' +
         '<section><h4>Serviço executado</h4>' + execH + '</section>' +
-        '<section><h4>Materiais usados</h4>' + mats + '</section>' +
+        '<section><h4>Materiais usados</h4>' + mats + '</section>' + fichaConf(i) +
         '<section><h4>Pendências (' + pend.length + ')</h4>' + pends + '</section>' +
       '</div>';
     document.body.appendChild(scrim); document.body.appendChild(dr);
     scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
     var m = dr.querySelector('.db mark'); if (m) setTimeout(function () { m.scrollIntoView({ block: 'center' }); }, 30);
   }
+  function fichaConf(i) {
+    var O = D.O, se = SELOS[O.se[i]], itens = O.pi[i];
+    if (!itens.length && !se) return '';
+    var rot = ['consumida ✓', g1(i) ? 'sem consumo (OM em aberto)' : 'sem consumo ✕', 'conferir: há consumo de tipo não reconhecido'];
+    var h = '<section><h4>Conferência: troca descrita × consumo</h4>' + (se ? '<span class="selo ' + se.cls + '">' + se.ic + ' ' + se.rot + '</span><div style="font-size:.8rem;color:var(--fg-2);margin:4px 0 8px">' + esc(se.dica) + '</div>' : '');
+    h += itens.length ? '<table class="mini"><thead><tr><th>Peça descrita no serviço executado</th><th>Situação</th></tr></thead><tbody>' + itens.map(function (it) {
+      return '<tr><td>' + esc(D.componentes[it[0]]) + (it[1] ? ' <span style="color:var(--fg-2)">(' + esc(it[1]) + ')</span>' : '') + '</td><td>' + rot[it[2]] + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<div style="font-size:.84rem;color:var(--fg-2)">O serviço executado não descreve troca de peça.</div>';
+    var st = [];
+    if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) st.push(partesMaterial(D.materiais[D.C.m[k]]).nome);
+    if (st.length) h += '<div style="font-size:.82rem;margin-top:8px"><b>Consumida sem troca no texto:</b> ' + esc(st.join(' · ')) + '</div>';
+    return h + '</section>';
+  }
+  function g1(i) { return grupo[i] === 1; }
   function fecharFicha() { var a = $('#ficha'), b = $('#scrim'); if (a) a.remove(); if (b) b.remove(); if (ultimoFoco && ultimoFoco.focus) { try { ultimoFoco.focus(); } catch (e) {} } ultimoFoco = null; }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); } });
 
