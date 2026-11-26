@@ -128,6 +128,42 @@ body.cel .nav a[aria-current="page"] { background: var(--accent-soft); color: va
 body.cel .app-scroll { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 body:not([data-tela="inicio"]) .viz, body:not([data-tela="inicio"]) .viz2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 body:not([data-tela="inicio"]) .viz .p-mes { grid-column: auto; order: 0; }
+/* didático: botão "?" e leitura rápida */
+.ajuda { border: 1px solid var(--line); background: var(--surface); color: var(--accent); width: 22px; height: 22px; border-radius: 50%; font-weight: 700; font-size: .78rem; line-height: 1; padding: 0; display: inline-grid; place-items: center; vertical-align: 2px; margin-left: 6px; flex: none; }
+.ajuda:hover { background: var(--accent); color: var(--surface); }
+.brand .ajuda-geral { border: 1px solid var(--line); background: var(--surface); color: var(--accent); border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.aj h4 { margin: 0 0 4px; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--label); }
+.aj p, .aj li { margin: 0; font-size: .92rem; line-height: 1.55; max-width: 62ch; }
+.aj ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.leitura { display: flex; flex-direction: column; gap: 6px; }
+.lt { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-align: left; width: 100%; font-size: .9rem; }
+.lt:hover { border-color: var(--accent); }
+.lt .sem { width: 12px; height: 12px; border-radius: 50%; }
+.lt .sem.r { background: var(--bad); } .lt .sem.a { background: var(--s-aberta); } .lt .sem.v { background: var(--good); } .lt .sem.n { background: var(--fg-3); }
+.lt .ir { color: var(--accent); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.lt b { font-variant-numeric: tabular-nums; }
+.faixas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.faixa { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.faixa:hover, .faixa[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.faixa b { font-family: var(--f-display); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.faixa span { font-size: .78rem; color: var(--fg-2); }
+.faixa i { display: block; height: 5px; border-radius: 3px; margin-top: 4px; }
+.lista-g { display: flex; flex-direction: column; gap: 4px; }
+.lg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 8px; border-radius: 6px; border: 0; background: transparent; text-align: left; width: 100%; }
+.lg:hover { background: var(--surface-2); }
+.lg .t { font-weight: 600; font-size: .88rem; }
+.lg .v { font-family: var(--f-display); font-weight: 600; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.lg .s { grid-column: 1 / -1; font-size: .76rem; color: var(--fg-2); }
+.corrigir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.crx { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.crx b { font-family: var(--f-display); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.crx .tt { font-weight: 600; font-size: .9rem; }
+.crx p { margin: 0; font-size: .8rem; color: var(--fg-2); flex: 1; }
+.crx .btn { align-self: flex-start; }
+body.cel .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.cel .corrigir { grid-template-columns: minmax(0, 1fr); }
+body.cel .lt { grid-template-columns: 12px minmax(0, 1fr); font-size: .86rem; }
+body.cel .lt .ir { grid-column: 2; }
 .pg-titulo { display: flex; align-items: center; gap: 10px; }
 .pg-titulo h2 { font-family: var(--f-display); font-size: 1.5rem; margin: 0; color: var(--label); }
 .pg-titulo p { margin: 0; color: var(--fg-2); font-size: .85rem; }
@@ -382,6 +418,7 @@ body.pc #app { min-width: 1000px; }
     <div class="brand">
       <!--LOGO--><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M16 15 16 30"/><path d="M12 30h8"/></g><g fill="var(--accent)"><path d="M16 14 C15 9 15.4 5 16.6 2 C17.6 5.5 17.4 9.5 16 14Z"/><path d="M16 14 C20.5 15.6 24 17.8 26 20.6 C22.4 20.4 18.6 18.4 16 14Z"/><path d="M16 14 C12.6 17.4 9.2 19.4 5.8 20.2 C7.8 17.2 11.4 15 16 14Z"/></g><circle cx="16" cy="14" r="1.8" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.2"/></svg><!--/LOGO-->
       <div><h1>Consulta de OMs</h1><small id="periodo">Carregando…</small></div>
+      <button type="button" class="ajuda-geral" id="como-usar">Como usar</button>
     </div>
     <label class="search" for="q">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg-3)" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="var(--fg-3)" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -437,7 +474,7 @@ var DADOS = /*__DADOS__*/null;
 
   var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs, pAt, hayP;
   var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null, de: '', ate: '' };
-  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms', pBusca: '', pSit: 'abertas', cBusca: '', cSit: 'todos', top: 'corr', tela: 'inicio' };
+  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms', pBusca: '', pSit: 'abertas', pIdade: '', cBusca: '', cSit: 'todos', top: 'corr', tela: 'inicio' };
   var sel = null; // índices filtrados
 
   function lerModo() { try { return localStorage.getItem('consulta-oms-modo'); } catch (e) { return null; } }
@@ -507,6 +544,7 @@ var DADOS = /*__DADOS__*/null;
     lerHash();
     montarFiltros();
     montarApp();
+    botoesAjuda();
     aplicarTela();
     atualizar();
   }
@@ -811,29 +849,33 @@ var DADOS = /*__DADOS__*/null;
   function montarApp() {
     $('#app').innerHTML =
       '<div class="pg-titulo" id="pg-titulo" data-pg="oms consumo pendencias top10"><div><h2 id="pg-h"></h2><p id="pg-p"></p></div></div>' +
+      '<section class="card panel" id="p-leitura" data-pg="inicio" aria-label="Leitura rápida"><div class="ph"><div><h2 data-aj="leitura">Leitura rápida</h2><p>O que pede atenção agora, com os filtros do topo · toque numa linha para ir ao detalhe</p></div></div><div class="leitura" id="c-leitura"></div></section>' +
       '<section class="kpis" aria-label="Indicadores">' +
-        '<div class="card kpi" id="k-om" data-pg="inicio oms top10"></div><div class="card kpi" id="k-custo" data-pg="inicio consumo"></div><div class="card kpi" id="k-pend" data-pg="inicio pendencias"></div><div class="card kpi" id="k-wtg" data-pg="inicio oms top10"></div>' +
+        '<div class="card kpi" id="k-om" data-pg="inicio oms top10"></div><div class="card kpi" id="k-custo" data-pg="inicio consumo"></div><div class="card kpi" id="k-pend" data-pg="inicio pendencias"></div><div class="card kpi" id="k-wtg" data-pg="inicio oms top10"></div><div class="card kpi" id="k-tempo" data-pg="oms"></div>' +
       '</section>' +
-      '<section class="card panel" id="p-top" data-pg="top10" aria-label="Top 10 turbinas mais impactadas"><div class="ph"><div><h2>Top 10 turbinas mais impactadas</h2><p>Com os filtros do topo · toque numa turbina para ver as OMs dela</p></div>' +
+      '<section class="card panel" id="p-idade" data-pg="pendencias" aria-label="Idade das pendências abertas"><div class="ph"><div><h2 data-aj="idade">Há quanto tempo as pendências estão abertas</h2><p>Pendências abertas (pendente + em execução) por idade · toque numa faixa para ver a lista</p></div></div><div class="faixas" id="c-idade"></div><div id="c-hse" style="margin-top:8px"></div></section>' +
+      '<section class="card panel" id="p-atras" data-pg="oms" aria-label="Preventivas atrasadas"><div class="ph"><div><h2 data-aj="atras">Preventivas atrasadas por turbina</h2><p id="atras-sub"></p></div><button type="button" class="btn" id="atras-todas">Ver todas na tabela</button></div><div class="lista-g" id="c-atras"></div></section>' +
+      '<section class="card panel" id="p-corrigir" data-pg="consumo" aria-label="Corrigir no Manusis"><div class="ph"><div><h2 data-aj="corrigir">Corrigir no Manusis</h2><p>Lançamentos que deixam o custo e o estoque errados · com os filtros do topo</p></div></div><div class="corrigir" id="c-corrigir"></div></section>' +
+      '<section class="card panel" id="p-top" data-pg="top10" aria-label="Top 10 turbinas mais impactadas"><div class="ph"><div><h2 data-aj="top">Top 10 turbinas mais impactadas</h2><p>Com os filtros do topo · toque numa turbina para ver as OMs dela</p></div>' +
         '<div class="seg" id="seg-top"></div></div><div class="top10" id="c-top"></div></section>' +
-      '<section class="card panel" data-pg="inicio top10" aria-label="Mapa das turbinas"><div class="ph"><div><h2>Mapa das turbinas</h2><p>Cada quadrado é um aerogerador, na sua posição no parque (esquema, não geográfico) · toque para filtrar a turbina</p></div>' +
+      '<section class="card panel" data-pg="inicio top10" aria-label="Mapa das turbinas"><div class="ph"><div><h2 data-aj="mapa">Mapa das turbinas</h2><p>Cada quadrado é um aerogerador, na sua posição no parque (esquema, não geográfico) · toque para filtrar a turbina</p></div>' +
         '<select id="mapa-met" class="dt-in" aria-label="O que o mapa mostra"></select></div>' +
         '<div id="c-mapa"></div></section>' +
       '<section class="viz">' +
-        '<div class="card panel p-rank" data-pg="inicio oms"><div class="ph"><div><h2>Ranking de turbinas</h2><p>Turbinas com mais OMs · toque para filtrar</p></div>' +
+        '<div class="card panel p-rank" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="rank">Ranking de turbinas</h2><p>Turbinas com mais OMs · toque para filtrar</p></div>' +
           '<div class="seg" id="seg-rank"><button type="button" data-v="todas">Todas</button><button type="button" data-v="corr">Só corretivas</button></div></div>' +
           '<div class="legend" id="leg-rank"></div><div class="chart" id="c-rank"></div></div>' +
-        '<div class="card panel p-mes" data-pg="inicio oms"><div class="ph"><div><h2>Evolução mensal</h2><p>OMs por mês de abertura · toque num mês para filtrar</p></div></div>' +
+        '<div class="card panel p-mes" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="mes">Evolução mensal</h2><p>OMs por mês de abertura · toque num mês para filtrar</p></div></div>' +
           '<div class="legend" id="leg-mes"></div><div class="chart" id="c-mes"></div></div>' +
-        '<div class="card panel p-mat" data-pg="inicio consumo"><div class="ph"><div><h2>Materiais mais usados</h2><p>Consumo de materiais das OMs filtradas · toque para filtrar</p></div>' +
+        '<div class="card panel p-mat" data-pg="inicio consumo"><div class="ph"><div><h2 data-aj="mat">Materiais mais usados</h2><p>Consumo de materiais das OMs filtradas · toque para filtrar</p></div>' +
           '<div class="seg" id="seg-mat"><button type="button" data-v="oms">Nº de OMs</button><button type="button" data-v="custo">Custo</button></div></div>' +
           '<label class="chk"><input type="checkbox" id="so-pecas"> Só peças (sem graxa, óleo, trapo e frascos)</label>' +
           '<div class="mlist" id="c-mat"></div></div>' +
       '</section>' +
       '<section class="viz2">' +
-        '<div class="card panel" data-pg="inicio oms"><div class="ph"><div><h2>Curva S das preventivas</h2><p id="s-sub"></p></div></div>' +
+        '<div class="card panel" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="curva">Curva S das preventivas</h2><p id="s-sub"></p></div></div>' +
           '<div class="skpis" id="s-kpis"></div><div class="legend" id="leg-s"></div><div class="chart" id="c-s"></div></div>' +
-        '<div class="card panel" data-pg="inicio pendencias"><div class="ph"><div><h2>Pendências abertas por pessoa</h2><p>Pendente + Em execução, por quem registrou (coluna "Usuário") · toque para ver a lista</p></div></div>' +
+        '<div class="card panel" data-pg="inicio pendencias"><div class="ph"><div><h2 data-aj="pessoas">Pendências abertas por pessoa</h2><p>Pendente + Em execução, por quem registrou (coluna "Usuário") · toque para ver a lista</p></div></div>' +
           '<div class="skpis" id="p-kpis"></div><div class="legend" id="leg-p"></div><div class="chart" id="c-p"></div></div>' +
       '</section>' +
       '<section class="card tpanel" data-pg="inicio oms consumo pendencias" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
@@ -880,7 +922,7 @@ var DADOS = /*__DADOS__*/null;
     if (!semFecharPop) fecharPop();
     filtrar();
     chipsFiltro(); barraAtivos();
-    desenharKPIs(); desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
+    desenharKPIs(); desenharLeitura(); desenharIdade(); desenharAtrasadas(); desenharCorrigir(); desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
 
   }
 
@@ -902,21 +944,33 @@ var DADOS = /*__DADOS__*/null;
     });
     var tot = sel.length;
     var sp = function (n, cor) { return tot ? '<i style="width:' + (100 * n / tot) + '%;background:var(' + cor + ')"></i>' : ''; };
-    $('#k-om').innerHTML = '<span class="k-lab">OMs filtradas</span><span class="k-val">' + fmtN.format(tot) + '</span>' +
+    $('#k-om').innerHTML = '<span class="k-lab">OMs filtradas<button type="button" class="ajuda" data-ajk="om" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(tot) + '</span>' +
       '<span class="k-sub"><button type="button" class="k-sit" data-sit="fechadas" title="Ver só as fechadas"><span class="dot" style="background:var(--s-fechada)"></span><b class="num">' + fmtN.format(g[0]) + '</b> fechadas</button>' +
       '<button type="button" class="k-sit" data-sit="abertas" title="Ver só as abertas"><span class="dot" style="background:var(--s-aberta)"></span><b class="num">' + fmtN.format(g[1]) + '</b> em aberto</button>' +
       (g[2] ? '<span><span class="dot" style="background:var(--s-cancel)"></span><b class="num">' + fmtN.format(g[2]) + '</b> canceladas</span>' : '') + '</span>' +
       '<div class="split" title="Fechadas × em aberto">' + sp(g[0], '--s-fechada') + sp(g[1], '--s-aberta') + sp(g[2], '--s-cancel') + '</div>';
-    $('#k-custo').innerHTML = '<span class="k-lab">Custo total de materiais</span><span class="k-val" title="' + fmtR2.format(custo) + '">' + compacto(custo) + '</span>' +
+    $('#k-custo').innerHTML = '<span class="k-lab">Custo total de materiais<button type="button" class="ajuda" data-ajk="custo" aria-label="O que é isso?">?</button></span><span class="k-val" title="' + fmtR2.format(custo) + '">' + compacto(custo) + '</span>' +
       '<span class="k-sub"><span><b class="num">' + fmtN.format(comMat) + '</b> OMs com material</span><span><b class="num">' + fmtN.format(itens) + '</b> consumos</span></span>' +
       (susN ? '<span class="warn" title="Ex.: óleo cadastrado por litro com o preço do tambor. Corrija o cadastro no Manusis para entrar no total.">' + fmtN.format(susN) + ' consumo(s) com preço unitário fora do padrão ficaram fora do total (' + compacto(susV) + ')</span>' : '');
     var pk = Object.keys(pend), ps = {};
     pk.forEach(function (p) { var s = D.statusPend[D.P.st[p]]; ps[s] = (ps[s] || 0) + 1; });
-    $('#k-pend').innerHTML = '<span class="k-lab">Pendências registradas</span><span class="k-val">' + fmtN.format(pk.length) + '</span>' +
+    $('#k-pend').innerHTML = '<span class="k-lab">Pendências registradas<button type="button" class="ajuda" data-ajk="pend" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(pk.length) + '</span>' +
       '<span class="k-sub">' + Object.keys(ps).sort(function (a, b) { return ps[b] - ps[a]; }).map(function (s) { return '<span><b class="num">' + fmtN.format(ps[s]) + '</b> ' + esc(s.toLowerCase()) + '</span>'; }).join('') + '</span>' +
       '<span class="k-sub" style="font-size:.74rem;color:var(--fg-3)">Ligadas às OMs filtradas (OM de origem ou de execução) · ' + fmtN.format(D.P.n.length) + ' na planilha</span>';
+    var tf = { n: 0, s: 0, c: [0, 0], p: [0, 0] };
+    sel.forEach(function (i) {
+      if (grupo[i] !== 0 || !D.O.dt[i] || !D.O.df[i]) return;
+      var d = (Date.parse(D.O.df[i]) - Date.parse(D.O.dt[i])) / 864e5; if (d < 0) return;
+      tf.n++; tf.s += d;
+      var tp = D.tipos[D.O.tp[i]];
+      if (/corre(c)?ti/i.test(tp)) { tf.c[0] += d; tf.c[1]++; } else if (/prevent/i.test(tp)) { tf.p[0] += d; tf.p[1]++; }
+    });
+    var md = function (a) { return a[1] ? fmtN.format(Math.round(a[0] / a[1])) + ' dias' : '—'; };
+    $('#k-tempo').innerHTML = '<span class="k-lab">Tempo médio para fechar<button type="button" class="ajuda" data-ajk="tempo" aria-label="O que é isso?">?</button></span><span class="k-val">' + (tf.n ? fmtN.format(Math.round(tf.s / tf.n)) : '—') + ' <span style="font-size:1rem;font-weight:500">dias</span></span>' +
+      '<span class="k-sub"><span>Corretivas: <b>' + md(tf.c) + '</b></span><span>Preventivas: <b>' + md(tf.p) + '</b></span></span>' +
+      '<span class="k-sub" style="font-size:.74rem;color:var(--fg-3)">Da abertura ao fechamento, nas ' + fmtN.format(tf.n) + ' OMs fechadas filtradas</span>';
     var wk = Object.keys(wtg), top = wk.sort(function (a, b) { return wtg[b] - wtg[a]; })[0];
-    $('#k-wtg').innerHTML = '<span class="k-lab">Turbinas com OM</span><span class="k-val">' + fmtN.format(wk.length) + '</span>' +
+    $('#k-wtg').innerHTML = '<span class="k-lab">Turbinas com OM<button type="button" class="ajuda" data-ajk="wtg" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(wk.length) + '</span>' +
       '<span class="k-sub">' + (top !== undefined ? '<span>Mais OMs: <b>' + esc(D.ativos[top]) + '</b> (' + fmtN.format(wtg[top]) + ')</span>' : '<span>—</span>') + '</span>' +
       '<span class="k-sub"><span>Média de <b class="num">' + (wk.length ? fmtQ.format(tot / wk.length) : 0) + '</b> OMs por turbina</span></span>';
   }
@@ -1282,7 +1336,14 @@ var DADOS = /*__DADOS__*/null;
       return '<button type="button" class="chip sm" data-ps="' + o[0] + '" aria-pressed="' + (UI.pSit === o[0]) + '">' + esc(o[1]) + '<span class="c num">' + fmtN.format(n) + '</span></button>';
     }).join('');
     var f = filtroSitPend(UI.pSit);
-    return base.filter(function (k) { return f(k); });
+    var lista = base.filter(function (k) { return f(k); });
+    if (UI.pIdade) {
+      lista = lista.filter(function (k) { var d = idadeDias(D.P.dt[k]); return d !== null && faixaDe(d) === UI.pIdade; });
+      var fx = FAIXAS.filter(function (x) { return x[0] === UI.pIdade; })[0];
+      $('#pend-chips').insertAdjacentHTML('beforeend', '<span class="tag">Idade: ' + fx[1].toLowerCase() + '<button type="button" aria-label="Tirar filtro de idade" data-pidade="1">×</button></span>');
+      $('#pend-chips').querySelector('[data-pidade]').onclick = function (e) { e.stopPropagation(); UI.pIdade = ''; UI.page = 0; desenharIdade(); desenharTabela(); };
+    }
+    return lista;
   }
   function desenharTabela() {
     var cols = COLS[UI.vista];
@@ -1527,9 +1588,156 @@ var DADOS = /*__DADOS__*/null;
     });
   }
 
+  // ---------------- ajuda (didático) ----------------
+  var AJUDA = {
+    geral: ['Como usar o painel', [
+      ['O que é', 'Um painel das ordens de manutenção (OMs) do Manusis, cruzadas pelo número da OM com o consumo de materiais e as pendências.'],
+      ['Telas', '<ul><li><b>Início</b>: tudo junto, com a Leitura rápida no topo.</li><li><b>OMs</b>: quantidade, tempo para fechar, preventivas atrasadas e a tabela.</li><li><b>Consumo</b>: custo, materiais e o que corrigir no Manusis.</li><li><b>Pendências</b>: idade, quem tem mais abertas e a pesquisa.</li><li><b>Top 10</b>: as turbinas que mais pedem atenção.</li></ul>'],
+      ['Filtros', 'Os filtros do topo (parque, turbina, ano, mês, data, situação, status) valem para todas as telas. Tocar numa barra, num mês ou numa turbina também filtra. As etiquetas embaixo dos filtros mostram o que está ligado; o × tira cada um e "Limpar filtros" volta tudo.'],
+      ['Botão ?', 'Cada quadro tem um <b>?</b> que explica o que ele mostra, como ler e o que fazer.'],
+      ['Atualizar', 'Use "Atualizar base" para carregar as planilhas novas do Manusis (OMs, consumo e pendências). A leitura é feita só no aparelho.']]],
+    leitura: ['Leitura rápida', [
+      ['O que é', 'Frases prontas com os pontos que mais pedem atenção, calculadas com os filtros do topo.'],
+      ['Cores', '<ul><li><b style="color:var(--bad)">Vermelho</b>: fora da referência, agir.</li><li><b style="color:var(--s-aberta)">Laranja</b>: atenção.</li><li><b style="color:var(--good)">Verde</b>: dentro da referência.</li><li>Cinza: só informação.</li></ul>'],
+      ['O que fazer', 'Toque numa linha para abrir a tela com o detalhe.']]],
+    om: ['OMs filtradas', [['O que é', 'Quantas ordens de manutenção entram nos filtros. Fechadas = status Fechadas; em aberto = tudo que ainda não fechou (Abertas, Em espera, Programadas, Apontamentos concluídos, Revisão Liderança). Canceladas ficam de fora, a não ser que você marque.'], ['Como ler', 'A barra mostra a proporção fechadas × em aberto. Toque em "fechadas" ou "em aberto" para filtrar.']]],
+    custo: ['Custo total de materiais', [['O que é', 'Soma do custo dos materiais consumidos nas OMs filtradas (planilha de consumo do Manusis).'], ['Atenção', 'Lançamentos com preço unitário fora do padrão (ex.: óleo cadastrado por litro com o preço do tambor) ficam fora da soma e aparecem no aviso amarelo. Corrija no Manusis para entrarem no total.']]],
+    pend: ['Pendências registradas', [['O que é', 'Pendências do Manusis ligadas às OMs filtradas (como OM de origem ou de execução), separadas por status.'], ['Onde ver mais', 'Na tela Pendências: idade, quem tem mais abertas e a pesquisa só nas pendências.']]],
+    wtg: ['Turbinas com OM', [['O que é', 'Quantas turbinas têm ao menos uma OM nos filtros, a que tem mais OMs e a média por turbina.']]],
+    tempo: ['Tempo médio para fechar', [['O que é', 'Dias, em média, entre a data de abertura e a data de fechamento das OMs fechadas que entram nos filtros.'], ['Como ler', 'Quanto menor, mais rápido a equipe resolve. Compare corretivas e preventivas, e um parque com o outro (filtro Parque).'], ['O que fazer', 'Se subir de um mês para o outro, olhe as OMs em espera e os motivos (falta de peça, acesso, clima).']]],
+    mapa: ['Mapa das turbinas', [['O que é', 'Cada quadrado é um aerogerador, na sua posição no parque (é um esquema, não um mapa geográfico).'], ['Como ler', 'Quanto mais escuro, maior o valor da medida escolhida na caixa do canto (OMs, em aberto, corretivas, custo, trocas sem consumo, pendências).'], ['O que fazer', 'Toque numa turbina para filtrar o painel por ela. Turbinas escuras no meio de claras merecem uma olhada.']]],
+    rank: ['Ranking de turbinas', [['O que é', 'As 15 turbinas com mais OMs nos filtros, divididas em fechadas e em aberto.'], ['Dica', 'Use "Só corretivas" para ver as que mais quebram, sem as preventivas programadas.']]],
+    mes: ['Evolução mensal', [['O que é', 'Quantas OMs foram abertas em cada mês, divididas em fechadas e em aberto (situação de hoje).'], ['Como ler', 'Picos mostram meses com muita demanda (campanhas de preventiva ou muitas falhas). Laranja alto nos meses antigos = OMs esquecidas abertas.'], ['O que fazer', 'Toque num mês para filtrar o painel por ele.']]],
+    mat: ['Materiais mais usados', [['O que é', 'Os materiais que mais aparecem no consumo das OMs filtradas, por número de OMs ou por custo.'], ['Dica', 'Deixe marcado "Só peças" para tirar graxa, óleo, trapo e frascos. Toque num material para ver só as OMs que o usaram.']]],
+    curva: ['Curva S das preventivas', [['O que é', 'Programado acumulado (pela data de início da programação) × realizado acumulado (OMs preventivas fechadas), mês a mês.'], ['Como ler', 'As linhas juntas = o plano está sendo cumprido. Linha cheia abaixo da tracejada = atraso acumulado. Aderência = das programadas no período, quantas já fecharam. Referência: 90% ou mais.'], ['O que fazer', 'Veja na tela OMs a lista de preventivas atrasadas por turbina.']]],
+    pessoas: ['Pendências abertas por pessoa', [['O que é', 'Pendências pendentes ou em execução, por quem registrou no Manusis (coluna "Usuário").'], ['Atenção', 'Quem registra nem sempre é quem resolve. Muitas pendências com uma pessoa só pode indicar que ela registra pela equipe toda.'], ['O que fazer', 'Toque no nome para ver a lista, das mais antigas para as mais novas.']]],
+    idade: ['Há quanto tempo as pendências estão abertas', [['O que é', 'As pendências ainda abertas, separadas pelo tempo desde a abertura.'], ['Referência', 'Pendência deve ser resolvida na próxima ida à turbina. Mais de 90 dias é atraso; de segurança (HSE), mais de 30 dias já é crítico.'], ['O que fazer', 'Toque numa faixa para ver a lista na tabela e combine prazo com cada equipe, começando pelas de segurança.']]],
+    atras: ['Preventivas atrasadas', [['O que é', 'OMs de tipo preventivo programadas há mais de 30 dias e ainda não fechadas (sem as canceladas), por turbina.'], ['Por que importa', 'Preventiva atrasada vira corretiva: a falha aparece antes da manutenção.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela, ou em "Ver todas na tabela".']]],
+    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
+    top: ['Top 10 mais impactadas', [['O que é', 'As 10 turbinas com o maior valor na medida escolhida, com as outras medidas embaixo.'], ['Falhas repetidas', 'Corretivas em que o mesmo código de falha voltou na mesma turbina em até 30 dias. Indica que o conserto não resolveu a causa.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela. Turbinas que aparecem em várias medidas pedem análise de causa raiz.']]],
+    tabela: ['Tabelas', [['Como usar', 'Toque no título de uma coluna para ordenar. Toque numa linha para abrir a ficha completa da OM. "Exportar Excel" leva tudo que está filtrado, não só a página.']]]
+  };
+  function abrirAjuda(k) {
+    var a = AJUDA[k]; if (!a) return;
+    gaveta(a[0], 'Ajuda', '<div class="aj" style="display:flex;flex-direction:column;gap:14px">' + a[1].map(function (x) { return '<section><h4>' + esc(x[0]) + '</h4>' + (/^</.test(x[1]) ? x[1] : '<p>' + x[1] + '</p>') + '</section>'; }).join('') + '</div>');
+  }
+  function botoesAjuda() {
+    [].forEach.call(document.querySelectorAll('#app h2[data-aj]'), function (h) {
+      if (h.querySelector('.ajuda')) return;
+      h.insertAdjacentHTML('beforeend', '<button type="button" class="ajuda" data-ajk="' + h.getAttribute('data-aj') + '" aria-label="O que é isso?">?</button>');
+    });
+    var tp = $('#tabs'); if (tp && !tp.querySelector('.ajuda')) tp.insertAdjacentHTML('beforeend', '<button type="button" class="ajuda" data-ajk="tabela" aria-label="Como usar a tabela" style="align-self:center;margin-left:auto">?</button>');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ajk]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation(); abrirAjuda(b.getAttribute('data-ajk'));
+  }, true);
+  $('#como-usar').onclick = function () { abrirAjuda('geral'); };
+
+  // ---------------- leitura rápida ----------------
+  function idadeDias(iso) { return iso ? (Date.parse(D.gerado || D.periodo[1]) - Date.parse(iso)) / 864e5 : null; }
+  function prevResumo() {
+    var y = (D.gerado || D.periodo[1]).slice(0, 4), ini = y + '-01-01', fim = y + '-12-31', lim = new Date(Date.parse(D.gerado || D.periodo[1]) - 30 * 864e5).toISOString().slice(0, 10);
+    var r = { ano: y, prog: 0, fech: 0, atras: 0, porAt: {} };
+    for (var i = 0; i < N; i++) {
+      if (grupo[i] === 2 || !/prevent/i.test(D.tipos[D.O.tp[i]])) continue;
+      if (!vazio(F.parque) && !F.parque[D.O.pq[i]]) continue;
+      if (!vazio(F.ativo) && !F.ativo[D.O.at[i]]) continue;
+      var ok = true; for (var t = 0; t < F.q.length; t++) if (hay[i].indexOf(F.q[t]) < 0) { ok = false; break; }
+      if (!ok) continue;
+      var dp = D.O.dp[i];
+      if (dp && dp >= ini && dp <= fim) { r.prog++; if (grupo[i] === 0) r.fech++; }
+      if (dp && grupo[i] !== 0 && dp < lim) { r.atras++; var a = D.O.at[i], o = r.porAt[a] || (r.porAt[a] = { n: 0, mais: dp }); o.n++; if (dp < o.mais) o.mais = dp; }
+    }
+    return r;
+  }
+  function desenharLeitura() {
+    if (UI.tela !== 'inicio') return;
+    var itens = [], P = D.P;
+    // pendências velhas
+    var ab = pendFiltradas().filter(PEND_ABERTA), velhas = ab.filter(function (k) { return idadeDias(P.dt[k]) > 90; }).length;
+    var hse = ab.filter(function (k) { return /\bHSE\b|seguran/i.test(P.desc[k]) && idadeDias(P.dt[k]) > 30; }).length;
+    if (ab.length) itens.push([velhas / ab.length > .3 ? 'r' : velhas ? 'a' : 'v', '<b>' + fmtN.format(velhas) + '</b> de ' + fmtN.format(ab.length) + ' pendências abertas têm <b>mais de 90 dias</b> (' + Math.round(100 * velhas / ab.length) + '%).' + (hse ? ' <b>' + hse + '</b> são de segurança (HSE) com mais de 30 dias.' : ''), 'pendencias', 'Ver pendências']);
+    // preventivas
+    var pr = prevResumo();
+    if (pr.prog) { var ad = Math.round(100 * pr.fech / pr.prog); itens.push([ad >= 90 ? 'v' : ad >= 75 ? 'a' : 'r', 'Aderência das preventivas em ' + pr.ano + ': <b>' + ad + '%</b> (referência: 90%). <b>' + fmtN.format(pr.atras) + '</b> preventivas, de todos os anos, programadas há mais de 30 dias ainda estão abertas.', 'oms', 'Ver atrasadas']); }
+    // turbina com mais corretivas
+    var c = {}; sel.forEach(function (i) { if (/corre(c)?ti/i.test(D.tipos[D.O.tp[i]])) c[D.O.at[i]] = (c[D.O.at[i]] || 0) + 1; });
+    var tk = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+    if (tk !== undefined) itens.push(['a', 'Turbina com mais corretivas: <b>' + esc(D.ativos[tk]) + '</b> (' + c[tk] + ' OMs). Veja o Top 10 para as falhas que se repetem.', 'top10', 'Ver Top 10']);
+    // dados a corrigir
+    var susp = 0, sv = 0; sel.forEach(function (i) { if (consIni[i] < 0) return; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.s[k]) { susp++; sv += D.C.v[k]; } });
+    if (susp) itens.push(['r', '<b>' + fmtN.format(susp) + '</b> consumos com preço fora do padrão estão fora do custo (' + compacto(sv) + '). Corrija no Manusis.', 'consumo', 'Ver lista']);
+    // tendência do último mês completo
+    var ult = (D.periodo[1] || '').slice(0, 7), m1 = addMes(ult, -1), m0 = addMes(ult, -2), n1 = 0, n0 = 0;
+    for (var i = 0; i < N; i++) { if (!passa(i, 'mes') || !D.O.dt[i]) continue; var ym = D.O.dt[i].slice(0, 7); if (ym === m1) n1++; else if (ym === m0) n0++; }
+    if (n0) { var vr = Math.round(100 * (n1 - n0) / n0); itens.push(['n', 'OMs abertas em ' + MESES_NOME[+m1.slice(5) - 1].toLowerCase() + ': <b>' + fmtN.format(n1) + '</b> (' + (vr >= 0 ? '+' : '') + vr + '% em relação a ' + MESES_NOME[+m0.slice(5) - 1].toLowerCase() + ').', 'oms', 'Ver OMs']); }
+    $('#c-leitura').innerHTML = itens.length ? itens.map(function (x) { return '<button type="button" class="lt" data-ir="' + x[2] + '"><span class="sem ' + x[0] + '"></span><span>' + x[1] + '</span><span class="ir">' + x[3] + ' ›</span></button>'; }).join('') : '<div class="empty">Nada a destacar com estes filtros.</div>';
+    $('#c-leitura').onclick = function (e) { var b = e.target.closest('[data-ir]'); if (b) location.hash = b.getAttribute('data-ir'); };
+  }
+
+  // ---------------- idade das pendências ----------------
+  var FAIXAS = [['0-30', 'Até 30 dias', 0, 30, 'var(--good)'], ['31-90', '31 a 90 dias', 30, 90, 'var(--s-aberta)'], ['91-180', '91 a 180 dias', 90, 180, 'var(--bad)'], ['180+', 'Mais de 180 dias', 180, 1e9, 'var(--bad)']];
+  function faixaDe(dias) { for (var j = 0; j < FAIXAS.length; j++) if (dias > FAIXAS[j][2] - (j ? 0 : 1) && dias <= FAIXAS[j][3]) return FAIXAS[j][0]; return '180+'; }
+  function desenharIdade() {
+    if (UI.tela !== 'pendencias') return;
+    var P = D.P, ab = pendFiltradas(false, true).filter(PEND_ABERTA), cont = {}, hse = [0, 0];
+    ab.forEach(function (k) { var d = idadeDias(P.dt[k]); if (d === null) return; var f = faixaDe(d); cont[f] = (cont[f] || 0) + 1; if (/\bHSE\b|seguran/i.test(P.desc[k])) { hse[0]++; if (d > 30) hse[1]++; } });
+    var tot = ab.length || 1;
+    $('#c-idade').innerHTML = FAIXAS.map(function (f) {
+      var n = cont[f[0]] || 0;
+      return '<button type="button" class="faixa" data-fx="' + f[0] + '" aria-pressed="' + (UI.pIdade === f[0]) + '"><span>' + f[1] + '</span><b>' + fmtN.format(n) + '</b><span>' + Math.round(100 * n / tot) + '% das abertas</span><i style="background:' + f[4] + ';width:' + Math.max(4, 100 * n / tot) + '%"></i></button>';
+    }).join('');
+    $('#c-hse').innerHTML = hse[0] ? '<div class="lt" style="cursor:default"><span class="sem ' + (hse[1] ? 'r' : 'v') + '"></span><span>Segurança (HSE): <b>' + hse[0] + '</b> pendências abertas, <b>' + hse[1] + '</b> com mais de 30 dias.</span><span></span></div>' : '';
+    $('#c-idade').onclick = function (e) {
+      var b = e.target.closest('[data-fx]'); if (!b) return;
+      var f = b.getAttribute('data-fx'); UI.pIdade = UI.pIdade === f ? '' : f; UI.pSit = 'abertas'; UI.page = 0;
+      desenharIdade(); desenharTabela(); if (UI.pIdade) document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+  }
+
+  // ---------------- preventivas atrasadas ----------------
+  function desenharAtrasadas() {
+    if (UI.tela !== 'oms') return;
+    var r = prevResumo(), ks = Object.keys(r.porAt).sort(function (a, b) { return r.porAt[b].n - r.porAt[a].n || r.porAt[a].mais.localeCompare(r.porAt[b].mais); });
+    $('#atras-sub').textContent = fmtN.format(r.atras) + ' preventivas programadas há mais de 30 dias e ainda não fechadas, em ' + fmtN.format(ks.length) + ' turbinas · toque para ver as OMs';
+    $('#c-atras').innerHTML = ks.length ? ks.slice(0, 12).map(function (a) {
+      var o = r.porAt[a], dias = Math.round(idadeDias(o.mais));
+      return '<button type="button" class="lg" data-a="' + a + '"><span class="t">' + esc(D.ativos[a]) + '</span><span class="v">' + o.n + '</span><span class="s">mais antiga programada para ' + dataBR(o.mais) + ' (' + fmtN.format(dias) + ' dias)</span></button>';
+    }).join('') + (ks.length > 12 ? '<div class="nada" style="font-size:.78rem;padding:4px 8px">+ ' + (ks.length - 12) + ' turbinas</div>' : '') : '<div class="empty">Nenhuma preventiva atrasada com estes filtros.</div>';
+    var irTabela = function (a) {
+      F.status = statusSituacao('abertas'); F.tipo = {}; D.tipos.forEach(function (t, j) { if (/prevent/i.test(t)) F.tipo[j] = 1; });
+      if (a !== undefined) { F.ativo = {}; F.ativo[a] = 1; }
+      UI.vista = 'consulta'; UI.page = 0; atualizar(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+    $('#c-atras').onclick = function (e) { var b = e.target.closest('[data-a]'); if (b) irTabela(b.getAttribute('data-a')); };
+    $('#atras-todas').onclick = function () { irTabela(); };
+  }
+
+  // ---------------- corrigir no Manusis ----------------
+  function desenharCorrigir() {
+    if (UI.tela !== 'consumo') return;
+    var preco = 0, pv = 0, semtexto = 0, semcons = 0;
+    sel.forEach(function (i) {
+      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; }
+      if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) semcons++;
+    });
+    var cx = function (n, tt, txt, acao) { return '<div class="crx"><b>' + fmtN.format(n) + '</b><span class="tt">' + tt + '</span><p>' + txt + '</p><button type="button" class="btn" data-cx="' + acao + '">Ver lista</button></div>'; };
+    $('#c-corrigir').innerHTML =
+      cx(preco, 'Preço fora do padrão', 'Consumos com preço unitário muito acima do normal do material (' + compacto(pv) + '). Ficam fora do custo total.', 'preco') +
+      cx(semcons, 'Troca sem consumo', 'OMs fechadas em que o serviço executado diz que trocou a peça, mas não há consumo lançado.', 'semcons') +
+      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada.', 'semtexto');
+    $('#c-corrigir').onclick = function (e) {
+      var b = e.target.closest('[data-cx]'); if (!b) return;
+      var a = b.getAttribute('data-cx');
+      if (a === 'semcons') { UI.vista = 'conf'; UI.qf = 'nc'; F.status = statusSituacao('fechadas'); UI.page = 0; location.hash = 'oms'; return; }
+      UI.vista = 'cons'; UI.cSit = a; UI.page = 0; desenharTabela(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+  }
+
   // ---------------- Top 10 turbinas mais impactadas ----------------
   var MET_TOP = [
-    ['corr', 'OMs corretivas'], ['oms', 'Total de OMs'], ['abertas', 'OMs em aberto'], ['custo', 'Custo de materiais'], ['pend', 'Pendências abertas'], ['semcons', 'Trocas sem consumo']
+    ['corr', 'OMs corretivas'], ['reinc', 'Falhas repetidas'], ['oms', 'Total de OMs'], ['abertas', 'OMs em aberto'], ['custo', 'Custo de materiais'], ['pend', 'Pendências abertas'], ['semcons', 'Trocas sem consumo']
   ];
   function desenharTop() {
     if (UI.tela !== 'top10') return;
@@ -1544,6 +1752,17 @@ var DADOS = /*__DADOS__*/null;
       if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) m.semcons[a]++;
     }
     pendFiltradas(true).forEach(function (k) { if (PEND_ABERTA(k) && pAt[k] >= 0) m.pend[pAt[k]]++; });
+    // falha repetida: corretiva cujo código de falha já apareceu na mesma turbina nos 30 dias anteriores
+    var porT = {};
+    for (var i2 = 0; i2 < N; i2++) if (passa(i2, 'ativo') && D.O.dt[i2] && D.O.fl[i2].length && /corre(c)?ti/i.test(D.tipos[D.O.tp[i2]])) (porT[D.O.at[i2]] = porT[D.O.at[i2]] || []).push(i2);
+    Object.keys(porT).forEach(function (a) {
+      var l = porT[a].sort(function (x, y) { return D.O.dt[x] < D.O.dt[y] ? -1 : 1; }), ult = {};
+      l.forEach(function (i3) {
+        var t = Date.parse(D.O.dt[i3]), rep2 = false;
+        D.O.fl[i3].forEach(function (f) { if (ult[f] !== undefined && t - ult[f] <= 30 * 864e5) rep2 = true; ult[f] = t; });
+        if (rep2) m.reinc[a]++;
+      });
+    });
     $('#seg-top').innerHTML = MET_TOP.map(function (x) { return '<button type="button" data-v="' + x[0] + '" aria-pressed="' + (UI.top === x[0]) + '">' + x[1] + '</button>'; }).join('');
     $('#seg-top').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.top = v; desenharTop(); } };
     var v = m[UI.top], ks = [];
