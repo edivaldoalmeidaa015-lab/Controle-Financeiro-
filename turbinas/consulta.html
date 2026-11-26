@@ -359,7 +359,7 @@ var DADOS = /*__DADOS__*/null;
 
   var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs, pAt, hayP;
   var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null, de: '', ate: '' };
-  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms' };
+  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms', pBusca: '', pSit: 'abertas' };
   var sel = null; // índices filtrados
 
   function lerModo() { try { return localStorage.getItem('consulta-oms-modo'); } catch (e) { return null; } }
@@ -683,7 +683,7 @@ var DADOS = /*__DADOS__*/null;
           '<div class="skpis" id="p-kpis"></div><div class="legend" id="leg-p"></div><div class="chart" id="c-p"></div></div>' +
       '</section>' +
       '<section class="card tpanel" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
-          '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button></div>' +
+          '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button><button type="button" role="tab" data-v="pend">Pendências</button></div>' +
         '<div class="ph"><div><p id="t-sub"></p></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ord-cel" class="dt-in" aria-label="Ordenar"></select>' +
         '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div>' +
@@ -705,7 +705,7 @@ var DADOS = /*__DADOS__*/null;
     $('#mapa-met').value = UI.mapa;
     $('#mapa-met').onchange = function (e) { UI.mapa = e.target.value; desenharMapa(); };
     $('#ord-cel').onchange = function (e) { var v = e.target.value.split('|'); UI.sort = { col: v[0], dir: +v[1] }; UI.page = 0; desenharTabela(); };
-    $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: 'dt', dir: -1 }; desenharTabela(); } };
+    $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: v === 'pend' ? 'pdt' : 'dt', dir: -1 }; desenharTabela(); } };
     $('#qf').onclick = function (e) { var b = e.target.closest('[data-q]'); if (b) { var v = b.getAttribute('data-q'); UI.qf = UI.qf === v ? 'todas' : v; UI.page = 0; desenharTabela(); } };
     document.querySelector('.tpanel thead').onclick = function (e) {
       var th = e.target.closest('th'); if (!th) return;
@@ -713,7 +713,10 @@ var DADOS = /*__DADOS__*/null;
       UI.sort = { col: c, dir: UI.sort.col === c ? -UI.sort.dir : (/^(dt|om|mat|pend|cons|nc|pp|np)$/.test(c) ? -1 : 1) };
       UI.page = 0; desenharTabela();
     };
-    $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
+    $('#tb').onclick = function (e) {
+      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om')); return; }
+      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'));
+    };
     $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
     if (montarApp.feito) return; montarApp.feito = true;
     var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
@@ -936,6 +939,7 @@ var DADOS = /*__DADOS__*/null;
     }
   }
   var COLS = {
+    pend: [['pn', 'Nº'], ['pst', 'Status'], ['pdt', 'Abertura'], ['pdias', 'Dias em aberto'], ['pat', 'Ativo (WTG)'], ['pdesc', 'Descrição da pendência'], ['pus', 'Registrada por'], ['pom', 'OM']],
     consulta: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Data de abertura'], ['st', 'Status'], ['tp', 'Tipo de serviço'], ['desc', 'Descrição'], ['mat', 'Materiais usados'], ['pend', 'Pendências']],
     conf: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Abertura'], ['st', 'Status'], ['cons', 'Consumido'], ['nc', 'Não consumido'], ['pp', 'Pendente'], ['np', 'Não pendente'], ['se', 'Conferência']]
   };
@@ -989,6 +993,80 @@ var DADOS = /*__DADOS__*/null;
       '<td class="cl">' + lista(ps[1].map(pl), 3) + '</td>' +
       '<td>' + (se ? '<span class="selo ' + se.cls + '" title="' + esc(se.dica) + '">' + se.ic + ' ' + se.rot + '</span>' : '<span class="nada" title="Sem troca de peça descrita e sem peça consumida">—</span>') + '</td></tr>';
   }
+  // ---- aba Pendências: pesquisa só nas pendências ----
+  var PSIT = [['abertas', 'Abertas (pendente + em execução)'], ['todas', 'Todas']];
+  function diasPend(k) {
+    var d = D.P.dt[k]; if (!d) return '';
+    if (!PEND_ABERTA(k) && !D.P.dc[k]) return '';
+    var fim = PEND_ABERTA(k) ? (D.gerado || D.periodo[1]) : D.P.dc[k];
+    return Math.max(0, Math.round((Date.parse(fim) - Date.parse(d)) / 864e5));
+  }
+  function omDaPend(k) { return D.P.exe[k] >= 0 ? D.P.exe[k] : D.P.ori[k]; }
+  function chavePend(k, c) {
+    var P = D.P;
+    switch (c) {
+      case 'pn': return +P.n[k] || 0;
+      case 'pst': return D.statusPend[P.st[k]];
+      case 'pdt': return P.dt[k] || '';
+      case 'pdias': var x = diasPend(k); return x === '' ? -1 : x;
+      case 'pat': return P.at[k];
+      case 'pdesc': return P.desc[k].toLowerCase();
+      case 'pus': return P.us[k];
+      case 'pom': var o = omDaPend(k); return o >= 0 ? D.O.om[o] : 0;
+    }
+  }
+  // com pesquisa, mostra o trecho onde a palavra aparece (o texto da pendência costuma ser longo)
+  function trechoBusca(txt, tq) {
+    if (!tq.length) return txt;
+    var n = norm(txt), pos = -1;
+    tq.forEach(function (t) { var k = n.indexOf(t); if (k >= 0 && (pos < 0 || k < pos)) pos = k; });
+    if (pos < 90) return txt;
+    var ini = txt.lastIndexOf(' ', pos - 40); ini = ini < 0 ? pos - 40 : ini + 1;
+    return '…' + txt.slice(ini);
+  }
+  function pendDaAba() {
+    var tq = termos(UI.pBusca), base = pendFiltradas(false, true);
+    if (tq.length) base = base.filter(function (k) { for (var t = 0; t < tq.length; t++) if (hayP[k].indexOf(tq[t]) < 0) return false; return true; });
+    return base;
+  }
+  function filtroSitPend(v) {
+    if (v === 'todas') return function () { return true; };
+    if (v === 'abertas') return PEND_ABERTA;
+    return function (k) { return String(D.P.st[k]) === String(v); };
+  }
+  function linhaPend(k) {
+    var P = D.P, o = omDaPend(k), aberta = PEND_ABERTA(k), dias = diasPend(k), tq = termos(UI.pBusca);
+    var oms = [];
+    if (P.ori[k] >= 0) oms.push('<button type="button" class="btn" data-om="' + P.ori[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de origem">' + omLabel(D.O.om[P.ori[k]]) + '</button>');
+    if (P.exe[k] >= 0 && P.exe[k] !== P.ori[k]) oms.push('<button type="button" class="btn" data-om="' + P.exe[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de execução">' + omLabel(D.O.om[P.exe[k]]) + ' <span class="nada">exec.</span></button>');
+    return '<tr' + (o >= 0 ? ' data-i="' + o + '" tabindex="0"' : '') + '>' +
+      '<td class="mono">' + esc(P.n[k]) + '</td>' +
+      '<td><span class="pill ' + (aberta ? 'a' : /conclu/i.test(D.statusPend[P.st[k]]) ? 'f' : 'c') + '">' + esc(D.statusPend[P.st[k]]) + '</span></td>' +
+      '<td class="num" style="white-space:nowrap">' + dataBR(P.dt[k]) + '</td>' +
+      '<td class="num" style="white-space:nowrap' + (aberta && dias > 90 ? ';color:var(--bad);font-weight:600' : '') + '">' + (dias === '' ? '<span class="nada">—</span>' : dias) + (aberta || !P.dc[k] ? '' : ' <span class="nada">(fechou ' + dataBR(P.dc[k]) + ')</span>') + '</td>' +
+      '<td style="white-space:nowrap;font-weight:500">' + realce(P.at[k], tq) + '</td>' +
+      '<td class="desc"><div class="d1">' + realce(trechoBusca(P.desc[k], tq), tq) + '</div></td>' +
+      '<td style="color:var(--fg-2)">' + realce(P.us[k], tq) + '</td>' +
+      '<td>' + (oms.length ? oms.join(' ') : '<span class="nada">—</span>') + '</td></tr>';
+  }
+  function barraPend() {
+    if (!$('#pq-pend')) {
+      $('#qf').innerHTML = '<label class="search" for="pq-pend" style="flex:1 1 320px;max-width:520px"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg-3)" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="var(--fg-3)" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+        '<input id="pq-pend" type="search" autocomplete="off" placeholder="Pesquisar só nas pendências: escada, HSE, iluminação, 3665…" aria-label="Pesquisar só nas pendências"></label><span id="pend-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>';
+      $('#pq-pend').value = UI.pBusca;
+      var tp;
+      $('#pq-pend').oninput = function (e) { clearTimeout(tp); tp = setTimeout(function () { UI.pBusca = e.target.value; UI.page = 0; desenharTabela(); }, 180); };
+      $('#pend-chips').onclick = function (e) { var b = e.target.closest('[data-ps]'); if (b) { UI.pSit = b.getAttribute('data-ps'); UI.page = 0; desenharTabela(); } };
+    }
+    var base = pendDaAba(), opc = PSIT.slice();
+    D.statusPend.forEach(function (sn, j) { opc.push([String(j), sn]); });
+    $('#pend-chips').innerHTML = opc.map(function (o) {
+      var f = filtroSitPend(o[0]), n = 0; base.forEach(function (k) { if (f(k)) n++; });
+      return '<button type="button" class="chip sm" data-ps="' + o[0] + '" aria-pressed="' + (UI.pSit === o[0]) + '">' + esc(o[1]) + '<span class="c num">' + fmtN.format(n) + '</span></button>';
+    }).join('');
+    var f = filtroSitPend(UI.pSit);
+    return base.filter(function (k) { return f(k); });
+  }
   function desenharTabela() {
     var cols = COLS[UI.vista];
     $('#th').innerHTML = '<tr>' + cols.map(function (c) { return '<th data-s="' + c[0] + '">' + c[1] + '</th>'; }).join('') + '</tr>';
@@ -1002,11 +1080,13 @@ var DADOS = /*__DADOS__*/null;
         return '<button type="button" class="chip sm" data-q="' + q[0] + '" aria-pressed="' + (UI.qf === q[0]) + '">' + q[1] + '<span class="c num">' + fmtN.format(n) + '</span></button>';
       }).join('');
       base = sel.filter(function (i) { return f[2](i); });
-    } else $('#qf').hidden = true;
+    } else if (UI.vista === 'pend') { $('#qf').hidden = false; base = barraPend(); }
+    else $('#qf').hidden = true;
     var s = UI.sort, ths = document.querySelectorAll('.tpanel th');
     ths.forEach(function (th) { th.setAttribute('aria-sort', th.getAttribute('data-s') === s.col ? (s.dir > 0 ? 'ascending' : 'descending') : 'none'); });
     var pp = $('#seg-pp').children; for (var j = 0; j < pp.length; j++) pp[j].setAttribute('aria-pressed', +pp[j].getAttribute('data-v') === UI.porPag);
-    var chaves = new Map(); base.forEach(function (i) { chaves.set(i, chaveSort(i, s.col)); });
+    var chaves = new Map(), chaveDe = UI.vista === 'pend' ? chavePend : chaveSort;
+    base.forEach(function (i) { chaves.set(i, chaveDe(i, s.col)); });
     var ord = base.slice().sort(function (a, b) {
       var x = chaves.get(a), y = chaves.get(b);
       return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true })) * s.dir;
@@ -1017,11 +1097,12 @@ var DADOS = /*__DADOS__*/null;
     oc.value = ov;
     var pags = Math.max(1, Math.ceil(ord.length / UI.porPag)); UI.page = Math.min(UI.page, pags - 1);
     var pag = ord.slice(UI.page * UI.porPag, (UI.page + 1) * UI.porPag), O = D.O;
-    $('#t-sub').textContent = fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
+    $('#t-sub').textContent = UI.vista === 'pend' ? fmtN.format(ord.length) + ' pendências · a pesquisa desta aba procura só nas pendências (número, descrição, turbina e quem registrou); parque, turbina e datas do topo também valem · toque numa linha para ver a OM'
+      : fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
       ? '"Não consumido" = peça que o serviço executado diz que trocou e não tem consumo do mesmo tipo · "Pendente" = pendência pendente ou em execução · toque numa linha para ver a OM'
       : 'toque numa linha para ler o serviço executado completo');
     if (UI.vista === 'conf') $('#t-sub').innerHTML = esc($('#t-sub').textContent) + '<br><span class="ic ok">✓</span>bate com a troca descrita · <span class="ic no">✕</span>sem consumo (OM fechada) · <span class="ic pe">…</span>sem consumo ainda (OM em aberto) · <span class="ic pe">?</span>consumida sem troca no texto · <span class="ic ch">?</span>conferir';
-    $('#tb').innerHTML = !pag.length ? '<tr><td colspan="9"><div class="empty">Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.</div></td></tr>' : UI.vista === 'conf' ? pag.map(linhaConf).join('') : pag.map(function (i) {
+    $('#tb').innerHTML = !pag.length ? '<tr><td colspan="9"><div class="empty">' + (UI.vista === 'pend' ? 'Nenhuma pendência com esta pesquisa e filtros.' : 'Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.') + '</div></td></tr>' : UI.vista === 'pend' ? pag.map(linhaPend).join('') : UI.vista === 'conf' ? pag.map(linhaConf).join('') : pag.map(function (i) {
       var g = grupo[i], m = resumoMat(i), pn = pendDe[i] ? pendDe[i].length : 0;
       return '<tr data-i="' + i + '" tabindex="0">' +
         '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
@@ -1041,12 +1122,12 @@ var DADOS = /*__DADOS__*/null;
     $('#pager').onclick = function (e) { var b = e.target.closest('[data-p]'); if (b && !b.disabled) { UI.page = +b.getAttribute('data-p'); desenharTabela(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' }); } };
   }
 
-  function realce(txt) {
-    var h = esc(txt);
-    if (!F.q.length) return h;
+  function realce(txt, termosR) {
+    var h = esc(txt), tq = termosR || F.q;
+    if (!tq.length) return h;
     // realce sem acento: casa cada termo na versão normalizada e marca as mesmas posições no texto original
     var n = norm(txt), marcas = [];
-    F.q.forEach(function (t) { if (!t || /^om$/.test(t)) return; var p = 0, k; while ((k = n.indexOf(t, p)) >= 0) { marcas.push([k, k + t.length]); p = k + t.length; } });
+    tq.forEach(function (t) { if (!t || /^om$/.test(t)) return; var p = 0, k; while ((k = n.indexOf(t, p)) >= 0) { marcas.push([k, k + t.length]); p = k + t.length; } });
     if (!marcas.length || n.length !== txt.length) return h;
     marcas.sort(function (a, b) { return a[0] - b[0]; });
     var out = '', pos = 0;
@@ -1066,7 +1147,23 @@ var DADOS = /*__DADOS__*/null;
   function exportar() {
     if (!window.XLSX) { aviso('O gerador de Excel não carregou. Verifique a internet e tente de novo.'); return; }
     var ord = UI.ultimaOrd || [], O = D.O;
-    if (!ord.length) { aviso('Nenhuma OM na tabela para exportar.'); return; }
+    if (!ord.length) { aviso(UI.vista === 'pend' ? 'Nenhuma pendência na tabela para exportar.' : 'Nenhuma OM na tabela para exportar.'); return; }
+    if (UI.vista === 'pend') {
+      var P = D.P, lp = [['Nº pendência', 'Situação', 'Status', 'Descrição', 'Data de abertura', 'Dias em aberto', 'Data de conclusão', 'Registrada por', 'Ativo', 'Parque', 'OM de origem', 'OM de execução', 'Status da OM de execução']];
+      ord.forEach(function (k) {
+        lp.push([+P.n[k] || P.n[k], PEND_ABERTA(k) ? 'Pendente' : 'Não pendente', D.statusPend[P.st[k]], P.desc[k], dataXL(P.dt[k]), diasPend(k), dataXL(P.dc[k]), P.us[k], P.at[k], D.parques[P.pq[k]],
+          P.ori[k] >= 0 ? omLabel(O.om[P.ori[k]]) : '', P.exe[k] >= 0 ? omLabel(O.om[P.exe[k]]) : '', P.exe[k] >= 0 ? D.status[O.st[P.exe[k]]] : '']);
+      });
+      var sitRot = (PSIT.concat(D.statusPend.map(function (sn, j) { return [String(j), sn]; })).filter(function (o) { return o[0] === UI.pSit; })[0] || ['', ''])[1];
+      var fp = [['Consulta de OMs: pendências exportadas em ' + new Date().toLocaleString('pt-BR')], ['Pendências', ord.length], ['Pesquisa', UI.pBusca || '(nenhuma)'], ['Situação', sitRot]];
+      [].slice.call(document.querySelectorAll('#ativos .tag')).forEach(function (t) { fp.push(['Filtro', t.firstChild.textContent]); });
+      var wbp = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wbp, planilha(lp, [12, 13, 13, 70, 12, 10, 12, 28, 12, 16, 12, 12, 20]), 'Pendências');
+      XLSX.utils.book_append_sheet(wbp, planilha(fp, [20, 80]), 'Filtros');
+      var hj = new Date(), dd = function (n) { return String(n).padStart(2, '0'); };
+      salvarArquivo('Pendencias_' + hj.getFullYear() + dd(hj.getMonth() + 1) + dd(hj.getDate()) + '.xlsx', XLSX.write(wbp, { bookType: 'xlsx', type: 'array', compression: true }));
+      return;
+    }
     var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)'];
     var NC = ['Consumida', 'Sem consumo', 'Conferir'];
     var linhas, larg;
@@ -1285,7 +1382,7 @@ var DADOS = /*__DADOS__*/null;
   }
 
   // ---------------- pendências abertas por pessoa ----------------
-  function pendFiltradas(semAtivo) {
+  function pendFiltradas(semAtivo, semBusca) {
     var out = [], P = D.P;
     for (var k = 0; k < P.n.length; k++) {
       if (!vazio(F.parque) && !F.parque[P.pq[k]]) continue;
@@ -1294,7 +1391,7 @@ var DADOS = /*__DADOS__*/null;
       if ((F.de || F.ate) && (!d || (F.de && d < F.de) || (F.ate && d > F.ate))) continue;
       if (!vazio(F.ano) && !F.ano[+String(d).slice(0, 4)]) continue;
       if (!vazio(F.mes) && !F.mes[+String(d).slice(5, 7)]) continue;
-      var ok = true; for (var t = 0; t < F.q.length; t++) if (hayP[k].indexOf(F.q[t]) < 0) { ok = false; break; }
+      var ok = true; if (!semBusca) for (var t = 0; t < F.q.length; t++) if (hayP[k].indexOf(F.q[t]) < 0) { ok = false; break; }
       if (ok) out.push(k);
     }
     return out;
@@ -1590,7 +1687,7 @@ var DADOS = /*__DADOS__*/null;
   function reiniciar(nd) {
     fecharFicha(); fecharPop();
     F.q = []; $('#q').value = ''; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.status = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null; F.de = F.ate = '';
-    UI.page = 0; UI.qf = 'todas'; MAPA = null; chaveTurb = {};
+    UI.page = 0; UI.qf = 'todas'; MAPA = null; chaveTurb = {}; UI.pBusca = ''; if ($('#pq-pend')) $('#qf').innerHTML = '';
     iniciar(nd);
   }
 
