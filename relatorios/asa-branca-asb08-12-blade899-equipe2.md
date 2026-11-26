@@ -59,3 +59,28 @@ MegaWind – Cliente: Invenergy/Essentia
 
 **Standby:** (X) Sim ( ) Não – das 08:00 às 15:00
 **Motivo do standby:** Vento forte
+
+---
+
+## 3º dia – 25/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 17:00
+
+**Resumo da atividade:**
+- DDS Invenergy
+- Mobilização para a torre ASB08-12
+- Liberação dos documentos Invenergy e time MegaWind
+- Subida dos materiais
+- Subida dos técnicos
+- Descida dos técnicos
+- Posicionamento no reparo
+- Lixamento BOD
+- Remoção do núcleo
+- Colagem do núcleo
+- Vácuo
+- Descida dos técnicos da torre
+- Limpeza e organização
+- Mobilização para a base
+
+**Standby:** ( ) Sim (X) Não
