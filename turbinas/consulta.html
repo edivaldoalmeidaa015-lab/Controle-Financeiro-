@@ -1,5 +1,10 @@
-<title>Consulta de OMs</title>
+<!--ESQ--><!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0;font-size:14px}[hidden]{display:none!important}img{max-width:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<!--/ESQ--><title>Consulta de OMs</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<!--PWA--><link rel="manifest" href="consulta.webmanifest"><meta name="theme-color" content="#0f6e8c"><link rel="icon" href="icone-192.png"><link rel="apple-touch-icon" href="icone-180.png"><!--/PWA-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -197,6 +202,24 @@ td.cl { min-width: 190px; max-width: 280px; }
 .selo.alerta { border-color: color-mix(in srgb, var(--s-aberta) 50%, transparent); background: color-mix(in srgb, var(--s-aberta) 12%, transparent); }
 .selo.ruim { border-color: color-mix(in srgb, var(--bad) 50%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); }
 
+/* carregar planilhas */
+.boas { max-width: 640px; margin: 40px auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+.boas h2 { font-family: var(--f-display); font-size: 1.6rem; margin: 0; }
+.boas ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--fg-2); }
+.boas ol b { color: var(--fg); }
+.drop { border: 2px dashed var(--line); border-radius: 10px; padding: 26px 16px; text-align: center; color: var(--fg-2); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.drop.on, body.arrastando .drop { border-color: var(--accent); background: var(--accent-soft); }
+.nota { font-size: .8rem; color: var(--fg-3); }
+.prog { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; background: rgba(10, 15, 20, .45); padding: 16px; }
+.prog > div { background: var(--surface); border-radius: 10px; padding: 22px 26px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.prog .barra { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.prog .barra i { display: block; height: 100%; width: 40%; background: var(--accent); border-radius: 3px; animation: vai 1.2s ease-in-out infinite; }
+@keyframes vai { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.opcoes { display: flex; flex-direction: column; gap: 10px; }
+.opcoes button { text-align: left; padding: 12px 14px; }
+.opcoes button b { display: block; font-size: .92rem; }
+.opcoes button span { font-size: .8rem; color: var(--fg-2); font-weight: 400; }
+
 /* ficha da OM */
 .scrim { position: fixed; inset: 0; background: rgba(10, 15, 20, .45); z-index: 50; }
 .drawer { position: fixed; z-index: 51; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: var(--surface); box-shadow: -8px 0 30px rgba(0,0,0,.2); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
@@ -268,6 +291,7 @@ body.pc #app { min-width: 1000px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
+<!--ESQ--></head><body><!--/ESQ-->
 <header class="top">
   <div class="wrap top-1">
     <div class="brand">
@@ -281,6 +305,8 @@ body.pc #app { min-width: 1000px; }
     </label>
     <button class="btn" id="btn-filtros" type="button" aria-expanded="false">Filtros</button>
     <button class="btn" id="limpar" type="button">Limpar filtros</button>
+    <button class="btn" id="btn-base" type="button" title="Carregar planilhas novas do Manusis">Atualizar base</button>
+    <input type="file" id="arq" accept=".xlsx,.zip" multiple hidden>
     <div class="seg" id="seg-modo" role="group" aria-label="Modo de tela"><button type="button" data-v="pc" title="Layout para computador">Computador</button><button type="button" data-v="cel" title="Layout para celular">Celular</button></div>
   </div>
   <div class="wrap filters" id="filtros"></div>
@@ -290,6 +316,8 @@ body.pc #app { min-width: 1000px; }
 <div class="app-scroll"><main class="wrap" id="app"><div class="loading">Carregando as OMs…</div></main></div>
 
 <script src="vendor/xlsx.mini.min.js"></script>
+<script src="modelo.js"></script>
+<script src="consulta-dados.js"></script>
 <script>
 var DADOS = /*__DADOS__*/null;
 (function () {
@@ -447,7 +475,7 @@ var DADOS = /*__DADOS__*/null;
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
     $('#f-de').onchange = function (e) { F.de = e.target.value || ''; UI.page = 0; atualizar(); };
     $('#f-ate').onchange = function (e) { F.ate = e.target.value || ''; UI.page = 0; atualizar(); };
-    $('#filtros').addEventListener('click', function (e) {
+    $('#filtros').onclick = (function (e) {
       var b = e.target.closest('[data-f]'); if (!b) return;
       var f = b.getAttribute('data-f'), v = b.getAttribute('data-v');
       if (F[f][v]) delete F[f][v]; else F[f][v] = 1;
@@ -617,6 +645,7 @@ var DADOS = /*__DADOS__*/null;
     };
     $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
     $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
+    if (montarApp.feito) return; montarApp.feito = true;
     var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
 
@@ -1338,9 +1367,178 @@ var DADOS = /*__DADOS__*/null;
   function fecharFicha() { var a = $('#ficha'), b = $('#scrim'); if (a) a.remove(); if (b) b.remove(); if (ultimoFoco && ultimoFoco.focus) { try { ultimoFoco.focus(); } catch (e) {} } ultimoFoco = null; }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); } });
 
-  if (DADOS) setTimeout(function () { iniciar(DADOS); }, 0);
-  else fetch('dados.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(iniciar).catch(function () {
-    $('#app').innerHTML = '<div class="loading">Não encontrei os dados das OMs. Gere o painel com <span class="mono">node turbinas/scripts/gerar-consulta.js</span>.</div>';
+  // ---------------- base: carregar planilhas e guardar no aparelho ----------------
+  var BASE = null; // { D, arquivos: [{ nome, buf }] } guardada neste aparelho
+  function abrirBanco() {
+    return new Promise(function (ok, erro) {
+      try {
+        var req = indexedDB.open('consulta-oms', 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore('base'); };
+        req.onsuccess = function () { ok(req.result); };
+        req.onerror = function () { erro(req.error); };
+        req.onblocked = function () { erro(new Error('bloqueado')); };
+      } catch (e) { erro(e); }
+    });
+  }
+  function lerGuardado() {
+    var banco = abrirBanco().then(function (db) {
+      return new Promise(function (ok) {
+        var req = db.transaction('base', 'readonly').objectStore('base').get('atual');
+        req.onsuccess = function () { ok(req.result || null); };
+        req.onerror = function () { ok(null); };
+      });
+    }).catch(function () { return null; });
+    return Promise.race([banco, new Promise(function (ok) { setTimeout(function () { ok(null); }, 3000); })]);
+  }
+  function guardar(obj) {
+    return abrirBanco().then(function (db) {
+      return new Promise(function (ok, erro) {
+        var tx = db.transaction('base', 'readwrite');
+        if (obj) tx.objectStore('base').put(obj, 'atual'); else tx.objectStore('base').delete('atual');
+        tx.oncomplete = function () { ok(true); };
+        tx.onerror = tx.onabort = function () { erro(tx.error); };
+      });
+    }).catch(function () { return false; });
+  }
+  function maisNovo(a, b) { // a é mais recente que b?
+    if (!a) return false; if (!b) return true;
+    var x = (a.periodo || [])[1] || '', y = (b.periodo || [])[1] || '';
+    return x !== y ? x > y : (a.gerado || '') > (b.gerado || '');
+  }
+  // O Manusis exporta a planilha dentro de um .zip: devolve as planilhas .xlsx de dentro (o próprio .xlsx também é zip)
+  function planilhasDoZip(buf) {
+    var u = new Uint8Array(buf), dv = new DataView(buf);
+    if (u.length < 22 || u[0] !== 0x50 || u[1] !== 0x4b) return Promise.resolve([buf]);
+    var fim = -1;
+    for (var p = u.length - 22; p >= Math.max(0, u.length - 65557); p--) if (dv.getUint32(p, true) === 0x06054b50) { fim = p; break; }
+    if (fim < 0) return Promise.resolve([buf]);
+    var n = dv.getUint16(fim + 10, true), q = dv.getUint32(fim + 16, true), dec = new TextDecoder(), ent = [];
+    for (var k = 0; k < n && dv.getUint32(q, true) === 0x02014b50; k++) {
+      var lN = dv.getUint16(q + 28, true), lE = dv.getUint16(q + 30, true), lC = dv.getUint16(q + 32, true);
+      ent.push({ nome: dec.decode(u.subarray(q + 46, q + 46 + lN)), metodo: dv.getUint16(q + 10, true), tam: dv.getUint32(q + 20, true), local: dv.getUint32(q + 42, true) });
+      q += 46 + lN + lE + lC;
+    }
+    if (ent.some(function (e) { return e.nome === '[Content_Types].xml'; })) return Promise.resolve([buf]);
+    var xs = ent.filter(function (e) { return /\.xlsx$/i.test(e.nome) && !/(^|\/)(__MACOSX|\.)/.test(e.nome); });
+    if (!xs.length) return Promise.reject(new Error('O arquivo .zip não tem nenhuma planilha .xlsx dentro.'));
+    return Promise.all(xs.map(function (x) {
+      var ini = x.local + 30 + dv.getUint16(x.local + 26, true) + dv.getUint16(x.local + 28, true), dados = u.subarray(ini, ini + x.tam);
+      if (x.metodo === 0) return dados.slice().buffer;
+      if (x.metodo !== 8 || typeof DecompressionStream === 'undefined') return Promise.reject(new Error('Não consegui abrir o .zip neste aparelho. Extraia a planilha .xlsx e escolha ela.'));
+      return new Response(new Blob([dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+    }));
+  }
+  function lerBytes(f) {
+    if (f.arrayBuffer) return f.arrayBuffer();
+    return new Promise(function (ok, erro) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { erro(new Error('Não foi possível ler ' + f.name + '.')); }; r.readAsArrayBuffer(f); });
+  }
+  function progresso(msg) {
+    var el = $('#prog');
+    if (msg === null) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.className = 'prog'; el.id = 'prog'; el.setAttribute('role', 'status'); el.innerHTML = '<div><b id="prog-t"></b><div class="barra"><i></i></div><span class="nota">A leitura é feita só neste aparelho. Nada é enviado.</span></div>'; document.body.appendChild(el); }
+    $('#prog-t').textContent = msg;
+  }
+  var depois = function (fn) { return new Promise(function (ok) { setTimeout(function () { ok(fn()); }, 60); }); };
+  function carregarArquivos(files, modo) {
+    files = [].slice.call(files || []);
+    if (!files.length) return;
+    if (!window.XLSX || !window.ConsultaDados || !window.ModeloTurbinas) { aviso('O leitor de planilhas não carregou. Verifique a internet e abra o painel de novo.'); return; }
+    progresso('Abrindo ' + (files.length === 1 ? files[0].name : files.length + ' arquivos') + '…');
+    Promise.all(files.map(function (f) {
+      return lerBytes(f).then(planilhasDoZip).then(function (bufs) { return bufs.map(function (b, j) { return { nome: f.name + (bufs.length > 1 ? ' #' + (j + 1) : ''), buf: b }; }); });
+    })).then(function (listas) {
+      var novos = [].concat.apply([], listas);
+      var lista = modo === 'somar' && BASE && BASE.arquivos ? BASE.arquivos.filter(function (a) {
+        return !novos.some(function (b) { return b.nome === a.nome && b.buf.byteLength === a.buf.byteLength; });
+      }).concat(novos) : novos;
+      progresso('Lendo as planilhas…');
+      return depois(function () {
+        var livros = lista.map(function (a) {
+          var wb = XLSX.read(new Uint8Array(a.buf), { type: 'array', cellDates: false });
+          if (!ConsultaDados.abasReconhecidas(wb).length) throw new Error('"' + a.nome + '" não parece uma exportação do Manusis: faltam as abas "Ordens de manutenção", "Consumo de materiais" ou "Pendências".');
+          return wb;
+        });
+        progresso('Cruzando OMs, materiais e pendências…');
+        return depois(function () { return { r: ConsultaDados.montar(livros, XLSX, ModeloTurbinas), lista: lista }; });
+      });
+    }).then(function (x) {
+      x.r.D.gerado = new Date().toISOString().slice(0, 10);
+      BASE = { D: x.r.D, arquivos: x.lista };
+      return guardar(BASE).then(function (ok) {
+        progresso(null);
+        reiniciar(x.r.D);
+        var rs = x.r.resumo;
+        aviso('Base atualizada: ' + fmtN.format(rs.oms) + ' OMs, ' + fmtN.format(rs.pendencias) + ' pendências, de ' + dataBR(rs.periodo[0]) + ' a ' + dataBR(rs.periodo[1]) + '.' + (ok ? '' : ' Este aparelho não deixou guardar a base: ela vale só enquanto o painel estiver aberto.'));
+      });
+    }).catch(function (e) {
+      progresso(null);
+      aviso((e && e.message) || 'Não consegui ler a planilha.');
+    });
+  }
+  var modoArq = 'novo';
+  $('#arq').onchange = function (e) { var fs = e.target.files; carregarArquivos(fs, modoArq); e.target.value = ''; };
+  function escolher(modo) { modoArq = modo; fecharFicha(); $('#arq').click(); }
+  $('#btn-base').onclick = function () {
+    var podeSomar = BASE && BASE.arquivos && BASE.arquivos.length;
+    if (!D) { escolher('novo'); return; }
+    var corpo = '<div class="opcoes">' +
+      (podeSomar ? '<button type="button" class="btn" data-m="somar"><b>Somar arquivos à base</b><span>Junta os arquivos novos (ex.: o mês que passou) ' + (BASE.arquivos.length === 1 ? 'ao arquivo já guardado' : 'aos ' + BASE.arquivos.length + ' já guardados') + '. A OM, a pendência e o consumo mais novos prevalecem.</span></button>' : '') +
+      '<button type="button" class="btn" data-m="novo"><b>' + (podeSomar ? 'Começar do zero' : 'Escolher planilhas') + '</b><span>A base passa a ser só os arquivos escolhidos agora. Escolha juntos os de OMs, consumo e pendências (e de todos os anos).</span></button>' +
+      (BASE ? '<button type="button" class="btn" data-m="apagar"><b>Apagar a base deste aparelho</b><span>Remove as planilhas guardadas aqui.</span></button>' : '') +
+      '</div><p class="nota">Aceita a exportação do Manusis (.xlsx ou o .zip baixado) e a base única. A leitura é feita só neste aparelho; nada é enviado.</p>';
+    var dr = gaveta('Atualizar base', 'Base atual: ' + fmtN.format(D.O.om.length) + ' OMs, de ' + dataBR(D.periodo[0]) + ' a ' + dataBR(D.periodo[1]), corpo);
+    dr.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-m]'); if (!b) return;
+      var m = b.getAttribute('data-m');
+      if (m === 'apagar') {
+        if (b.getAttribute('data-ok')) { guardar(null).then(function () { BASE = null; fecharFicha(); aviso('Base apagada deste aparelho.'); if (!DADOS) { D = null; telaInicial(); } }); }
+        else { b.setAttribute('data-ok', '1'); b.querySelector('b').textContent = 'Toque de novo para confirmar'; }
+        return;
+      }
+      escolher(m);
+    });
+  };
+  document.addEventListener('dragover', function (e) { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); document.body.classList.add('arrastando'); } });
+  document.addEventListener('dragleave', function (e) { if (!e.relatedTarget) document.body.classList.remove('arrastando'); });
+  document.addEventListener('drop', function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault(); document.body.classList.remove('arrastando');
+    carregarArquivos(e.dataTransfer.files, BASE && BASE.arquivos && BASE.arquivos.length ? 'somar' : 'novo');
   });
+  function telaInicial() {
+    $('#periodo').textContent = 'Nenhuma base carregada neste aparelho';
+    $('#filtros').innerHTML = ''; $('#ativos').innerHTML = '';
+    $('#app').innerHTML = '<section class="card boas"><h2>Carregue as planilhas do Manusis</h2>' +
+      '<ol><li>No Manusis, exporte as <b>Ordens de manutenção</b>, o <b>Consumo de materiais</b> e as <b>Pendências</b> (um ou mais anos).</li>' +
+      '<li>Toque em <b>Escolher planilhas</b> e selecione todos os arquivos juntos (.xlsx ou o .zip baixado). A base única também serve.</li>' +
+      '<li>Pronto: o painel cruza tudo pelo número da OM e guarda a base neste aparelho. No mês seguinte, use <b>Atualizar base</b>.</li></ol>' +
+      '<div class="drop" id="drop"><span>Arraste as planilhas para cá</span><span class="nota">ou</span><button type="button" class="btn primary" id="btn-escolher">Escolher planilhas</button></div>' +
+      '<p class="nota">A leitura é feita só neste aparelho. As planilhas não são enviadas para nenhum servidor.</p></section>';
+    $('#btn-escolher').onclick = function () { escolher('novo'); };
+  }
+  function reiniciar(nd) {
+    fecharFicha(); fecharPop();
+    F.q = []; $('#q').value = ''; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.status = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null; F.de = F.ate = '';
+    UI.page = 0; UI.qf = 'todas'; MAPA = null;
+    iniciar(nd);
+  }
+
+  function comecar() {
+    var usarGuardado = function (alt) {
+      return lerGuardado().then(function (g) {
+        if (g && g.D && maisNovo(g.D, alt)) { BASE = g; iniciar(g.D); }
+        else if (alt) iniciar(alt);
+        else telaInicial();
+      });
+    };
+    if (DADOS) return usarGuardado(DADOS);
+    fetch('dados.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { return usarGuardado(d); }, function () { return usarGuardado(null); });
+  }
+  setTimeout(comecar, 0);
 })();
 </script>
+<!--PWA--><script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+</script><!--/PWA-->
+<!--ESQ--></body></html><!--/ESQ-->

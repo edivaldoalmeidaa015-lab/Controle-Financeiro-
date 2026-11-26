@@ -176,6 +176,14 @@ regras, suba `VERSAO_PECAS`: o app relê as bases já guardadas no aparelho.
 
 ## Consulta de OMs (painel de uma página)
 
+**Aplicativo:** https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/consulta.html
+(depois que a mudança chega na `main`). Abre vazio; toque em **Escolher planilhas** e selecione as exportações
+do Manusis (OMs, consumo de materiais e pendências; `.xlsx` ou `.zip`, de um ou vários anos) ou a base única.
+A leitura é feita no aparelho (`consulta-dados.js` + `modelo.js` + SheetJS) e a base fica guardada nele (IndexedDB);
+nada é enviado. **Atualizar base** soma arquivos novos (o mais novo prevalece) ou começa do zero. No Chrome do
+celular, menu ⋮ → *Instalar aplicativo* cria o ícone "Consulta OMs" (`consulta.webmanifest`; `sw.js` guarda o app
+para abrir sem internet).
+
 `consulta.html` é um painel mais simples, de consulta: pesquisa na descrição e no serviço executado,
 filtros (parque, turbina, ano, mês, status sem as canceladas, tipo de serviço e alarme da descrição),
 cartões (OMs fechadas e em aberto, custo de materiais, pendências ligadas), ranking de turbinas,

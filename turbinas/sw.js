@@ -1,7 +1,8 @@
 // Service worker do Painel de Turbinas: guarda o aplicativo no aparelho para abrir sem internet.
 // Os dados das OMs não passam por aqui — ficam no IndexedDB do próprio painel.
-var CACHE = 'painel-turbinas-v61';
-var ARQUIVOS = ['./', './index.html', './modelo.js', './vendor/xlsx.mini.min.js', './manifest.webmanifest', './icone-192.png', './icone-512.png', './icone-180.png'];
+var CACHE = 'painel-turbinas-v62';
+var ARQUIVOS = ['./', './index.html', './modelo.js', './vendor/xlsx.mini.min.js', './manifest.webmanifest', './icone-192.png', './icone-512.png', './icone-180.png',
+  './consulta.html', './consulta-dados.js', './consulta.webmanifest'];
 
 self.addEventListener('install', function (ev) {
   ev.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS); }));
@@ -27,7 +28,7 @@ self.addEventListener('fetch', function (ev) {
     return resp;
   }).catch(function () {
     return caches.match(ev.request, { ignoreSearch: true }).then(function (r) {
-      return r || (ev.request.mode === 'navigate' ? caches.match('./index.html') : Response.error());
+      return r || (ev.request.mode === 'navigate' ? caches.match(/consulta/.test(ev.request.url) ? './consulta.html' : './index.html') : Response.error());
     });
   }));
 });
