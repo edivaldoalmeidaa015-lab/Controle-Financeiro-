@@ -243,6 +243,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .tip b { font-weight: 600; }
 .loading { padding: 80px 16px; text-align: center; color: var(--fg-2); }
 
+@media (max-width: 1500px) { .search .hint { display: none; } }
 @media (max-width: 1180px) {
   .viz2 { grid-template-columns: minmax(0, 1fr); }
   .viz { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -461,16 +462,21 @@ var DADOS = /*__DADOS__*/null;
     var a = {}; for (var i = 0; i < N; i++) if (ano[i]) a[ano[i]] = 1;
     anos = Object.keys(a).map(Number).sort();
     var h = '';
-    h += '<div class="fgroup"><span class="flabel">Parque</span><span id="f-parque"></span></div><span class="sep"></span>';
+    h += '<div class="fgroup"><span class="flabel">Parque</span><button type="button" class="chip dd" id="dd-parque">Todos</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Turbina</span><button type="button" class="chip dd" id="dd-ativo">Todas</button></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Ano</span><span id="f-ano"></span></div>';
-    h += '<div class="fgroup"><span class="flabel">Mês</span><span id="f-mes"></span></div><span class="sep"></span>';
+    h += '<div class="fgroup"><span class="flabel">Ano</span><button type="button" class="chip dd" id="dd-ano">Todos</button></div>';
+    h += '<div class="fgroup"><span class="flabel">Mês</span><button type="button" class="chip dd" id="dd-mes">Todos</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Data de abertura</span><input type="date" class="dt-in" id="f-de" aria-label="De" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"><span style="font-size:.78rem;color:var(--fg-2)">até</span><input type="date" class="dt-in" id="f-ate" aria-label="Até" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Status</span><span id="f-status"></span></div><span class="sep"></span>';
+    h += '<div class="fgroup"><span class="flabel">Status</span><button type="button" class="chip dd" id="dd-status">Sem canceladas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
     $('#filtros').innerHTML = h;
     $('#dd-ativo').onclick = function (e) { abrirPop(e.currentTarget, 'ativo', 'Buscar turbina (ex.: JOA XII-09)', D.ativos, function (i) { return D.O.at[i]; }, function (k) { return D.ativosNome[k]; }); };
+    var nomesPq = D.parques.map(function (p) { return p.replace('(sem parque)', 'Sem parque'); });
+    $('#dd-parque').onclick = function (e) { abrirPop(e.currentTarget, 'parque', 'Buscar parque', nomesPq, function (i) { return D.O.pq[i]; }); };
+    $('#dd-ano').onclick = function (e) { abrirPop(e.currentTarget, 'ano', 'Buscar ano', anos.map(String), function (i) { return ano[i]; }, null, function (k) { return anos[k]; }, true); };
+    $('#dd-mes').onclick = function (e) { abrirPop(e.currentTarget, 'mes', 'Buscar mês', MESES_NOME, function (i) { return mes[i]; }, null, function (k) { return k + 1; }, true); };
+    $('#dd-status').onclick = function (e) { abrirPop(e.currentTarget, 'status', 'Buscar status', D.status, function (i) { return D.O.st[i]; }); };
     $('#dd-tipo').onclick = function (e) { abrirPop(e.currentTarget, 'tipo', 'Buscar tipo de serviço', D.tipos, function (i) { return D.O.tp[i]; }); };
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
     $('#f-de').onchange = function (e) { F.de = e.target.value || ''; UI.page = 0; atualizar(); };
@@ -482,16 +488,17 @@ var DADOS = /*__DADOS__*/null;
       UI.page = 0; atualizar();
     });
   }
+  var MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  function statusPadrao() { var o = {}, ic = D.status.indexOf('Canceladas'); D.status.forEach(function (_, k) { if (k !== ic) o[k] = 1; }); return o; }
+  function mesmoConj(a, b) { var ka = Object.keys(a), kb = Object.keys(b); return ka.length === kb.length && ka.every(function (k) { return b[k]; }); }
   function chipsFiltro() {
-    var cPq = contarPor('pq', 'parque', function (i) { return D.O.pq[i]; });
-    $('#f-parque').innerHTML = D.parques.map(function (p, k) { return chip('parque', k, p.replace('(sem parque)', 'Sem parque'), cPq[k]); }).join(' ');
-    var cA = contarPor('ano', 'ano', function (i) { return ano[i]; });
-    $('#f-ano').innerHTML = anos.map(function (y) { return chip('ano', y, y, cA[y]); }).join(' ');
-    var cM = contarPor('mes', 'mes', function (i) { return mes[i]; });
-    $('#f-mes').innerHTML = MESES.map(function (m, k) { return chip('mes', k + 1, m, null, cM[k + 1]); }).join(' ');
-    var cS = contarPor('st', 'status', function (i) { return D.O.st[i]; });
-    var ordem = D.status.map(function (_, k) { return k; }).sort(function (a, b) { return (cS[b] || 0) - (cS[a] || 0); });
-    $('#f-status').innerHTML = ordem.map(function (k) { return chip('status', k, D.status[k], cS[k] || 0); }).join(' ');
+    rotuloDD('parque', 'Todos', D.parques.map(function (p) { return p.replace('(sem parque)', 'Sem parque'); }));
+    var la = {}; anos.forEach(function (y) { la[y] = String(y); }); rotuloDD('ano', 'Todos', la);
+    var lm = {}; MESES_NOME.forEach(function (m, k) { lm[k + 1] = m; }); rotuloDD('mes', 'Todos', lm);
+    var bs = $('#dd-status'), ks = Object.keys(F.status);
+    var padrao = mesmoConj(F.status, statusPadrao()), todos = ks.length === D.status.length;
+    bs.setAttribute('aria-pressed', padrao || todos ? 'false' : 'true');
+    bs.textContent = padrao ? 'Sem canceladas' : todos ? 'Todos' : !ks.length ? 'Nenhum' : ks.length === 1 ? curto(D.status[ks[0]], 26) : ks.length + ' selecionados';
     rotuloDD('ativo', 'Todas', D.ativos); rotuloDD('tipo', 'Todos', D.tipos); rotuloDD('falha', 'Todas', D.falhas);
   }
   function chip(f, v, txt, c, cTitle) {
@@ -510,21 +517,24 @@ var DADOS = /*__DADOS__*/null;
   var popEl = null;
   function fecharPop() { if (popEl) { popEl.remove(); popEl = null; document.removeEventListener('mousedown', foraPop, true); } }
   function foraPop(e) { if (popEl && !popEl.contains(e.target) && !e.target.closest('.chip.dd')) fecharPop(); }
-  function abrirPop(btn, f, ph, lista, valorDe, dica) {
+  function abrirPop(btn, f, ph, lista, valorDe, dica, chaveDe, ordemNatural) {
     if (popEl && popEl._f === f) { fecharPop(); return; }
     fecharPop();
-    var cont = contarPor(f, f, valorDe);
-    var ordem = lista.map(function (_, k) { return k; }).filter(function (k) { return cont[k] || F[f][k]; })
-      .sort(function (a, b) { return (cont[b] || 0) - (cont[a] || 0) || String(lista[a]).localeCompare(String(lista[b]), 'pt-BR', { numeric: true }); });
+    var ch = chaveDe || function (k) { return k; };
+    var cont0 = contarPor(f, f, valorDe), cont = {};
+    lista.forEach(function (_, k) { cont[k] = cont0[ch(k)] || 0; });
+    var ordem = lista.map(function (_, k) { return k; }).filter(function (k) { return ordemNatural || f === 'status' || cont[k] || F[f][ch(k)]; });
+    if (!ordemNatural) ordem.sort(function (a, b) { return (cont[b] || 0) - (cont[a] || 0) || String(lista[a]).localeCompare(String(lista[b]), 'pt-BR', { numeric: true }); });
     var el = document.createElement('div'); el.className = 'pop'; el._f = f;
     el.innerHTML = '<input type="search" id="pop-q" placeholder="' + esc(ph) + '" autocomplete="off"><div class="list"></div>' +
-      '<div class="foot"><button type="button" class="btn" data-a="limpa">Limpar</button><button type="button" class="btn" data-a="ok">Fechar</button></div>';
+      '<div class="foot"><button type="button" class="btn" data-a="limpa">' + (f === 'status' ? 'Sem canceladas' : 'Limpar') + '</button>' +
+      (f === 'status' ? '<button type="button" class="btn" data-a="todos">Todos</button>' : '') + '<button type="button" class="btn" data-a="ok">Fechar</button></div>';
     var lst = el.querySelector('.list');
     function desenhar(q) {
       q = norm(q);
       var it = ordem.filter(function (k) { return !q || norm(lista[k] + ' ' + (dica ? dica(k) : '')).indexOf(q) >= 0; }).slice(0, 400);
       lst.innerHTML = it.length ? it.map(function (k) {
-        return '<label title="' + esc(dica ? dica(k) : lista[k]) + '"><input type="checkbox" value="' + k + '"' + (F[f][k] ? ' checked' : '') + '><span class="t">' + esc(lista[k]) + '</span><span class="c num">' + fmtN.format(cont[k] || 0) + '</span></label>';
+        return '<label title="' + esc(dica ? dica(k) : lista[k]) + '"' + (cont[k] || F[f][ch(k)] ? '' : ' style="opacity:.5"') + '><input type="checkbox" value="' + ch(k) + '"' + (F[f][ch(k)] ? ' checked' : '') + '><span class="t">' + esc(lista[k]) + '</span><span class="c num">' + fmtN.format(cont[k] || 0) + '</span></label>';
       }).join('') : '<div class="empty">Nada encontrado</div>';
     }
     desenhar('');
@@ -532,7 +542,10 @@ var DADOS = /*__DADOS__*/null;
     lst.onchange = function (e) { var k = e.target.value; if (e.target.checked) F[f][k] = 1; else delete F[f][k]; UI.page = 0; atualizar(true); };
     el.querySelector('.foot').onclick = function (e) {
       var a = e.target.getAttribute('data-a');
-      if (a === 'limpa') { F[f] = {}; UI.page = 0; atualizar(); desenhar(el.querySelector('input').value); }
+      if (a === 'limpa' || a === 'todos') {
+        F[f] = f !== 'status' ? {} : a === 'todos' ? (function () { var o = {}; D.status.forEach(function (_, k) { o[k] = 1; }); return o; })() : statusPadrao();
+        UI.page = 0; atualizar(true); desenhar(el.querySelector('input').value);
+      }
       if (a === 'ok') fecharPop();
     };
     document.body.appendChild(el); popEl = el;
@@ -547,6 +560,10 @@ var DADOS = /*__DADOS__*/null;
     var t = [];
     if (F.q.length) t.push(['q', null, 'Pesquisa: ' + $('#q').value]);
     if (F.de || F.ate) t.push(['data', null, 'Abertura: ' + (F.de ? dataBR(F.de) : 'início') + ' a ' + (F.ate ? dataBR(F.ate) : 'hoje')]);
+    Object.keys(F.parque).forEach(function (k) { t.push(['parque', k, 'Parque ' + D.parques[k].replace('(sem parque)', 'sem parque')]); });
+    Object.keys(F.ano).forEach(function (k) { t.push(['ano', k, 'Ano ' + k]); });
+    Object.keys(F.mes).forEach(function (k) { t.push(['mes', k, MESES_NOME[k - 1]]); });
+    if (D && !mesmoConj(F.status, statusPadrao())) t.push(['status', null, 'Status: ' + $('#dd-status').textContent]);
     Object.keys(F.ativo).forEach(function (k) { t.push(['ativo', k, 'WTG ' + D.ativos[k]]); });
     Object.keys(F.tipo).forEach(function (k) { t.push(['tipo', k, D.tipos[k]]); });
     Object.keys(F.falha).forEach(function (k) { t.push(['falha', k, curto(D.falhas[k], 40)]); });
@@ -561,6 +578,7 @@ var DADOS = /*__DADOS__*/null;
     if (f === 'q') { $('#q').value = ''; F.q = []; }
     else if (f === 'material') { F.material = null; matOMs = null; }
     else if (f === 'data') { F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = ''; }
+    else if (f === 'status') F.status = statusPadrao();
     else delete F[f][v];
     UI.page = 0; atualizar();
   });
