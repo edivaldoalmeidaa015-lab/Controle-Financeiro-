@@ -20,18 +20,18 @@
   --fg-3: #7f959f;
   --label: #004a6b;
   --accent: #004a6b;
-  --accent-2: #2a8fb2;
+  --accent-2: #004a6b;
   --accent-soft: #d9eef2;
   --brand-grad: linear-gradient(90deg, #004a6b, #2a8fb2 35%, #4bbac8 55%, #f8a810 75%, #f07020);
-  --s-fechada: #2a8fb2;
+  --s-fechada: #004a6b;
   --s-aberta: #f39318;
   --s-cancel: #a9b9c0;
   --warn-bg: #fff2d9;
   --warn-fg: #8a5200;
   --mark: #ffe08a;
   --good: #1f8a3a;
-  --s-prog: #004a6b;
-  --s-exec: #4bbac8;
+  --s-prog: #2a8fb2;
+  --s-exec: #2a8fb2;
   --bad: #b81a2b;
   --logo-ground: #ffffff; /* fundo próprio do logo da empresa, igual nos dois temas */
   --shadow: 0 1px 2px rgba(0, 74, 107, .07), 0 2px 8px rgba(0, 74, 107, .05);
@@ -44,7 +44,7 @@
     --bg: #0b1a21; --surface: #11242d; --surface-2: #163039; --line: #244350;
     --fg: #e4eff3; --fg-2: #9cb5bf; --fg-3: #6b8792; --label: #6fc6d3;
     --accent: #4bbac8; --accent-2: #4bbac8; --accent-soft: #123a47;
-    --s-fechada: #3aa6c4; --s-aberta: #f5a02a; --s-cancel: #4f6670; --s-prog: #b9d7e0; --s-exec: #7fd3dc;
+    --s-fechada: #2f8fb5; --s-aberta: #f5a02a; --s-cancel: #4f6670; --s-prog: #9fd6e0; --s-exec: #6fc6d3;
     --warn-bg: #3a2a0a; --warn-fg: #f5c463; --mark: #6b5512; --good: #3fb760; --bad: #ef5f6a;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
   }
@@ -53,7 +53,7 @@
   --bg: #0b1a21; --surface: #11242d; --surface-2: #163039; --line: #244350;
   --fg: #e4eff3; --fg-2: #9cb5bf; --fg-3: #6b8792; --label: #6fc6d3;
   --accent: #4bbac8; --accent-2: #4bbac8; --accent-soft: #123a47;
-  --s-fechada: #3aa6c4; --s-aberta: #f5a02a; --s-cancel: #4f6670; --s-prog: #b9d7e0; --s-exec: #7fd3dc;
+  --s-fechada: #2f8fb5; --s-aberta: #f5a02a; --s-cancel: #4f6670; --s-prog: #9fd6e0; --s-exec: #6fc6d3;
   --warn-bg: #3a2a0a; --warn-fg: #f5c463; --mark: #6b5512; --good: #3fb760; --bad: #ef5f6a;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
 }
@@ -1161,7 +1161,7 @@ var DADOS = /*__DADOS__*/null;
     pend: { rot: 'Pendências abertas', pend: true }
   };
   // turquesa → azul-petróleo da Essentia
-  var RAMPA_L = ['#d6eef2', '#bfe4ea', '#a3d8e1', '#86cbd7', '#6bbecd', '#4fb0c4', '#3a9fba', '#2a8fb2', '#1f7ea4', '#156d93', '#0d5e82', '#065274', '#004a6b'];
+  var RAMPA_L = ['#a3d8e1', '#86cbd7', '#6bbecd', '#4fb0c4', '#3a9fba', '#2a8fb2', '#1f7ea4', '#156d93', '#0d5e82', '#065274', '#004a6b', '#003e5a', '#00324a'];
   var ROM = { I: 1, V: 5, X: 10, L: 50 };
   function romano(r) { var t = 0; for (var j = 0; j < r.length; j++) { var a = ROM[r[j]], b = ROM[r[j + 1]] || 0; t += a < b ? -a : a; } return t; }
   var MAPA = null;
@@ -1192,8 +1192,8 @@ var DADOS = /*__DADOS__*/null;
     else for (var i = 0; i < N; i++) if (passa(i, 'ativo')) v[D.O.at[i]] += met.om(i);
     var max = 0; for (var k = 0; k < v.length; k++) if (v[k] > max) max = v[k];
     var fmt = function (x) { return met.moeda ? compacto(x) : fmtN.format(x); };
-    var rampa = temaEscuro() ? RAMPA_L.slice(2).reverse() : RAMPA_L;
-    var cor = function (x) { var t = max ? x / max : 0, j = Math.min(rampa.length - 1, Math.round(Math.sqrt(t) * (rampa.length - 1))); return { bg: rampa[j], claro: temaEscuro() ? j < 6 : j >= 6 }; };
+    var rampa = temaEscuro() ? RAMPA_L.slice(0, 11).reverse() : RAMPA_L;
+    var cor = function (x) { var t = max ? x / max : 0, j = Math.min(rampa.length - 1, Math.round(Math.sqrt(t) * (rampa.length - 1))); return { bg: rampa[j], claro: temaEscuro() ? j < 6 : j >= 4 }; };
     var el = $('#c-mapa'), W = el.clientWidth || 900, mp = MAPA.maxPos, compacto_ = UI.modo === 'cel' || W < 640;
     var colRot = 70, cel = (W - colRot - 3 * mp) / mp, mostrar = cel >= 24 && !met.moeda, temFiltro = !vazio(F.ativo);
     var celula = function (k) {
