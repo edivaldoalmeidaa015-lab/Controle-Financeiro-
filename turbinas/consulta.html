@@ -298,6 +298,18 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 #btn-filtros, #ord-cel { display: none; }
 body.cel #btn-filtros, body.cel #ord-cel { display: inline-flex; }
 body.cel .filters.recolhido { display: none; }
+/* celular: filtros em duas colunas, nome em cima */
+body.cel .filters:not(.recolhido) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
+body.cel .filters .fgroup { width: auto !important; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+body.cel .filters .fg-full { grid-column: 1 / -1; }
+body.cel .filters .flabel { min-width: 0 !important; }
+body.cel .filters .chip.dd { width: 100%; justify-content: space-between; padding: 7px 12px; font-size: .88rem; }
+body.cel .filters .seg { display: flex; }
+body.cel .filters .seg button { flex: 1; padding: 8px 4px; font-size: .84rem; }
+body.cel .filters .dt-par { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+body.cel .top-1 > .btn { flex: 1 1 0; padding: 9px 6px; font-size: .84rem; }
+body.cel #seg-modo { display: flex; flex: 1 1 100%; }
+body.cel #seg-modo button { flex: 1; padding: 6px; }
 body.cel .filters { padding-top: 4px; }
 body.cel .filters .fgroup { width: 100%; }
 body.cel .filters .flabel { min-width: 104px; }
@@ -324,6 +336,25 @@ body.pc #app { min-width: 1000px; }
 .skpis div { display: flex; flex-direction: column; }
 .skpis b { font-family: var(--f-display); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .skpis span { font-size: .72rem; color: var(--fg-2); }
+.dt-par { display: inline-flex; gap: 6px; align-items: center; }
+.dt-par .ate { font-size: .78rem; color: var(--fg-2); }
+.chip.dtb { font-variant-numeric: tabular-nums; min-width: 104px; }
+.cal { width: min(310px, calc(100vw - 32px)); padding: 10px 10px 0; max-height: none !important; }
+.cal-t { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--label); font-weight: 700; margin: 0 2px 6px; }
+.cal-h { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; margin-bottom: 8px; }
+.cal-h .btn { padding: 4px 10px; font-size: 1rem; line-height: 1; }
+.cal-h select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; background: var(--surface-2); font-size: .86rem; min-width: 0; }
+.cal-h .btn[data-n="1"] { order: 4; }
+.cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; margin-bottom: 8px; }
+.cal-g .cw { font-size: .72rem; color: var(--fg-3); font-weight: 600; padding: 4px 0; }
+.cal-g .cd { border: 0; background: transparent; border-radius: 6px; padding: 8px 0; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.cal-g .cd:hover:not(:disabled) { background: var(--accent-soft); }
+.cal-g .cd.entre { background: var(--accent-soft); border-radius: 0; }
+.cal-g .cd.borda { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-g .cd.hoje { font-weight: 700; color: var(--accent); }
+.cal-g .cd.on { background: var(--accent); color: var(--surface); font-weight: 700; }
+.cal-g .cd:disabled { opacity: .3; cursor: default; }
+.cal .foot { margin: 0 -10px; }
 .dt-in { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 6px; font-size: .8rem; }
 .toast { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--surface); padding: 9px 14px; border-radius: 8px; font-size: .85rem; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
@@ -521,8 +552,8 @@ var DADOS = /*__DADOS__*/null;
     h += '<div class="fgroup"><span class="flabel">Turbina</span><button type="button" class="chip dd" id="dd-ativo">Todas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Ano</span><button type="button" class="chip dd" id="dd-ano">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Mês</span><button type="button" class="chip dd" id="dd-mes">Todos</button></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Data de abertura</span><input type="date" class="dt-in" id="f-de" aria-label="De" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"><span style="font-size:.78rem;color:var(--fg-2)">até</span><input type="date" class="dt-in" id="f-ate" aria-label="Até" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Situação</span><div class="seg" id="seg-sit" role="group" aria-label="Situação da OM"><button type="button" data-v="todas">Todas</button><button type="button" data-v="abertas">Só abertas</button><button type="button" data-v="fechadas">Só fechadas</button></div></div>';
+    h += '<div class="fgroup fg-full fg-data"><span class="flabel">Data de abertura</span><span class="dt-par"><button type="button" class="chip dd dtb" id="f-de" aria-label="Data inicial"></button><span class="ate">até</span><button type="button" class="chip dd dtb" id="f-ate" aria-label="Data final"></button></span></div><span class="sep"></span>';
+    h += '<div class="fgroup fg-full"><span class="flabel">Situação</span><div class="seg" id="seg-sit" role="group" aria-label="Situação da OM"><button type="button" data-v="todas">Todas</button><button type="button" data-v="abertas">Só abertas</button><button type="button" data-v="fechadas">Só fechadas</button></div></div>';
     h += '<div class="fgroup"><span class="flabel">Status</span><button type="button" class="chip dd" id="dd-status">Sem canceladas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
@@ -539,8 +570,8 @@ var DADOS = /*__DADOS__*/null;
     $('#dd-status').onclick = function (e) { abrirPop(e.currentTarget, 'status', 'Buscar status', D.status, function (i) { return D.O.st[i]; }); };
     $('#dd-tipo').onclick = function (e) { abrirPop(e.currentTarget, 'tipo', 'Buscar tipo de serviço', D.tipos, function (i) { return D.O.tp[i]; }); };
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
-    $('#f-de').onchange = function (e) { F.de = e.target.value || ''; UI.page = 0; atualizar(); };
-    $('#f-ate').onchange = function (e) { F.ate = e.target.value || ''; UI.page = 0; atualizar(); };
+    $('#f-de').onclick = function (e) { abrirCalendario(e.currentTarget, 'de'); };
+    $('#f-ate').onclick = function (e) { abrirCalendario(e.currentTarget, 'ate'); };
     $('#filtros').onclick = (function (e) {
       var b = e.target.closest('[data-f]'); if (!b) return;
       var f = b.getAttribute('data-f'), v = b.getAttribute('data-v');
@@ -568,6 +599,8 @@ var DADOS = /*__DADOS__*/null;
     var padrao = mesmoConj(F.status, statusPadrao()), todos = ks.length === D.status.length;
     bs.setAttribute('aria-pressed', padrao || todos ? 'false' : 'true');
     bs.textContent = padrao ? 'Sem canceladas' : todos ? 'Todos' : !ks.length ? 'Nenhum' : ks.length === 1 ? curto(D.status[ks[0]], 26) : ks.length + ' selecionados';
+    $('#f-de').textContent = F.de ? dataBR(F.de) : 'Início'; $('#f-de').setAttribute('aria-pressed', !!F.de);
+    $('#f-ate').textContent = F.ate ? dataBR(F.ate) : 'Hoje'; $('#f-ate').setAttribute('aria-pressed', !!F.ate);
     rotuloDD('ativo', 'Todas', D.ativos); rotuloDD('tipo', 'Todos', D.tipos); rotuloDD('falha', 'Todas', D.falhas);
   }
   function chip(f, v, txt, c, cTitle) {
@@ -642,6 +675,55 @@ var DADOS = /*__DADOS__*/null;
     setTimeout(function () { document.addEventListener('mousedown', foraPop, true); }, 0);
   }
 
+  // calendário em português (o campo de data do celular segue o idioma do aparelho: mm/dd/yyyy)
+  var SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  function isoDe(y, m, d) { return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  function abrirCalendario(btn, qual) {
+    if (popEl && popEl._f === 'cal-' + qual) { fecharPop(); return; }
+    fecharPop();
+    var atual = F[qual] || (qual === 'de' ? (F.ate || D.periodo[1]) : (F.de || D.periodo[1]));
+    var vy = +atual.slice(0, 4), vm = +atual.slice(5, 7) - 1;
+    var y0 = +D.periodo[0].slice(0, 4), y1 = Math.max(+D.periodo[1].slice(0, 4), new Date().getFullYear());
+    var el = document.createElement('div'); el.className = 'pop cal'; el._f = 'cal-' + qual;
+    function desenhar() {
+      var anos = ''; for (var y = y0; y <= y1; y++) anos += '<option value="' + y + '"' + (y === vy ? ' selected' : '') + '>' + y + '</option>';
+      var meses = MESES_NOME.map(function (n, k) { return '<option value="' + k + '"' + (k === vm ? ' selected' : '') + '>' + n + '</option>'; }).join('');
+      var ini = new Date(vy, vm, 1).getDay(), dias = new Date(vy, vm + 1, 0).getDate(), hoje = new Date(), hIso = isoDe(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+      var g = SEMANA.map(function (d) { return '<span class="cw">' + d + '</span>'; }).join('');
+      for (var b = 0; b < ini; b++) g += '<span></span>';
+      for (var d = 1; d <= dias; d++) {
+        var iso = isoDe(vy, vm, d), cls = 'cd';
+        if (iso === F[qual]) cls += ' on';
+        else if (F.de && F.ate && iso > F.de && iso < F.ate) cls += ' entre';
+        else if (iso === F.de || iso === F.ate) cls += ' borda';
+        if (iso === hIso) cls += ' hoje';
+        var fora = (qual === 'ate' && F.de && iso < F.de) || (qual === 'de' && F.ate && iso > F.ate);
+        g += '<button type="button" class="' + cls + '" data-d="' + iso + '"' + (fora ? ' disabled' : '') + '>' + d + '</button>';
+      }
+      el.innerHTML = '<div class="cal-t">' + (qual === 'de' ? 'Abertas a partir de' : 'Abertas até') + '</div>' +
+        '<div class="cal-h"><button type="button" class="btn" data-n="-1" aria-label="Mês anterior">‹</button>' +
+        '<select data-s="m" aria-label="Mês">' + meses + '</select><select data-s="y" aria-label="Ano">' + anos + '</select>' +
+        '<button type="button" class="btn" data-n="1" aria-label="Próximo mês">›</button></div>' +
+        '<div class="cal-g">' + g + '</div>' +
+        '<div class="foot"><button type="button" class="btn" data-a="limpa">' + (qual === 'de' ? 'Desde o início' : 'Até hoje') + '</button><button type="button" class="btn" data-a="ok">Fechar</button></div>';
+    }
+    desenhar();
+    el.onclick = function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.getAttribute('data-n')) { vm += +t.getAttribute('data-n'); if (vm < 0) { vm = 11; vy--; } if (vm > 11) { vm = 0; vy++; } vy = Math.min(y1, Math.max(y0, vy)); desenhar(); return; }
+      if (t.getAttribute('data-d')) { F[qual] = t.getAttribute('data-d'); UI.page = 0; fecharPop(); atualizar(); return; }
+      var a = t.getAttribute('data-a');
+      if (a === 'limpa') { F[qual] = ''; UI.page = 0; fecharPop(); atualizar(); }
+      if (a === 'ok') fecharPop();
+    };
+    el.onchange = function (e) { var s2 = e.target.getAttribute('data-s'); if (s2 === 'm') vm = +e.target.value; if (s2 === 'y') vy = +e.target.value; desenhar(); };
+    document.body.appendChild(el); popEl = el;
+    var r = btn.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    el.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - h - 8)) + 'px';
+    el.style.left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16)) + 'px';
+    setTimeout(function () { document.addEventListener('mousedown', foraPop, true); }, 0);
+  }
+
   function barraAtivos() {
     var t = [];
     if (F.q.length) t.push(['q', null, 'Pesquisa: ' + $('#q').value]);
@@ -663,7 +745,7 @@ var DADOS = /*__DADOS__*/null;
     var f = b.getAttribute('data-rf'), v = b.getAttribute('data-rv');
     if (f === 'q') { $('#q').value = ''; F.q = []; }
     else if (f === 'material') { F.material = null; matOMs = null; }
-    else if (f === 'data') { F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = ''; }
+    else if (f === 'data') { F.de = F.ate = ''; }
     else if (f === 'status') F.status = statusPadrao();
     else delete F[f][v];
     UI.page = 0; atualizar();
@@ -676,7 +758,7 @@ var DADOS = /*__DADOS__*/null;
   $('#limpar').onclick = function () {
     if (!D) return;
     $('#q').value = ''; F.q = []; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null;
-    F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = '';
+    F.de = F.ate = '';
     F.status = {}; var ic = D.status.indexOf('Canceladas'); D.status.forEach(function (_, k) { if (k !== ic) F.status[k] = 1; });
     UI.page = 0; atualizar();
   };
