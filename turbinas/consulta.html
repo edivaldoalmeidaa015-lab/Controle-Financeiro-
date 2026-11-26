@@ -21,6 +21,8 @@
   --warn-fg: #8a5a00;
   --mark: #ffe58a;
   --good: #1f8a3a;
+  --s-prog: #6a4ce2;
+  --s-exec: #00a386;
   --bad: #c9302c;
   --logo-ground: #ffffff; /* fundo próprio do logo da empresa, igual nos dois temas */
   --shadow: 0 1px 2px rgba(23, 33, 43, .06), 0 2px 8px rgba(23, 33, 43, .04);
@@ -33,7 +35,7 @@
     --bg: #11171d; --surface: #19212a; --surface-2: #1f2832; --line: #2e3a46;
     --fg: #e8edf2; --fg-2: #a3aeb9; --fg-3: #74808c; --accent: #4fb3d4; --accent-soft: #173543;
     --s-fechada: #338ced; --s-aberta: #e76624; --s-cancel: #5b6672;
-    --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12; --good: #3fb760; --bad: #ef6461;
+    --warn-bg: #3a2c0c; --warn-fg: #f2c46b; --mark: #6b5a12; --good: #3fb760; --bad: #ef6461; --s-prog: #9887ef; --s-exec: #00a888; --s-prog: #9887ef; --s-exec: #00a888;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
   }
 }
@@ -203,17 +205,46 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .loading { padding: 80px 16px; text-align: center; color: var(--fg-2); }
 
 @media (max-width: 1180px) {
+  .viz2 { grid-template-columns: minmax(0, 1fr); }
   .viz { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .viz .p-mes { grid-column: 1 / -1; order: -1; }
 }
 @media (max-width: 820px) {
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .viz { grid-template-columns: minmax(0, 1fr); }
-  .search .hint { display: none; }
-  .sep { display: none; }
   header.top { position: static; }
   body::before { display: none; }
 }
+/* modo Celular: uma coluna, filtros recolhidos e tabelas em fichas */
+#btn-filtros, #ord-cel { display: none; }
+body.cel #btn-filtros, body.cel #ord-cel { display: inline-flex; }
+body.cel .filters:not(.aberto) { display: none; }
+body.cel .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.cel .viz, body.cel .viz2 { grid-template-columns: minmax(0, 1fr); }
+body.cel .viz .p-mes { grid-column: auto; order: 0; }
+body.cel .search .hint, body.cel .sep { display: none; }
+body.cel header.top { position: static; }
+body.cel::before { display: none; }
+body.cel .top-1 { gap: 10px; }
+body.cel .tscroll table, body.cel .tscroll tbody { display: block; }
+body.cel .tscroll thead { display: none; }
+body.cel .tscroll tr { display: block; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+body.cel .tscroll td { display: block; border: 0; padding: 3px 0; min-width: 0; max-width: none; white-space: normal !important; }
+body.cel .tscroll td::before { content: attr(data-l); display: block; color: var(--fg-3); font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; }
+body.cel .tscroll td:empty, body.cel .tscroll td .nada:only-child { color: var(--fg-3); }
+body.cel .tscroll td[colspan] { display: block; }
+body.cel .tscroll td[colspan]::before { content: none; }
+/* modo Computador numa tela estreita: o painel rola de lado dentro da própria área */
+.app-scroll { overflow-x: auto; }
+body.pc #app { min-width: 1000px; }
+.viz2 { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+.skpis { display: flex; gap: 8px 22px; flex-wrap: wrap; }
+.skpis div { display: flex; flex-direction: column; }
+.skpis b { font-family: var(--f-display); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.skpis span { font-size: .72rem; color: var(--fg-2); }
+.dt-in { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 6px; font-size: .8rem; }
+.toast { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--surface); padding: 9px 14px; border-radius: 8px; font-size: .85rem; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn.primary:hover { color: var(--surface); filter: brightness(1.08); }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 420px) {
   .kpi .k-val { font-size: 1.65rem; }
   .kpis { gap: 10px; }
@@ -232,14 +263,17 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
       <input id="q" type="search" placeholder="Pesquisar: JOA XII-09, Pitch, Gearbox, vazamento, OM 01105…" autocomplete="off" aria-label="Pesquisar na descrição e no serviço executado">
       <span class="hint">Descrição + Serviço executado · use "aspas" para frase exata</span>
     </label>
+    <button class="btn" id="btn-filtros" type="button" aria-expanded="false">Filtros</button>
     <button class="btn" id="limpar" type="button">Limpar filtros</button>
+    <div class="seg" id="seg-modo" role="group" aria-label="Modo de tela"><button type="button" data-v="pc" title="Layout para computador">Computador</button><button type="button" data-v="cel" title="Layout para celular">Celular</button></div>
   </div>
   <div class="wrap filters" id="filtros"></div>
   <div class="wrap active-bar" id="ativos"></div>
 </header>
 
-<main class="wrap" id="app"><div class="loading">Carregando as OMs…</div></main>
+<div class="app-scroll"><main class="wrap" id="app"><div class="loading">Carregando as OMs…</div></main></div>
 
+<script src="vendor/xlsx.mini.min.js"></script>
 <script>
 var DADOS = /*__DADOS__*/null;
 (function () {
@@ -265,10 +299,50 @@ var DADOS = /*__DADOS__*/null;
     return m ? { cod: m[1], nome: m[2].trim() } : { cod: '', nome: nome };
   }
 
-  var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs;
-  var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null };
+  var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs, pAt, hayP;
+  var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null, de: '', ate: '' };
   var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas' };
   var sel = null; // índices filtrados
+
+  function lerModo() { try { return localStorage.getItem('consulta-oms-modo'); } catch (e) { return null; } }
+  function aplicarModo(m, salvar) {
+    UI.modo = m;
+    document.body.classList.toggle('cel', m === 'cel'); document.body.classList.toggle('pc', m === 'pc');
+    var b = $('#seg-modo').children; for (var j = 0; j < b.length; j++) b[j].setAttribute('aria-pressed', b[j].getAttribute('data-v') === m);
+    if (salvar) try { localStorage.setItem('consulta-oms-modo', m); } catch (e) {}
+    if (D) { desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); desenharTabela(); }
+  }
+  aplicarModo(lerModo() || (window.innerWidth < 820 ? 'cel' : 'pc'));
+  $('#seg-modo').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) aplicarModo(v, true); };
+  $('#btn-filtros').onclick = function () {
+    var f = $('#filtros'), ab = !f.classList.contains('aberto');
+    f.classList.toggle('aberto', ab); this.setAttribute('aria-expanded', ab); this.textContent = ab ? 'Fechar filtros' : 'Filtros';
+  };
+  var toastT;
+  function aviso(msg) {
+    var t = $('#toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.id = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 4500);
+  }
+  // salvar arquivo: no Claude pelo recurso "downloads"; no arquivo aberto no navegador, download comum
+  var dlNS = null;
+  try { if (window.claude && window.claude.use) window.claude.use('downloads').then(function (x) { dlNS = x; }, function () {}); } catch (e) {}
+  function salvarArquivo(nome, buf) {
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    if (dlNS) {
+      dlNS.save({ filename: nome, data: blob }).then(function () { aviso('Planilha exportada: ' + nome); }, function (e) {
+        var c = e && e.code;
+        if (c === 'declined') aviso('Exportação cancelada.');
+        else if (c === 'host_unavailable') aviso('Este aplicativo não salva arquivos. Abra o painel no navegador ou no computador para exportar.');
+        else if (c === 'rate_limited') aviso('Já há uma exportação aguardando confirmação.');
+        else aviso('Não foi possível exportar aqui. Use o arquivo offline do painel no Chrome.');
+      });
+      return;
+    }
+    if (window.claude) { aviso('Exportação indisponível nesta visualização. Use o arquivo offline do painel no Chrome.'); return; }
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    aviso('Planilha exportada: ' + nome);
+  }
 
   function iniciar(dados) {
     D = dados; var O = D.O; N = O.om.length;
@@ -286,6 +360,9 @@ var DADOS = /*__DADOS__*/null;
     D.P.n.forEach(function (_, k) {
       [D.P.ori[k], D.P.exe[k]].forEach(function (o) { if (o >= 0) { pendDe[o] = pendDe[o] || []; if (pendDe[o].indexOf(k) < 0) pendDe[o].push(k); } });
     });
+    var atPos = {}; D.ativos.forEach(function (a, k) { atPos[a] = k; });
+    pAt = D.P.at.map(function (a) { return a in atPos ? atPos[a] : -1; });
+    hayP = D.P.n.map(function (n, k) { return norm(n + ' ' + D.P.desc[k] + ' ' + D.P.at[k] + ' ' + D.P.us[k]); });
     D.status.forEach(function (s, k) { if (k !== idxCanc) F.status[k] = 1; });
     $('#periodo').textContent = fmtN.format(N) + ' OMs · abertas de ' + dataBR(D.periodo[0]) + ' a ' + dataBR(D.periodo[1]) + ' · Manusis';
     lerHash();
@@ -309,6 +386,7 @@ var DADOS = /*__DADOS__*/null;
     if (ignora !== 'ativo' && !vazio(F.ativo) && !F.ativo[O.at[i]]) return false;
     if (ignora !== 'ano' && !vazio(F.ano) && !F.ano[ano[i]]) return false;
     if (ignora !== 'mes' && !vazio(F.mes) && !F.mes[mes[i]]) return false;
+    if (F.de || F.ate) { var d = O.dt[i]; if (!d || (F.de && d < F.de) || (F.ate && d > F.ate)) return false; }
     if (ignora !== 'tipo' && !vazio(F.tipo) && !F.tipo[O.tp[i]]) return false;
     if (ignora !== 'falha' && !vazio(F.falha)) {
       var fl = O.fl[i], ok = false;
@@ -343,6 +421,7 @@ var DADOS = /*__DADOS__*/null;
     h += '<div class="fgroup"><span class="flabel">Turbina</span><button type="button" class="chip dd" id="dd-ativo">Todas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Ano</span><span id="f-ano"></span></div>';
     h += '<div class="fgroup"><span class="flabel">Mês</span><span id="f-mes"></span></div><span class="sep"></span>';
+    h += '<div class="fgroup"><span class="flabel">Data de abertura</span><input type="date" class="dt-in" id="f-de" aria-label="De" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"><span style="font-size:.78rem;color:var(--fg-2)">até</span><input type="date" class="dt-in" id="f-ate" aria-label="Até" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Status</span><span id="f-status"></span></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
@@ -350,6 +429,8 @@ var DADOS = /*__DADOS__*/null;
     $('#dd-ativo').onclick = function (e) { abrirPop(e.currentTarget, 'ativo', 'Buscar turbina (ex.: JOA XII-09)', D.ativos, function (i) { return D.O.at[i]; }, function (k) { return D.ativosNome[k]; }); };
     $('#dd-tipo').onclick = function (e) { abrirPop(e.currentTarget, 'tipo', 'Buscar tipo de serviço', D.tipos, function (i) { return D.O.tp[i]; }); };
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
+    $('#f-de').onchange = function (e) { F.de = e.target.value || ''; UI.page = 0; atualizar(); };
+    $('#f-ate').onchange = function (e) { F.ate = e.target.value || ''; UI.page = 0; atualizar(); };
     $('#filtros').addEventListener('click', function (e) {
       var b = e.target.closest('[data-f]'); if (!b) return;
       var f = b.getAttribute('data-f'), v = b.getAttribute('data-v');
@@ -421,6 +502,7 @@ var DADOS = /*__DADOS__*/null;
   function barraAtivos() {
     var t = [];
     if (F.q.length) t.push(['q', null, 'Pesquisa: ' + $('#q').value]);
+    if (F.de || F.ate) t.push(['data', null, 'Abertura: ' + (F.de ? dataBR(F.de) : 'início') + ' a ' + (F.ate ? dataBR(F.ate) : 'hoje')]);
     Object.keys(F.ativo).forEach(function (k) { t.push(['ativo', k, 'WTG ' + D.ativos[k]]); });
     Object.keys(F.tipo).forEach(function (k) { t.push(['tipo', k, D.tipos[k]]); });
     Object.keys(F.falha).forEach(function (k) { t.push(['falha', k, curto(D.falhas[k], 40)]); });
@@ -434,6 +516,7 @@ var DADOS = /*__DADOS__*/null;
     var f = b.getAttribute('data-rf'), v = b.getAttribute('data-rv');
     if (f === 'q') { $('#q').value = ''; F.q = []; }
     else if (f === 'material') { F.material = null; matOMs = null; }
+    else if (f === 'data') { F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = ''; }
     else delete F[f][v];
     UI.page = 0; atualizar();
   });
@@ -445,6 +528,7 @@ var DADOS = /*__DADOS__*/null;
   $('#limpar').onclick = function () {
     if (!D) return;
     $('#q').value = ''; F.q = []; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null;
+    F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = '';
     F.status = {}; var ic = D.status.indexOf('Canceladas'); D.status.forEach(function (_, k) { if (k !== ic) F.status[k] = 1; });
     UI.page = 0; atualizar();
   };
@@ -480,10 +564,18 @@ var DADOS = /*__DADOS__*/null;
           '<label class="chk"><input type="checkbox" id="so-pecas"> Só peças (sem graxa, óleo, trapo e frascos)</label>' +
           '<div class="mlist" id="c-mat"></div></div>' +
       '</section>' +
+      '<section class="viz2">' +
+        '<div class="card panel"><div class="ph"><div><h2>Curva S das preventivas</h2><p id="s-sub"></p></div></div>' +
+          '<div class="skpis" id="s-kpis"></div><div class="legend" id="leg-s"></div><div class="chart" id="c-s"></div></div>' +
+        '<div class="card panel"><div class="ph"><div><h2>Pendências abertas por pessoa</h2><p>Pendente + Em execução, por quem registrou (coluna "Usuário") · toque para ver a lista</p></div></div>' +
+          '<div class="skpis" id="p-kpis"></div><div class="legend" id="leg-p"></div><div class="chart" id="c-p"></div></div>' +
+      '</section>' +
       '<section class="card tpanel" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
           '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button></div>' +
         '<div class="ph"><div><p id="t-sub"></p></div>' +
-        '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ord-cel" class="dt-in" aria-label="Ordenar"></select>' +
+        '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div>' +
+        '<button type="button" class="btn primary" id="exp-xlsx" title="Exporta todas as OMs desta tabela (com os filtros), os materiais e as pendências">Exportar Excel</button></div></div>' +
         '<div class="qf" id="qf"></div>' +
         '<div class="tscroll"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div><div class="pager" id="pager"></div></section>';
     $('#seg-rank').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.rank = v; desenharRank(); } };
@@ -491,6 +583,8 @@ var DADOS = /*__DADOS__*/null;
     $('#seg-pp').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.porPag = +v; UI.page = 0; desenharTabela(); } };
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
+    $('#exp-xlsx').onclick = exportar;
+    $('#ord-cel').onchange = function (e) { var v = e.target.value.split('|'); UI.sort = { col: v[0], dir: +v[1] }; UI.page = 0; desenharTabela(); };
     $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: 'dt', dir: -1 }; desenharTabela(); } };
     $('#qf').onclick = function (e) { var b = e.target.closest('[data-q]'); if (b) { var v = b.getAttribute('data-q'); UI.qf = UI.qf === v ? 'todas' : v; UI.page = 0; desenharTabela(); } };
     document.querySelector('.tpanel thead').onclick = function (e) {
@@ -501,14 +595,14 @@ var DADOS = /*__DADOS__*/null;
     };
     $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
     $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
-    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharRank(); desenharMes(); }, 150); });
+    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
 
   function atualizar(semFecharPop) {
     if (!semFecharPop) fecharPop();
     filtrar();
     chipsFiltro(); barraAtivos();
-    desenharKPIs(); desenharRank(); desenharMes(); desenharMat(); desenharTabela();
+    desenharKPIs(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
     try { history.replaceState(null, '', Object.keys(F.ativo).length === 1 ? '#' + D.ativos[Object.keys(F.ativo)[0]].replace(/[^\w-]/g, '_') : location.pathname + location.search); } catch (e) {}
   }
 
@@ -796,6 +890,10 @@ var DADOS = /*__DADOS__*/null;
       var x = chaves.get(a), y = chaves.get(b);
       return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true })) * s.dir;
     });
+    UI.ultimaOrd = ord;
+    var oc = $('#ord-cel'), ov = s.col + '|' + s.dir;
+    oc.innerHTML = cols.map(function (c) { return '<option value="' + c[0] + '|-1">' + c[1] + ' ↓</option><option value="' + c[0] + '|1">' + c[1] + ' ↑</option>'; }).join('');
+    oc.value = ov;
     var pags = Math.max(1, Math.ceil(ord.length / UI.porPag)); UI.page = Math.min(UI.page, pags - 1);
     var pag = ord.slice(UI.page * UI.porPag, (UI.page + 1) * UI.porPag), O = D.O;
     $('#t-sub').textContent = fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
@@ -814,6 +912,7 @@ var DADOS = /*__DADOS__*/null;
         '<td class="mat">' + (m.n ? '<div class="m1">' + esc(m.txt) + '</div><div class="num" style="color:var(--fg)">' + fmtR.format(m.v) + '</div>' : (m.v ? '<span class="num">' + fmtR.format(m.v) + '</span>' : '—')) + '</td>' +
         '<td><span class="pcount num' + (pn ? ' has' : '') + '">' + pn + '</span></td></tr>';
     }).join('');
+    $('#tb').querySelectorAll('tr').forEach(function (tr) { for (var j = 0; j < tr.children.length; j++) tr.children[j].setAttribute('data-l', cols[j] ? cols[j][1] : ''); });
     $('#pager').innerHTML = '<span class="num">Página ' + (UI.page + 1) + ' de ' + pags + '</span><span class="pg">' +
       '<button type="button" class="btn" data-p="0"' + (UI.page ? '' : ' disabled') + '>« Primeira</button>' +
       '<button type="button" class="btn" data-p="' + (UI.page - 1) + '"' + (UI.page ? '' : ' disabled') + '>‹ Anterior</button>' +
@@ -832,6 +931,232 @@ var DADOS = /*__DADOS__*/null;
     var out = '', pos = 0;
     marcas.forEach(function (m) { if (m[0] < pos) return; out += esc(txt.slice(pos, m[0])) + '<mark>' + esc(txt.slice(m[0], m[1])) + '</mark>'; pos = m[1]; });
     return out + esc(txt.slice(pos));
+  }
+
+  // ---------------- exportar Excel ----------------
+  function dataXL(iso) { return iso ? new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) : ''; }
+  function corta(t) { t = String(t || ''); return t.length > 32000 ? t.slice(0, 32000) + ' […]' : t; }
+  function planilha(rows, larguras) {
+    var ws = XLSX.utils.aoa_to_sheet(rows, { dateNF: 'dd/mm/yyyy' });
+    ws['!cols'] = larguras.map(function (w) { return { wch: w }; });
+    if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] };
+    return ws;
+  }
+  function exportar() {
+    if (!window.XLSX) { aviso('O gerador de Excel não carregou. Verifique a internet e tente de novo.'); return; }
+    var ord = UI.ultimaOrd || [], O = D.O;
+    if (!ord.length) { aviso('Nenhuma OM na tabela para exportar.'); return; }
+    var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)'];
+    var NC = ['Consumida', 'Sem consumo', 'Conferir'];
+    var linhas, larg;
+    if (UI.vista === 'conf') {
+      linhas = [['Nº de ordem', 'Ativo (WTG)', 'Parque', 'Data de abertura', 'Status', 'Tipo de serviço', 'Descrição', 'Consumido', 'Custo de material (R$)', 'Não consumido', 'Pendente', 'Qtd. pendente', 'Não pendente', 'Qtd. não pendente', 'Conferência']];
+      ord.forEach(function (i) {
+        var cons = [], ps = pendSplit(i), se = SELOS[O.se[i]];
+        if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) cons.push(fmtQ.format(D.C.q[k]) + ' ' + D.C.u[k] + ' ' + partesMaterial(D.materiais[D.C.m[k]]).nome);
+        var nc = naoConsumido(i).map(function (it) { return D.componentes[it[0]] + (it[1] ? ' (' + it[1] + ')' : '') + (it[2] === 2 ? ' [conferir]' : grupo[i] === 1 ? ' [OM em aberto]' : ''); });
+        var pt = function (k) { return D.P.n[k] + ' - ' + D.P.desc[k] + ' (' + D.statusPend[D.P.st[k]] + ')'; };
+        linhas.push([omLabel(O.om[i]), D.ativos[O.at[i]], D.parques[O.pq[i]], dataXL(O.dt[i]), D.status[O.st[i]], D.tipos[O.tp[i]], O.desc[i],
+          cons.join('\n'), Math.round(custoOM(i).v * 100) / 100, nc.join('\n'), ps[0].map(pt).join('\n'), ps[0].length, ps[1].map(pt).join('\n'), ps[1].length, se ? se.rot : '']);
+      });
+      larg = [11, 12, 16, 12, 18, 20, 45, 50, 14, 40, 50, 10, 50, 10, 24];
+    } else {
+      linhas = [['Nº de ordem', 'Ativo (WTG)', 'Parque', 'Data de abertura', 'Status', 'Tipo de serviço', 'Descrição', 'Materiais usados', 'Custo de material (R$)', 'Pendências', 'Serviço executado']];
+      ord.forEach(function (i) {
+        var m = resumoMat(i);
+        linhas.push([omLabel(O.om[i]), D.ativos[O.at[i]], D.parques[O.pq[i]], dataXL(O.dt[i]), D.status[O.st[i]], D.tipos[O.tp[i]], O.desc[i],
+          m.txt, Math.round(custoOM(i).v * 100) / 100, pendDe[i] ? pendDe[i].length : 0,
+          corta(entradas(O.exec[i]).map(function (e) { return (e.h ? '[' + e.h + '] ' : '') + e.txt; }).join('\n\n'))]);
+      });
+      larg = [11, 12, 16, 12, 18, 20, 45, 50, 14, 10, 90];
+    }
+    var mats = [['Nº de ordem', 'Ativo (WTG)', 'Status da OM', 'Código', 'Material', 'Quantidade', 'Unidade', 'Custo total (R$)', 'Usado em', 'Preço fora do padrão', 'Conferência']];
+    var pends = [['Nº pendência', 'Situação', 'Status', 'Descrição', 'Data de abertura', 'Data de conclusão', 'Usuário', 'Ativo', 'OM de origem', 'OM de execução']], vistas = {};
+    ord.forEach(function (i) {
+      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) {
+        var pm = partesMaterial(D.materiais[D.C.m[k]]);
+        mats.push([omLabel(O.om[i]), D.ativos[O.at[i]], D.status[O.st[i]], pm.cod, pm.nome, D.C.q[k], D.C.u[k], D.C.v[k], dataXL(D.C.d[k]), D.C.s[k] ? 'Sim (fora do total)' : 'Não', CF[D.C.cf[k]]]);
+      }
+      (pendDe[i] || []).forEach(function (k) {
+        if (vistas[k]) return; vistas[k] = 1;
+        pends.push([+D.P.n[k] || D.P.n[k], PEND_ABERTA(k) ? 'Pendente' : 'Não pendente', D.statusPend[D.P.st[k]], D.P.desc[k], dataXL(D.P.dt[k]), dataXL(D.P.dc[k]), D.P.us[k], D.P.at[k],
+          D.P.ori[k] >= 0 ? omLabel(O.om[D.P.ori[k]]) : '', D.P.exe[k] >= 0 ? omLabel(O.om[D.P.exe[k]]) : '']);
+      });
+    });
+    var filtros = [['Consulta de OMs: exportado em ' + new Date().toLocaleString('pt-BR')], ['Tabela', UI.vista === 'conf' ? 'Materiais e pendências' + (UI.qf !== 'todas' ? ' · ' + QF.filter(function (q) { return q[0] === UI.qf; })[0][1] : '') : 'Consulta rápida'], ['OMs', ord.length]];
+    filtros.push(['Status', Object.keys(F.status).map(function (k) { return D.status[k]; }).join(', ')]);
+    [].slice.call(document.querySelectorAll('#ativos .tag')).forEach(function (t) { filtros.push(['Filtro', t.firstChild.textContent]); });
+    if (!vazio(F.parque)) filtros.push(['Parque', Object.keys(F.parque).map(function (k) { return D.parques[k]; }).join(', ')]);
+    if (!vazio(F.ano)) filtros.push(['Ano', Object.keys(F.ano).join(', ')]);
+    if (!vazio(F.mes)) filtros.push(['Mês', Object.keys(F.mes).map(function (m) { return MESES[m - 1]; }).join(', ')]);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, planilha(linhas, larg), 'OMs');
+    XLSX.utils.book_append_sheet(wb, planilha(mats, [11, 12, 18, 14, 50, 10, 8, 14, 12, 18, 30]), 'Materiais');
+    XLSX.utils.book_append_sheet(wb, planilha(pends, [12, 13, 13, 60, 12, 12, 30, 12, 12, 12]), 'Pendências');
+    XLSX.utils.book_append_sheet(wb, planilha(filtros, [20, 80]), 'Filtros');
+    var buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
+    var hoje = new Date(), d2 = function (n) { return String(n).padStart(2, '0'); };
+    salvarArquivo('Consulta_OMs_' + (UI.vista === 'conf' ? 'materiais_pendencias' : 'consulta') + '_' + hoje.getFullYear() + d2(hoje.getMonth() + 1) + d2(hoje.getDate()) + '.xlsx', buf);
+  }
+
+  // ---------------- curva S das preventivas ----------------
+  function addMes(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
+  function desenharCurva() {
+    var O = D.O, ini, fim, nota;
+    if (F.de || F.ate) { ini = F.de || D.periodo[0]; fim = F.ate || D.periodo[1]; nota = 'filtro de data'; }
+    else if (!vazio(F.ano)) { var ys = Object.keys(F.ano).map(Number).sort(); ini = ys[0] + '-01-01'; fim = ys[ys.length - 1] + '-12-31'; nota = 'filtro de ano'; }
+    else { var y = (D.gerado || D.periodo[1]).slice(0, 4); ini = y + '-01-01'; fim = y + '-12-31'; nota = 'ano atual; mude pelo filtro de Ano ou de Data'; }
+    var meses = []; for (var ym = ini.slice(0, 7); ym <= fim.slice(0, 7); ym = addMes(ym, 1)) meses.push(ym);
+    var pos = {}; meses.forEach(function (m, k) { pos[m] = k; });
+    var prog = meses.map(function () { return 0; }), real = prog.slice(), hoje = D.gerado || D.periodo[1];
+    var lim = new Date(Date.parse(hoje) - 30 * 864e5).toISOString().slice(0, 10);
+    var nProg = 0, progFech = 0, atras = 0, nReal = 0;
+    for (var i = 0; i < N; i++) {
+      if (grupo[i] === 2 || !/prevent/i.test(D.tipos[O.tp[i]])) continue;
+      if (!vazio(F.tipo) && !F.tipo[O.tp[i]]) continue;
+      if (!vazio(F.parque) && !F.parque[O.pq[i]]) continue;
+      if (!vazio(F.ativo) && !F.ativo[O.at[i]]) continue;
+      var ok = true; for (var t = 0; t < F.q.length; t++) if (hay[i].indexOf(F.q[t]) < 0) { ok = false; break; }
+      if (!ok) continue;
+      var dp = O.dp[i], df = O.df[i];
+      if (dp && dp >= ini && dp <= fim) { prog[pos[dp.slice(0, 7)]]++; nProg++; if (grupo[i] === 0) progFech++; else if (dp < lim) atras++; }
+      if (grupo[i] === 0 && df && df >= ini && df <= fim) { real[pos[df.slice(0, 7)]]++; nReal++; }
+    }
+    var acP = [], acR = [], a = 0, b = 0;
+    meses.forEach(function (_, k) { a += prog[k]; b += real[k]; acP.push(a); acR.push(b); });
+    var ultimo = hoje.slice(0, 7), kHoje = pos[ultimo];
+    $('#s-sub').textContent = 'OMs de tipo preventivo, sem as canceladas · ' + MESES[+ini.slice(5, 7) - 1] + '/' + ini.slice(0, 4) + ' a ' + MESES[+fim.slice(5, 7) - 1] + '/' + fim.slice(0, 4) + ' (' + nota + ')';
+    var ader = nProg ? Math.round(100 * progFech / nProg) : 0;
+    $('#s-kpis').innerHTML = '<div><b>' + fmtN.format(nProg) + '</b><span>Programadas (início da programação)</span></div>' +
+      '<div><b>' + fmtN.format(nReal) + '</b><span>Realizadas (fechadas no período)</span></div>' +
+      '<div><b>' + ader + '%</b><span>Aderência: programadas já fechadas</span></div>' +
+      '<div><b style="color:' + (atras ? 'var(--bad)' : 'inherit') + '">' + fmtN.format(atras) + '</b><span>Atrasadas (programadas há +30 dias, abertas)</span></div>';
+    $('#leg-s').innerHTML = '<span><span class="dot" style="background:var(--s-prog)"></span>Programado acumulado</span><span><span class="dot" style="background:var(--s-fechada)"></span>Realizado acumulado</span>';
+    var el = $('#c-s');
+    if (!nProg && !nReal) { el.innerHTML = '<div class="empty">Nenhuma preventiva programada ou realizada neste período e filtros</div>'; return; }
+    var W = Math.max(300, el.clientWidth || 600), H = 260, padL = 44, padR = 54, padT = 14, padB = 34;
+    var max = Math.max(acP[acP.length - 1], acR[acR.length - 1], 1), ticks = niceTicks(max, 4), top = ticks[ticks.length - 1];
+    if (top < max) { top += ticks[1] || 1; ticks.push(top); }
+    var pw = W - padL - padR, ph = H - padT - padB, n = meses.length;
+    var x = function (k) { return padL + (n === 1 ? pw / 2 : pw * k / (n - 1)); }, y = function (v) { return padT + ph - ph * v / top; };
+    var svg = '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Curva S: preventivas programadas e realizadas, acumulado">';
+    ticks.forEach(function (t) { svg += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="var(--line)"' + (t ? ' stroke-dasharray="2 3"' : '') + '/><text x="' + (padL - 6) + '" y="' + (y(t) + 3.5) + '" font-size="10" text-anchor="end">' + fmtN.format(t) + '</text>'; });
+    var cada = Math.ceil(n / Math.max(1, Math.floor(pw / 46)));
+    meses.forEach(function (m, k) {
+      if (k % cada === 0 || +m.slice(5) === 1) svg += '<text x="' + x(k) + '" y="' + (H - padB + 14) + '" font-size="10.5" text-anchor="middle">' + MESES[+m.slice(5) - 1] + '</text>';
+      if (+m.slice(5) === 1 || k === 0) svg += '<text x="' + x(k) + '" y="' + (H - padB + 28) + '" font-size="10.5" text-anchor="middle" style="fill:var(--fg);font-weight:600">' + m.slice(0, 4) + '</text>';
+    });
+    if (kHoje !== undefined && kHoje < n - 1) svg += '<line x1="' + x(kHoje) + '" x2="' + x(kHoje) + '" y1="' + padT + '" y2="' + (padT + ph) + '" stroke="var(--fg-3)" stroke-dasharray="3 3"/><text x="' + (x(kHoje) + 4) + '" y="' + (padT + 10) + '" font-size="10">hoje</text>';
+    var ateR = kHoje !== undefined ? kHoje : n - 1; if (ultimo < meses[0]) ateR = -1;
+    var linha = function (arr, ate) { var d = ''; for (var k = 0; k <= ate; k++) d += (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y(arr[k]).toFixed(1); return d; };
+    if (ateR >= 0) svg += '<path d="' + linha(acR, ateR) + 'L' + x(ateR) + ',' + y(0) + 'L' + x(0) + ',' + y(0) + 'Z" fill="var(--s-fechada)" opacity=".1"/>';
+    svg += '<path d="' + linha(acP, n - 1) + '" fill="none" stroke="var(--s-prog)" stroke-width="2" stroke-dasharray="6 3"/>';
+    if (ateR >= 0) svg += '<path d="' + linha(acR, ateR) + '" fill="none" stroke="var(--s-fechada)" stroke-width="2"/>';
+    var fimP = n - 1, fimR = ateR;
+    svg += '<circle cx="' + x(fimP) + '" cy="' + y(acP[fimP]) + '" r="4" fill="var(--s-prog)" stroke="var(--surface)" stroke-width="2"/><text x="' + (x(fimP) + 8) + '" y="' + (y(acP[fimP]) + 4) + '" font-size="11" style="fill:var(--fg);font-weight:600">' + fmtN.format(acP[fimP]) + '</text>';
+    if (fimR >= 0) {
+      var yl = y(acR[fimR]) + 4; if (fimR === fimP && Math.abs(yl - y(acP[fimP]) - 4) < 13) yl = y(acP[fimP]) + 4 + (acR[fimR] <= acP[fimP] ? 14 : -14);
+      svg += '<circle cx="' + x(fimR) + '" cy="' + y(acR[fimR]) + '" r="4" fill="var(--s-fechada)" stroke="var(--surface)" stroke-width="2"/><text x="' + (x(fimR) + 8) + '" y="' + yl + '" font-size="11" style="fill:var(--fg);font-weight:600">' + fmtN.format(acR[fimR]) + '</text>';
+    }
+    var bw = n === 1 ? pw : pw / (n - 1);
+    meses.forEach(function (m, k) { svg += '<rect class="s-hit" data-k="' + k + '" x="' + (x(k) - bw / 2) + '" y="' + padT + '" width="' + bw + '" height="' + ph + '" fill="transparent"/>'; });
+    svg += '<line id="s-cross" x1="0" x2="0" y1="' + padT + '" y2="' + (padT + ph) + '" stroke="var(--fg-3)" visibility="hidden"/>';
+    el.innerHTML = svg + '</svg>';
+    var cross = el.querySelector('#s-cross');
+    el.querySelectorAll('.s-hit').forEach(function (r) {
+      var k = +r.getAttribute('data-k'), m = meses[k];
+      r.onmousemove = function (e) {
+        cross.setAttribute('x1', x(k)); cross.setAttribute('x2', x(k)); cross.setAttribute('visibility', 'visible');
+        var pc = acP[k] ? Math.round(100 * acR[k] / acP[k]) : 0;
+        mostrarTip(e, '<b>' + MESES[+m.slice(5) - 1] + '/' + m.slice(0, 4) + '</b><br>Programadas no mês: ' + fmtN.format(prog[k]) + '<br>Realizadas no mês: ' + fmtN.format(real[k]) +
+          '<br>Acumulado: ' + fmtN.format(acR[k]) + ' de ' + fmtN.format(acP[k]) + ' (' + pc + '%)');
+      };
+      r.onmouseleave = function () { esconderTip(); cross.setAttribute('visibility', 'hidden'); };
+    });
+  }
+
+  // ---------------- pendências abertas por pessoa ----------------
+  function pendFiltradas() {
+    var out = [], P = D.P;
+    for (var k = 0; k < P.n.length; k++) {
+      if (!vazio(F.parque) && !F.parque[P.pq[k]]) continue;
+      if (!vazio(F.ativo) && !F.ativo[pAt[k]]) continue;
+      var d = P.dt[k];
+      if ((F.de || F.ate) && (!d || (F.de && d < F.de) || (F.ate && d > F.ate))) continue;
+      if (!vazio(F.ano) && !F.ano[+String(d).slice(0, 4)]) continue;
+      if (!vazio(F.mes) && !F.mes[+String(d).slice(5, 7)]) continue;
+      var ok = true; for (var t = 0; t < F.q.length; t++) if (hayP[k].indexOf(F.q[t]) < 0) { ok = false; break; }
+      if (ok) out.push(k);
+    }
+    return out;
+  }
+  function desenharPessoas() {
+    var P = D.P, todas = pendFiltradas(), abertas = todas.filter(PEND_ABERTA);
+    var sts = D.statusPend.map(function (_, j) { return j; }).filter(function (j) { return !/conclu|cancel|fechad|finaliz/i.test(D.statusPend[j]); });
+    var cor = function (j) { return /execu/i.test(D.statusPend[j]) ? '--s-exec' : '--s-aberta'; };
+    var pp = {};
+    abertas.forEach(function (k) { var u = P.us[k]; var r = pp[u] || (pp[u] = { t: 0, s: {} }); r.t++; r.s[P.st[k]] = (r.s[P.st[k]] || 0) + 1; });
+    var nomes = Object.keys(pp).sort(function (a, b) { return pp[b].t - pp[a].t || a.localeCompare(b, 'pt-BR'); });
+    var hoje = Date.parse(D.gerado || D.periodo[1]), idade = abertas.map(function (k) { return P.dt[k] ? (hoje - Date.parse(P.dt[k])) / 864e5 : 0; });
+    var velhas = idade.filter(function (d) { return d > 90; }).length;
+    $('#p-kpis').innerHTML = '<div><b>' + fmtN.format(abertas.length) + '</b><span>Pendências abertas</span></div><div><b>' + fmtN.format(nomes.length) + '</b><span>Pessoas</span></div>' +
+      '<div><b style="color:' + (velhas ? 'var(--bad)' : 'inherit') + '">' + fmtN.format(velhas) + '</b><span>Abertas há mais de 90 dias</span></div>';
+    $('#leg-p').innerHTML = sts.map(function (j) { return '<span><span class="dot" style="background:var(' + cor(j) + ')"></span>' + esc(D.statusPend[j]) + '</span>'; }).join('');
+    var el = $('#c-p');
+    if (!nomes.length) { el.innerHTML = '<div class="empty">Nenhuma pendência aberta com estes filtros</div>'; return; }
+    var top = nomes.slice(0, 15), resto = nomes.slice(15);
+    var W = Math.max(260, el.clientWidth || 360), rowH = 22, labW = Math.min(170, W * .42), valW = 34, H = top.length * rowH + 4;
+    var max = pp[top[0]].t, sc = function (v) { return (W - labW - valW) * v / max; };
+    var svg = '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pendências abertas por pessoa">';
+    top.forEach(function (u, k) {
+      var r = pp[u], yy = k * rowH, xx = labW, parts = sts.filter(function (j) { return r.s[j]; });
+      svg += '<g class="bar-hit" data-u="' + esc(u) + '"><rect class="bg" x="0" y="' + yy + '" width="' + W + '" height="' + rowH + '" fill="transparent"/>';
+      svg += '<text x="' + (labW - 8) + '" y="' + (yy + rowH / 2 + 4) + '" font-size="11.5" text-anchor="end" style="fill:var(--fg)">' + esc(curto(u, Math.floor(labW / 6.6))) + '</text>';
+      parts.forEach(function (j, p) {
+        var w = sc(r.s[j]), ww = Math.max(1, w - (p < parts.length - 1 ? 2 : 0));
+        svg += p === parts.length - 1 ? '<path d="' + barraArred(xx, yy + 4, ww, rowH - 8, 4) + '" fill="var(' + cor(j) + ')"/>' : '<rect x="' + xx + '" y="' + (yy + 4) + '" width="' + ww + '" height="' + (rowH - 8) + '" fill="var(' + cor(j) + ')"/>';
+        xx += w;
+      });
+      svg += '<text x="' + (xx + 6) + '" y="' + (yy + rowH / 2 + 4) + '" font-size="11" style="fill:var(--fg)">' + r.t + '</text></g>';
+    });
+    el.innerHTML = svg + '</svg>' + (resto.length ? '<div style="font-size:.76rem;color:var(--fg-3);margin-top:4px">+ ' + resto.length + ' pessoas com ' + fmtN.format(resto.reduce(function (a, u) { return a + pp[u].t; }, 0)) + ' pendências · <button type="button" class="btn" id="p-todas" style="padding:2px 8px;font-size:.74rem">Ver todas as pessoas</button></div>' : '');
+    el.querySelectorAll('.bar-hit').forEach(function (g) {
+      var u = g.getAttribute('data-u'), r = pp[u];
+      g.onmousemove = function (e) { mostrarTip(e, '<b>' + esc(u) + '</b><br>' + sts.filter(function (j) { return r.s[j]; }).map(function (j) { return fmtN.format(r.s[j]) + ' ' + esc(D.statusPend[j].toLowerCase()); }).join(' · ') + '<br><span style="opacity:.75">Toque para ver a lista</span>'); };
+      g.onmouseleave = esconderTip;
+      g.onclick = function () { esconderTip(); abrirPessoa(u, abertas.filter(function (k) { return P.us[k] === u; })); };
+    });
+    var bt = $('#p-todas'); if (bt) bt.onclick = function () { abrirTodasPessoas(nomes, pp); };
+  }
+  function gaveta(titulo, meta, corpo) {
+    fecharFicha(); ultimoFoco = document.activeElement;
+    var scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.id = 'scrim';
+    var dr = document.createElement('aside'); dr.className = 'drawer'; dr.id = 'ficha'; dr.setAttribute('role', 'dialog'); dr.setAttribute('aria-modal', 'true'); dr.setAttribute('aria-label', titulo);
+    dr.innerHTML = '<div class="dh"><div><h3>' + esc(titulo) + '</h3><div class="meta">' + meta + '</div></div><button type="button" class="btn" id="fechar-ficha">Fechar ✕</button></div><div class="db">' + corpo + '</div>';
+    document.body.appendChild(scrim); document.body.appendChild(dr);
+    scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
+    return dr;
+  }
+  function abrirPessoa(u, ks) {
+    var P = D.P, hoje = Date.parse(D.gerado || D.periodo[1]);
+    ks = ks.slice().sort(function (a, b) { return String(P.dt[a]).localeCompare(String(P.dt[b])); });
+    var corpo = '<div class="tscroll"><table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Abertura</th><th style="text-align:right">Dias</th><th>Ativo</th><th>Descrição</th><th>OM</th></tr></thead><tbody>' + ks.map(function (k) {
+      var om = P.exe[k] >= 0 ? P.exe[k] : P.ori[k], dias = P.dt[k] ? Math.round((hoje - Date.parse(P.dt[k])) / 864e5) : '';
+      return '<tr><td class="mono">' + esc(P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[P.st[k]]) + '</td><td class="num">' + dataBR(P.dt[k]) + '</td><td class="num" style="text-align:right' + (dias > 90 ? ';color:var(--bad);font-weight:600' : '') + '">' + dias + '</td><td style="white-space:nowrap">' + esc(P.at[k]) + '</td><td>' + esc(P.desc[k]) + '</td><td>' +
+        (om >= 0 ? '<button type="button" class="btn" data-om="' + om + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap">' + omLabel(D.O.om[om]) + '</button>' : '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+    var dr = gaveta(u, fmtN.format(ks.length) + ' pendências abertas (com os filtros do painel) · mais antigas primeiro', corpo);
+    dr.addEventListener('click', function (e) { var b = e.target.closest('[data-om]'); if (b) abrirFicha(+b.getAttribute('data-om')); });
+  }
+  function abrirTodasPessoas(nomes, pp) {
+    var corpo = '<table class="mini"><thead><tr><th>Pessoa</th><th style="text-align:right">Abertas</th></tr></thead><tbody>' + nomes.map(function (u) {
+      return '<tr><td><button type="button" class="btn" data-u="' + esc(u) + '" style="padding:1px 8px;font-size:.78rem;text-align:left">' + esc(u) + '</button></td><td class="num" style="text-align:right">' + pp[u].t + '</td></tr>';
+    }).join('') + '</tbody></table>';
+    var dr = gaveta('Pendências abertas por pessoa', fmtN.format(nomes.length) + ' pessoas', corpo);
+    dr.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-u]'); if (!b) return;
+      var u = b.getAttribute('data-u'); abrirPessoa(u, pendFiltradas().filter(PEND_ABERTA).filter(function (k) { return D.P.us[k] === u; }));
+    });
   }
 
   // ---------------- ficha ----------------

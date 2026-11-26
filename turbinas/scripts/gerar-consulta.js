@@ -84,7 +84,7 @@ function Dic() { this.lista = []; this.idx = {}; }
 Dic.prototype.id = function (v) { if (!(v in this.idx)) { this.idx[v] = this.lista.length; this.lista.push(v); } return this.idx[v]; };
 var dStatus = new Dic(), dParque = new Dic(), dAtivo = new Dic(), dAtivoNome = {}, dTipo = new Dic(), dMat = new Dic(), dStPend = new Dic();
 
-var O = { om: [], st: [], pq: [], at: [], dt: [], tp: [], desc: [], exec: [], fl: [], cmCol: [] };
+var O = { om: [], st: [], pq: [], at: [], dt: [], dp: [], df: [], tp: [], desc: [], exec: [], fl: [], cmCol: [] };
 var posOM = {};
 nums.forEach(function (n, i) {
   var r = linhasOM[n];
@@ -96,6 +96,8 @@ nums.forEach(function (n, i) {
   O.at.push(dAtivo.id(curto));
   dAtivoNome[curto] = texto(r['Ativo']);
   O.dt.push(dataISO(r['Data de abertura']));
+  O.dp.push(dataISO(r['Data de início da programação']));
+  O.df.push(dataISO(r['Data de fechamento']));
   O.tp.push(dTipo.id(texto(r['Tipo de serviço']) || '(sem tipo)'));
   O.desc.push(texto(r['Descrição']));
   O.exec.push(texto(r['Serviço executado']));
@@ -191,14 +193,16 @@ nums.forEach(function (n, i) {
 });
 
 // ---- pendências ----------------------------------------------------------------------
-var P = { n: [], desc: [], st: [], ori: [], exe: [], dt: [], at: [], us: [], dc: [] };
+var P = { n: [], desc: [], st: [], ori: [], exe: [], dt: [], at: [], us: [], dc: [], pq: [], eq: [] };
 Object.keys(linhasPend).sort(function (a, b) { return +a - +b; }).forEach(function (k) {
   var r = linhasPend[k];
   var ori = numOM(r['OM de origem']), exe = numOM(r['OM de execução']);
   P.n.push(k); P.desc.push(texto(r['Descrição'])); P.st.push(dStPend.id(texto(r['Status']) || '(sem status)'));
   P.ori.push(ori in posOM ? posOM[ori] : -1); P.exe.push(exe in posOM ? posOM[exe] : -1);
   P.dt.push(dataISO(r['Data de abertura'])); P.at.push(curtoAtivo(r['Ativo']));
-  P.us.push(texto(r['Usuário'])); P.dc.push(dataISO(r['Data de conclusão']));
+  P.us.push(texto(r['Usuário']) || '(sem usuário)'); P.dc.push(dataISO(r['Data de conclusão']));
+  P.pq.push(dParque.id(curtoParque(r['Localização 2'])));
+  P.eq.push(texto(r['Equipe da OM de execução']) || texto(r['Equipe da OM de origem']));
 });
 
 var datas = O.dt.filter(Boolean).sort();
@@ -212,6 +216,8 @@ var D = {
 };
 var json = JSON.stringify(D);
 var modelo = fs.readFileSync(path.join(__dirname, '..', 'consulta.html'), 'utf8');
+var sheetjs = fs.readFileSync(path.join(__dirname, '..', 'vendor', 'xlsx.mini.min.js'), 'utf8');
+modelo = modelo.replace('<script src="vendor/xlsx.mini.min.js"></script>', function () { return '<script>' + sheetjs.replace(/<\/(script)/gi, '<\\/$1') + '</script>'; });
 var marca = '/*__DADOS__*/null';
 if (opc.logo) {
   var tipo = /\.svg$/i.test(opc.logo) ? 'svg+xml' : /\.jpe?g$/i.test(opc.logo) ? 'jpeg' : 'png';

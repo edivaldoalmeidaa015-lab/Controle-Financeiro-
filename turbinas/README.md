@@ -192,3 +192,10 @@ node turbinas/scripts/gerar-consulta.js base.xlsx consulta-com-dados.html
 
 Aceita a base única ou as exportações de OMs, consumo e pendências separadas. Consumos com preço unitário
 fora do padrão (ex.: óleo por litro com preço do tambor) ficam fora do custo total. Não publique o HTML gerado.
+
+Também na Consulta de OMs: filtro por data de abertura; modo **Computador** ou **Celular** (fica guardado no aparelho);
+botão **Exportar Excel** (abas OMs, Materiais, Pendências e Filtros, com os filtros da tela; o leitor SheetJS de
+`vendor/` vai embutido no HTML gerado); **Curva S das preventivas** (tipo de serviço preventivo, sem canceladas:
+programado = data de início da programação no período, realizado = fechada no período, aderência = programadas já
+fechadas, atrasada = programada há mais de 30 dias e aberta); **Pendências abertas por pessoa** (Pendente + Em execução,
+pela coluna "Usuário", com a lista de cada pessoa).
