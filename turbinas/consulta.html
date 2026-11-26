@@ -488,7 +488,7 @@ var DADOS = /*__DADOS__*/null;
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
     $('#filtros').innerHTML = h;
-    $('#dd-ativo').onclick = function (e) { abrirPop(e.currentTarget, 'ativo', 'Buscar turbina (ex.: JOA XII-09)', D.ativos, function (i) { return D.O.at[i]; }, function (k) { return D.ativosNome[k]; }); };
+    $('#dd-ativo').onclick = function (e) { abrirPop(e.currentTarget, 'ativo', 'Buscar turbina (ex.: JOA XII-09)', D.ativos, function (i) { return D.O.at[i]; }, function (k) { return D.ativosNome[k]; }, null, ordemTurbina); };
     var nomesPq = D.parques.map(function (p) { return p.replace('(sem parque)', 'Sem parque'); });
     $('#dd-parque').onclick = function (e) { abrirPop(e.currentTarget, 'parque', 'Buscar parque', nomesPq, function (i) { return D.O.pq[i]; }); };
     $('#dd-ano').onclick = function (e) { abrirPop(e.currentTarget, 'ano', 'Buscar ano', anos.map(String), function (i) { return ano[i]; }, null, function (k) { return anos[k]; }, true); };
@@ -547,14 +547,29 @@ var DADOS = /*__DADOS__*/null;
   var popEl = null;
   function fecharPop() { if (popEl) { popEl.remove(); popEl = null; document.removeEventListener('mousedown', foraPop, true); } }
   function foraPop(e) { if (popEl && !popEl.contains(e.target) && !e.target.closest('.chip.dd')) fecharPop(); }
+  // turbinas na sequência: parque (AB-IV, AB-V… AUG III… JOA I… JOA XVI) e posição; o que não é aerogerador vai no fim
+  var chaveTurb = {};
+  function chaveTurbina(k) {
+    if (k in chaveTurb) return chaveTurb[k];
+    var nome = D.ativos[k], m = /^(AB)-([IVXL]+)(\d+)$/.exec(nome) || /^([A-Z]{2,4}) ([IVXL]+)-(\d+)$/.exec(nome);
+    return (chaveTurb[k] = m ? [0, m[1], romano(m[2]), +m[3]] : [1, nome, 0, 0]);
+  }
+  function ordemTurbina(a, b) {
+    var x = chaveTurbina(a), y = chaveTurbina(b);
+    for (var j = 0; j < 4; j++) if (x[j] !== y[j]) return typeof x[j] === 'number' ? x[j] - y[j] : String(x[j]).localeCompare(String(y[j]), 'pt-BR');
+    return 0;
+  }
   function abrirPop(btn, f, ph, lista, valorDe, dica, chaveDe, ordemNatural) {
     if (popEl && popEl._f === f) { fecharPop(); return; }
     fecharPop();
     var ch = chaveDe || function (k) { return k; };
     var cont0 = contarPor(f, f, valorDe), cont = {};
     lista.forEach(function (_, k) { cont[k] = cont0[ch(k)] || 0; });
+    var ordenar = typeof ordemNatural === 'function' ? ordemNatural : null;
+    if (ordenar) ordemNatural = false;
     var ordem = lista.map(function (_, k) { return k; }).filter(function (k) { return ordemNatural || f === 'status' || cont[k] || F[f][ch(k)]; });
-    if (!ordemNatural) ordem.sort(function (a, b) { return (cont[b] || 0) - (cont[a] || 0) || String(lista[a]).localeCompare(String(lista[b]), 'pt-BR', { numeric: true }); });
+    if (ordenar) ordem.sort(ordenar);
+    else if (!ordemNatural) ordem.sort(function (a, b) { return (cont[b] || 0) - (cont[a] || 0) || String(lista[a]).localeCompare(String(lista[b]), 'pt-BR', { numeric: true }); });
     var el = document.createElement('div'); el.className = 'pop'; el._f = f;
     el.innerHTML = '<input type="search" id="pop-q" placeholder="' + esc(ph) + '" autocomplete="off"><div class="list"></div>' +
       '<div class="foot"><button type="button" class="btn" data-a="limpa">' + (f === 'status' ? 'Sem canceladas' : 'Limpar') + '</button>' +
@@ -580,7 +595,9 @@ var DADOS = /*__DADOS__*/null;
     };
     document.body.appendChild(el); popEl = el;
     var r = btn.getBoundingClientRect(), w = el.offsetWidth;
-    el.style.top = Math.min(r.bottom + 6, window.innerHeight - 200) + 'px';
+    var topo = Math.min(r.bottom + 6, window.innerHeight - 240);
+    el.style.top = topo + 'px';
+    el.style.maxHeight = Math.max(220, Math.min(460, window.innerHeight - topo - 16)) + 'px';
     el.style.left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16)) + 'px';
     el.querySelector('input').focus();
     setTimeout(function () { document.addEventListener('mousedown', foraPop, true); }, 0);
@@ -1573,7 +1590,7 @@ var DADOS = /*__DADOS__*/null;
   function reiniciar(nd) {
     fecharFicha(); fecharPop();
     F.q = []; $('#q').value = ''; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.status = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null; F.de = F.ate = '';
-    UI.page = 0; UI.qf = 'todas'; MAPA = null;
+    UI.page = 0; UI.qf = 'todas'; MAPA = null; chaveTurb = {};
     iniciar(nd);
   }
 
