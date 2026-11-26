@@ -77,7 +77,9 @@ header.top::after { content: ""; display: block; height: 3px; background: var(--
 .brand .logo-full { display: inline-flex; background: var(--logo-ground); border-radius: 6px; padding: 3px 8px; }
 .brand .logo-full img { width: auto; height: 34px; border-radius: 0; }
 .brand .brand-sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
-.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.35rem; margin: 0; letter-spacing: .01em; color: var(--label); }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 2rem; line-height: 1.05; margin: 0; letter-spacing: .01em; color: var(--label); }
+.brand small { display: none !important; }
+body.cel .brand h1 { font-size: 1.7rem; }
 .brand small { display: block; color: var(--fg-2); font-size: .78rem; }
 .search { flex: 1 1 340px; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; min-width: 0; }
 .search:focus-within { border-color: var(--accent); }
