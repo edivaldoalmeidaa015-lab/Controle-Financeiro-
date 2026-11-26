@@ -132,6 +132,10 @@ body:not([data-tela="inicio"]) .viz .p-mes { grid-column: auto; order: 0; }
 .pg-titulo h2 { font-family: var(--f-display); font-size: 1.5rem; margin: 0; color: var(--label); }
 .pg-titulo p { margin: 0; color: var(--fg-2); font-size: .85rem; }
 .top10 { display: flex; flex-direction: column; gap: 6px; }
+body.cel #seg-top { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+body.cel #seg-top button { padding: 7px 4px; font-size: .74rem; border-left: 0; border-top: 1px solid var(--line); }
+body.cel #seg-top button:nth-child(-n+3) { border-top: 0; }
+body.cel #seg-top button:not(:nth-child(3n+1)) { border-left: 1px solid var(--line); }
 .t10 { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-align: left; width: 100%; }
 .t10:hover { border-color: var(--accent); }
 .t10 .pos { font-family: var(--f-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); text-align: center; }
@@ -324,7 +328,10 @@ body.cel::before { display: none; }
 body.cel .top-1 { gap: 10px; }
 body.cel .tscroll table, body.cel .tscroll tbody { display: block; }
 body.cel .tscroll thead { display: none; }
-body.cel .tscroll tr { display: block; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+body.cel .tscroll tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 14px; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+body.cel .tscroll td.desc, body.cel .tscroll td.cl, body.cel .tscroll td.mat, body.cel .tscroll td[colspan] { grid-column: 1 / -1; }
+body.cel .tscroll td div { min-width: 0 !important; max-width: none !important; }
+body.cel .tscroll td { text-align: left !important; }
 body.cel .tscroll td { display: block; border: 0; padding: 3px 0; min-width: 0; max-width: none; white-space: normal !important; }
 body.cel .tscroll td::before { content: attr(data-l); display: block; color: var(--fg-3); font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; }
 body.cel .tscroll td:empty, body.cel .tscroll td .nada:only-child { color: var(--fg-3); }
