@@ -29,7 +29,7 @@ if (!entradas.length || !saida) {
 }
 
 var raiz = path.join(__dirname, '..');
-var html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
+var html = fs.readFileSync(path.join(raiz, 'painel-antigo.html'), 'utf8');
 var modeloJs = fs.readFileSync(path.join(raiz, 'modelo.js'), 'utf8');
 
 /** Planilhas de um arquivo: o próprio .xlsx ou os .xlsx de dentro do .zip do Manusis. */
@@ -75,7 +75,7 @@ var json = JSON.stringify(modelo).replace(/<\//g, '<\\/');
 
 var marcaDados = '<script id="dados-embutidos" type="application/json"></script>';
 var marcaModelo = '<script src="modelo.js"></script>';
-if (html.indexOf(marcaDados) < 0 || html.indexOf(marcaModelo) < 0) throw new Error('index.html sem os marcadores esperados.');
+if (html.indexOf(marcaDados) < 0 || html.indexOf(marcaModelo) < 0) throw new Error('painel-antigo.html sem os marcadores esperados.');
 html = html.replace(marcaDados, function () { return '<script id="dados-embutidos" type="application/json">' + json + '</script>'; })
   .replace(marcaModelo, function () { return '<script>\n' + modeloJs + '</script>\n<script>\n' + leitorExcel + '</script>'; });
 
@@ -84,7 +84,7 @@ if (arquivoLogo) {
   var ext = path.extname(arquivoLogo).slice(1).toLowerCase().replace('jpg', 'jpeg').replace('svg', 'svg+xml');
   var dataUri = 'data:image/' + ext + ';base64,' + fs.readFileSync(arquivoLogo).toString('base64');
   var marcaLogo = "var LOGO_URL = '';", marcaNome = "var LOGO_NOME = 'Logo da empresa';";
-  if (html.indexOf(marcaLogo) < 0 || html.indexOf(marcaNome) < 0) throw new Error('index.html sem o marcador do logo.');
+  if (html.indexOf(marcaLogo) < 0 || html.indexOf(marcaNome) < 0) throw new Error('painel-antigo.html sem o marcador do logo.');
   html = html.replace(marcaLogo, function () { return 'var LOGO_URL = ' + JSON.stringify(dataUri) + ';'; })
     .replace(marcaNome, function () { return 'var LOGO_NOME = ' + JSON.stringify(opcao('logo-nome') || 'Logo da empresa') + ';'; })
     .replace(/<link rel="icon" href="[^"]*">/, function () { return '<link rel="icon" href="' + dataUri + '">'; });
@@ -96,7 +96,7 @@ if (arquivoLogoCompleto) {
   var extC = path.extname(arquivoLogoCompleto).slice(1).toLowerCase().replace('jpg', 'jpeg').replace('svg', 'svg+xml');
   var uriC = 'data:image/' + extC + ';base64,' + fs.readFileSync(arquivoLogoCompleto).toString('base64');
   var marcaC = "var LOGO_COMPLETO_URL = '';";
-  if (html.indexOf(marcaC) < 0) throw new Error('index.html sem o marcador da logo completa.');
+  if (html.indexOf(marcaC) < 0) throw new Error('painel-antigo.html sem o marcador da logo completa.');
   html = html.replace(marcaC, function () { return 'var LOGO_COMPLETO_URL = ' + JSON.stringify(uriC) + ';'; });
 }
 

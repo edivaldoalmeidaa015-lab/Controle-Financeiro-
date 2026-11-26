@@ -1,4 +1,13 @@
-# Painel de Turbinas — Ordens de Manutenção
+# Consulta de OMs (aplicativo) e Painel de Turbinas (antigo)
+
+**O aplicativo agora é a Consulta de OMs** (`consulta.html`). O endereço do GitHub Pages
+`…/turbinas/` (`index.html`) abre a Consulta, então o ícone instalado no celular e o app Android
+passam a mostrá-la sem reinstalar. A base da Consulta é carregada de novo uma vez (toque em
+**Escolher planilhas**): ela não usa a base guardada pelo painel antigo.
+
+O Painel de Turbinas antigo continua em `painel-antigo.html` (mesmo endereço + `painel-antigo.html`),
+fora do aplicativo. O texto abaixo, até a seção "Consulta de OMs", descreve o painel antigo.
+
 
 Painel interativo (estilo Power BI) para as ordens de manutenção dos
 aerogeradores. Funciona direto no navegador, sem servidor, e aceita dois
@@ -60,7 +69,7 @@ de ordens, consumo e pendências: `node turbinas/scripts/juntar-bases.js ordens.
 
 ## Como usar
 
-1. Abra `turbinas/index.html` no navegador.
+1. Abra `turbinas/painel-antigo.html` no navegador.
 2. Arraste a planilha `.xlsx` ou o `.zip` (Manusis ou Power BI; dá para escolher a de OMs e a de consumo juntas) para a tela (ou clique em **Escolher planilha**).
    A leitura é feita só no seu navegador — nada é enviado.
 
@@ -159,7 +168,9 @@ Seguem as medidas DAX da aba `LEIA-ME`:
 
 ## Arquivos
 
-- `index.html` — o painel (HTML, CSS e JS sem dependências; SheetJS é baixado do cdnjs só na hora do upload)
+- `index.html` — entrada do endereço `…/turbinas/`: abre a Consulta de OMs
+- `consulta.html`, `consulta-dados.js` — a Consulta de OMs (o aplicativo)
+- `painel-antigo.html` — o Painel de Turbinas antigo (HTML, CSS e JS sem dependências)
 - `modelo.js` — converte a planilha no modelo de dados (navegador e Node)
 - `scripts/gerar-com-dados.js` — gera a versão com dados embutidos
 
@@ -176,12 +187,12 @@ regras, suba `VERSAO_PECAS`: o app relê as bases já guardadas no aparelho.
 
 ## Consulta de OMs (painel de uma página)
 
-**Aplicativo:** https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/consulta.html
+**Aplicativo:** https://edivaldoalmeidaa015-lab.github.io/Controle-Financeiro-/turbinas/
 (depois que a mudança chega na `main`). Abre vazio; toque em **Escolher planilhas** e selecione as exportações
 do Manusis (OMs, consumo de materiais e pendências; `.xlsx` ou `.zip`, de um ou vários anos) ou a base única.
 A leitura é feita no aparelho (`consulta-dados.js` + `modelo.js` + SheetJS) e a base fica guardada nele (IndexedDB);
 nada é enviado. **Atualizar base** soma arquivos novos (o mais novo prevalece) ou começa do zero. No Chrome do
-celular, menu ⋮ → *Instalar aplicativo* cria o ícone "Consulta OMs" (`consulta.webmanifest`; `sw.js` guarda o app
+celular, menu ⋮ → *Instalar aplicativo* cria o ícone "Consulta OMs" (`manifest.webmanifest`; `sw.js` guarda o app
 para abrir sem internet).
 
 `consulta.html` é um painel mais simples, de consulta: pesquisa na descrição e no serviço executado,
