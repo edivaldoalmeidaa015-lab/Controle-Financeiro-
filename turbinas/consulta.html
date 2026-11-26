@@ -118,6 +118,9 @@ main { display: grid; gap: 14px; padding-block: 14px 40px; }
 .kpi .k-val { font-family: var(--f-display); font-weight: 600; font-size: 2.1rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .kpi .k-sub { color: var(--fg-2); font-size: .82rem; display: flex; gap: 4px 12px; flex-wrap: wrap; }
 .kpi .k-sub b { color: var(--fg); font-weight: 600; }
+#seg-sit button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.k-sit { border: 0; background: transparent; padding: 1px 4px; margin: 0 -4px; border-radius: 4px; color: inherit; font: inherit; }
+.k-sit:hover { background: var(--accent-soft); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
 .split { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface-2); gap: 2px; margin-top: 4px; }
 .split i { display: block; height: 100%; }
@@ -474,6 +477,7 @@ var DADOS = /*__DADOS__*/null;
     h += '<div class="fgroup"><span class="flabel">Ano</span><button type="button" class="chip dd" id="dd-ano">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Mês</span><button type="button" class="chip dd" id="dd-mes">Todos</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Data de abertura</span><input type="date" class="dt-in" id="f-de" aria-label="De" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"><span style="font-size:.78rem;color:var(--fg-2)">até</span><input type="date" class="dt-in" id="f-ate" aria-label="Até" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"></div><span class="sep"></span>';
+    h += '<div class="fgroup"><span class="flabel">Situação</span><div class="seg" id="seg-sit" role="group" aria-label="Situação da OM"><button type="button" data-v="todas">Todas</button><button type="button" data-v="abertas">Só abertas</button><button type="button" data-v="fechadas">Só fechadas</button></div></div>';
     h += '<div class="fgroup"><span class="flabel">Status</span><button type="button" class="chip dd" id="dd-status">Sem canceladas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
@@ -483,6 +487,10 @@ var DADOS = /*__DADOS__*/null;
     $('#dd-parque').onclick = function (e) { abrirPop(e.currentTarget, 'parque', 'Buscar parque', nomesPq, function (i) { return D.O.pq[i]; }); };
     $('#dd-ano').onclick = function (e) { abrirPop(e.currentTarget, 'ano', 'Buscar ano', anos.map(String), function (i) { return ano[i]; }, null, function (k) { return anos[k]; }, true); };
     $('#dd-mes').onclick = function (e) { abrirPop(e.currentTarget, 'mes', 'Buscar mês', MESES_NOME, function (i) { return mes[i]; }, null, function (k) { return k + 1; }, true); };
+    $('#seg-sit').onclick = function (e) {
+      var v = e.target.getAttribute('data-v'); if (!v) return;
+      F.status = statusSituacao(v); UI.page = 0; atualizar();
+    };
     $('#dd-status').onclick = function (e) { abrirPop(e.currentTarget, 'status', 'Buscar status', D.status, function (i) { return D.O.st[i]; }); };
     $('#dd-tipo').onclick = function (e) { abrirPop(e.currentTarget, 'tipo', 'Buscar tipo de serviço', D.tipos, function (i) { return D.O.tp[i]; }); };
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
@@ -497,11 +505,20 @@ var DADOS = /*__DADOS__*/null;
   }
   var MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   function statusPadrao() { var o = {}, ic = D.status.indexOf('Canceladas'); D.status.forEach(function (_, k) { if (k !== ic) o[k] = 1; }); return o; }
+  // Todas = sem canceladas · Só abertas = tudo que não está fechado nem cancelado · Só fechadas = Fechadas
+  function statusSituacao(v) {
+    if (v === 'todas') return statusPadrao();
+    var o = {}, ic = D.status.indexOf('Canceladas'), ifc = D.status.indexOf('Fechadas');
+    D.status.forEach(function (_, k) { if (v === 'fechadas' ? k === ifc : k !== ifc && k !== ic) o[k] = 1; });
+    return o;
+  }
   function mesmoConj(a, b) { var ka = Object.keys(a), kb = Object.keys(b); return ka.length === kb.length && ka.every(function (k) { return b[k]; }); }
   function chipsFiltro() {
     rotuloDD('parque', 'Todos', D.parques.map(function (p) { return p.replace('(sem parque)', 'Sem parque'); }));
     var la = {}; anos.forEach(function (y) { la[y] = String(y); }); rotuloDD('ano', 'Todos', la);
     var lm = {}; MESES_NOME.forEach(function (m, k) { lm[k + 1] = m; }); rotuloDD('mes', 'Todos', lm);
+    var sit = ['todas', 'abertas', 'fechadas'].filter(function (v) { return mesmoConj(F.status, statusSituacao(v)); })[0];
+    [].forEach.call($('#seg-sit').children, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === sit); });
     var bs = $('#dd-status'), ks = Object.keys(F.status);
     var padrao = mesmoConj(F.status, statusPadrao()), todos = ks.length === D.status.length;
     bs.setAttribute('aria-pressed', padrao || todos ? 'false' : 'true');
@@ -570,7 +587,7 @@ var DADOS = /*__DADOS__*/null;
     Object.keys(F.parque).forEach(function (k) { t.push(['parque', k, 'Parque ' + D.parques[k].replace('(sem parque)', 'sem parque')]); });
     Object.keys(F.ano).forEach(function (k) { t.push(['ano', k, 'Ano ' + k]); });
     Object.keys(F.mes).forEach(function (k) { t.push(['mes', k, MESES_NOME[k - 1]]); });
-    if (D && !mesmoConj(F.status, statusPadrao())) t.push(['status', null, 'Status: ' + $('#dd-status').textContent]);
+    if (D && !mesmoConj(F.status, statusPadrao())) t.push(['status', null, mesmoConj(F.status, statusSituacao('abertas')) ? 'Só abertas' : mesmoConj(F.status, statusSituacao('fechadas')) ? 'Só fechadas' : 'Status: ' + $('#dd-status').textContent]);
     Object.keys(F.ativo).forEach(function (k) { t.push(['ativo', k, 'WTG ' + D.ativos[k]]); });
     Object.keys(F.tipo).forEach(function (k) { t.push(['tipo', k, D.tipos[k]]); });
     Object.keys(F.falha).forEach(function (k) { t.push(['falha', k, curto(D.falhas[k], 40)]); });
@@ -656,6 +673,11 @@ var DADOS = /*__DADOS__*/null;
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
     $('#exp-xlsx').onclick = exportar;
+    $('#k-om').onclick = function (e) {
+      var b = e.target.closest('[data-sit]'); if (!b) return;
+      var v = b.getAttribute('data-sit');
+      F.status = mesmoConj(F.status, statusSituacao(v)) ? statusPadrao() : statusSituacao(v); UI.page = 0; atualizar();
+    };
     $('#mapa-met').innerHTML = Object.keys(MET_MAPA).map(function (k) { return '<option value="' + k + '">' + MET_MAPA[k].rot + '</option>'; }).join('');
     $('#mapa-met').value = UI.mapa;
     $('#mapa-met').onchange = function (e) { UI.mapa = e.target.value; desenharMapa(); };
@@ -701,8 +723,8 @@ var DADOS = /*__DADOS__*/null;
     var tot = sel.length;
     var sp = function (n, cor) { return tot ? '<i style="width:' + (100 * n / tot) + '%;background:var(' + cor + ')"></i>' : ''; };
     $('#k-om').innerHTML = '<span class="k-lab">OMs filtradas</span><span class="k-val">' + fmtN.format(tot) + '</span>' +
-      '<span class="k-sub"><span><span class="dot" style="background:var(--s-fechada)"></span><b class="num">' + fmtN.format(g[0]) + '</b> fechadas</span>' +
-      '<span><span class="dot" style="background:var(--s-aberta)"></span><b class="num">' + fmtN.format(g[1]) + '</b> em aberto</span>' +
+      '<span class="k-sub"><button type="button" class="k-sit" data-sit="fechadas" title="Ver só as fechadas"><span class="dot" style="background:var(--s-fechada)"></span><b class="num">' + fmtN.format(g[0]) + '</b> fechadas</button>' +
+      '<button type="button" class="k-sit" data-sit="abertas" title="Ver só as abertas"><span class="dot" style="background:var(--s-aberta)"></span><b class="num">' + fmtN.format(g[1]) + '</b> em aberto</button>' +
       (g[2] ? '<span><span class="dot" style="background:var(--s-cancel)"></span><b class="num">' + fmtN.format(g[2]) + '</b> canceladas</span>' : '') + '</span>' +
       '<div class="split" title="Fechadas × em aberto">' + sp(g[0], '--s-fechada') + sp(g[1], '--s-aberta') + sp(g[2], '--s-cancel') + '</div>';
     $('#k-custo').innerHTML = '<span class="k-lab">Custo total de materiais</span><span class="k-val" title="' + fmtR2.format(custo) + '">' + compacto(custo) + '</span>' +
