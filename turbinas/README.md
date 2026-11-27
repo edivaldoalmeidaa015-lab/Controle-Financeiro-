@@ -208,6 +208,13 @@ A aba **Materiais e pendências** mostra, por OM: o que foi consumido; o que nã
 serviço executado diz que trocou, sem consumo do mesmo tipo, pelas regras de `componentesTrocados`/conferência
 do Painel de Turbinas); as pendências pendentes (Pendente, Em execução) e as não pendentes (Concluído, Cancelado).
 
+Segunda leitura do serviço executado (`consulta-dados.js`, `trocaNoTexto`): peça consumida que a conferência deixou
+"sem troca no texto" passa a confirmada quando o texto cita a peça (nome ou apelido: anel coletor = slip, botoeira =
+controle da talha…) com um verbo de troca ou instalação na mesma frase, a até 70 letras (35 para palavras genéricas
+como placa, motor, cabo). Não contam "recolocado", "teste de baterias" nem trechos com negação ("não temos em estoque").
+Placa com código (AEPS, WEPA, WECA…) só confirma com o código certo. OM com serviço executado em branco ganha o aviso
+"Sem serviço executado" (não dá para conferir).
+
 ```bash
 npm install xlsx
 node turbinas/scripts/gerar-consulta.js base.xlsx consulta-com-dados.html

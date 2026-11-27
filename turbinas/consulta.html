@@ -154,7 +154,8 @@ body:not([data-tela="inicio"]) .viz .p-mes { grid-column: auto; order: 0; }
 .lg .t { font-weight: 600; font-size: .88rem; }
 .lg .v { font-family: var(--f-display); font-weight: 600; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .lg .s { grid-column: 1 / -1; font-size: .76rem; color: var(--fg-2); }
-.corrigir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.corrigir { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1180px) { .corrigir { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .crx { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .crx b { font-family: var(--f-display); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
 .crx .tt { font-weight: 600; font-size: .9rem; }
@@ -1154,12 +1155,13 @@ var DADOS = /*__DADOS__*/null;
   };
   // selo da conferência (mesmas regras do Painel de Turbinas)
   var SELOS = [null,
-    { rot: 'Troca confirmada', cls: 'ok', ic: '✓', dica: 'Cada peça que o serviço executado diz que trocou tem consumo do mesmo tipo.' },
+    { rot: 'Troca confirmada', cls: 'ok', ic: '✓', dica: 'As peças consumidas aparecem como trocadas ou instaladas no serviço executado.' },
     { rot: 'Confirmada em parte', cls: 'alerta', ic: '!', dica: 'Parte bate com o consumo; sobra peça descrita sem consumo ou peça consumida sem a troca descrita.' },
     { rot: 'Difere do consumo', cls: 'ruim', ic: '≠', dica: 'O texto cita um tipo de peça e o consumo é de outro: confira qual foi trocada.' },
     { rot: 'Troca sem consumo', cls: 'ruim', ic: '✕', dica: 'OM fechada: o texto diz que trocou, mas nenhuma peça foi consumida. Falta lançar o consumo ou a troca não aconteceu.' },
-    { rot: 'Consumo sem troca no texto', cls: 'alerta', ic: '?', dica: 'Saiu peça para a OM, mas o serviço executado não diz que ela foi trocada.' }];
-  var SELO_ORD = [0, 1, 3, 5, 6, 4];
+    { rot: 'Consumo sem troca no texto', cls: 'alerta', ic: '?', dica: 'Saiu peça para a OM, mas o serviço executado não diz que ela foi trocada.' },
+    { rot: 'Sem serviço executado', cls: 'alerta', ic: '∅', dica: 'Saiu peça para a OM, mas o serviço executado está em branco: não dá para conferir se a peça foi trocada. Peça ao técnico para escrever o que foi feito.' }];
+  var SELO_ORD = [0, 1, 3, 5, 6, 4, 7];
   var PEND_ABERTA = function (k) { return !/conclu|cancel|fechad|finaliz/i.test(D.statusPend[D.P.st[k]]); };
   function pendSplit(i) {
     var a = [], b = []; (pendDe[i] || []).forEach(function (k) { (PEND_ABERTA(k) ? a : b).push(k); }); return [a, b];
@@ -1174,7 +1176,8 @@ var DADOS = /*__DADOS__*/null;
     ['cst', 'Consumo sem troca no texto', function (i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) return true; return false; }],
     ['pp', 'Com pendência pendente', function (i) { return pendSplit(i)[0].length > 0; }],
     ['np', 'Sem pendência pendente', function (i) { return !pendSplit(i)[0].length; }],
-    ['ok', 'Troca confirmada', function (i) { return D.O.se[i] === 1; }]
+    ['ok', 'Troca confirmada', function (i) { return D.O.se[i] === 1; }],
+    ['semexec', 'Sem serviço executado', function (i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 4) return true; return false; }]
   ];
   function lista(itens, max) {
     if (!itens.length) return '<span class="nada">—</span>';
@@ -1183,7 +1186,7 @@ var DADOS = /*__DADOS__*/null;
   function linhaConf(i) {
     var O = D.O, g = grupo[i], cons = [], ps = pendSplit(i), se = SELOS[O.se[i]];
     if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) {
-      var cf = D.C.cf[k], ic = cf === 1 ? '<span class="ic pe" title="Consumida sem troca descrita no texto">?</span>' : cf === 0 && O.pi[i].length ? '<span class="ic ok" title="Bate com a troca descrita">✓</span>' : '';
+      var cf = D.C.cf[k], ic = cf === 4 ? '<span class="ic ch" title="OM sem serviço executado: não dá para conferir">∅</span>' : cf === 1 ? '<span class="ic pe" title="Consumida sem troca descrita no texto">?</span>' : cf === 0 && O.pi[i].length ? '<span class="ic ok" title="Bate com a troca descrita">✓</span>' : '';
       cons.push('<li title="' + esc(D.materiais[D.C.m[k]]) + '">' + ic + '<span class="q">' + fmtQ.format(D.C.q[k]) + ' ' + esc(D.C.u[k]) + '</span> ' + esc(partesMaterial(D.materiais[D.C.m[k]]).nome) + '</li>');
     }
     var nc = naoConsumido(i).map(function (it) {
@@ -1203,13 +1206,13 @@ var DADOS = /*__DADOS__*/null;
       '<td>' + (se ? '<span class="selo ' + se.cls + '" title="' + esc(se.dica) + '">' + se.ic + ' ' + se.rot + '</span>' : '<span class="nada" title="Sem troca de peça descrita e sem peça consumida">—</span>') + '</td></tr>';
   }
   // ---- aba Consumo: uma linha por material consumido ----
-  var CSIT = [['todos', 'Todos'], ['pecas', 'Só peças'], ['consum', 'Material de consumo'], ['semtexto', 'Peça sem troca no texto'], ['preco', 'Preço fora do padrão']];
-  var CF_ROT = ['Bate com a troca descrita', 'Peça sem troca no texto', 'Material de consumo', 'Tipo não reconhecido'];
+  var CSIT = [['todos', 'Todos'], ['pecas', 'Só peças'], ['consum', 'Material de consumo'], ['semtexto', 'Peça sem troca no texto'], ['semexec', 'OM sem serviço executado'], ['preco', 'Preço fora do padrão']];
+  var CF_ROT = ['Bate com a troca descrita', 'Peça sem troca no texto', 'Material de consumo', 'Tipo não reconhecido', 'OM sem serviço executado'];
   var hayC = null;
   function filtroSitCons(v) {
     var C = D.C;
     return v === 'pecas' ? function (k) { return C.cf[k] !== 2; } : v === 'consum' ? function (k) { return C.cf[k] === 2; } :
-      v === 'semtexto' ? function (k) { return C.cf[k] === 1; } : v === 'preco' ? function (k) { return C.s[k] === 1; } : function () { return true; };
+      v === 'semtexto' ? function (k) { return C.cf[k] === 1; } : v === 'semexec' ? function (k) { return C.cf[k] === 4; } : v === 'preco' ? function (k) { return C.s[k] === 1; } : function () { return true; };
   }
   function consDaAba() {
     var C = D.C, tq = termos(UI.cBusca), out = [];
@@ -1237,7 +1240,7 @@ var DADOS = /*__DADOS__*/null;
   }
   function linhaCons(k) {
     var C = D.C, i = C.o[k], pm = partesMaterial(D.materiais[C.m[k]]), tq = termos(UI.cBusca);
-    var cf = C.cf[k], cls = cf === 0 ? 'f' : cf === 1 ? 'a' : 'c';
+    var cf = C.cf[k], cls = cf === 0 ? 'f' : cf === 1 || cf === 4 ? 'a' : 'c';
     return '<tr data-i="' + i + '" tabindex="0">' +
       '<td class="num" style="white-space:nowrap">' + dataBR(C.d[k]) + '</td>' +
       '<td class="mono" style="white-space:nowrap">' + realce(omLabel(D.O.om[i]), tq) + '</td>' +
@@ -1459,7 +1462,7 @@ var DADOS = /*__DADOS__*/null;
       salvarArquivo('Pendencias_' + hj.getFullYear() + dd(hj.getMonth() + 1) + dd(hj.getDate()) + '.xlsx', XLSX.write(wbp, { bookType: 'xlsx', type: 'array', compression: true }));
       return;
     }
-    var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)'];
+    var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)', 'OM sem serviço executado'];
     var NC = ['Consumida', 'Sem consumo', 'Conferir'];
     var linhas, larg;
     if (UI.vista === 'conf') {
@@ -1613,7 +1616,7 @@ var DADOS = /*__DADOS__*/null;
     pessoas: ['Pendências abertas por pessoa', [['O que é', 'Pendências pendentes ou em execução, por quem registrou no Manusis (coluna "Usuário").'], ['Atenção', 'Quem registra nem sempre é quem resolve. Muitas pendências com uma pessoa só pode indicar que ela registra pela equipe toda.'], ['O que fazer', 'Toque no nome para ver a lista, das mais antigas para as mais novas.']]],
     idade: ['Há quanto tempo as pendências estão abertas', [['O que é', 'As pendências ainda abertas, separadas pelo tempo desde a abertura.'], ['Referência', 'Pendência deve ser resolvida na próxima ida à turbina. Mais de 90 dias é atraso; de segurança (HSE), mais de 30 dias já é crítico.'], ['O que fazer', 'Toque numa faixa para ver a lista na tabela e combine prazo com cada equipe, começando pelas de segurança.']]],
     atras: ['Preventivas atrasadas', [['O que é', 'OMs de tipo preventivo programadas há mais de 30 dias e ainda não fechadas (sem as canceladas), por turbina.'], ['Por que importa', 'Preventiva atrasada vira corretiva: a falha aparece antes da manutenção.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela, ou em "Ver todas na tabela".']]],
-    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
+    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou. O painel aceita outras palavras: substituído, trocado, instalado, colocado, "swap", e apelidos da peça (ex.: anel coletor = slip).</li><li><b>Sem serviço executado</b>: saiu peça, mas o texto está em branco.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
     top: ['Top 10 mais impactadas', [['O que é', 'As 10 turbinas com o maior valor na medida escolhida, com as outras medidas embaixo.'], ['Falhas repetidas', 'Corretivas em que o mesmo código de falha voltou na mesma turbina em até 30 dias. Indica que o conserto não resolveu a causa.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela. Turbinas que aparecem em várias medidas pedem análise de causa raiz.']]],
     tabela: ['Tabelas', [['Como usar', 'Toque no título de uma coluna para ordenar. Toque numa linha para abrir a ficha completa da OM. "Exportar Excel" leva tudo que está filtrado, não só a página.']]]
   };
@@ -1717,16 +1720,17 @@ var DADOS = /*__DADOS__*/null;
   // ---------------- corrigir no Manusis ----------------
   function desenharCorrigir() {
     if (UI.tela !== 'consumo') return;
-    var preco = 0, pv = 0, semtexto = 0, semcons = 0;
+    var preco = 0, pv = 0, semtexto = 0, semcons = 0, semexec = {};
     sel.forEach(function (i) {
-      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; }
+      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; if (D.C.cf[k] === 4) semexec[i] = 1; }
       if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) semcons++;
     });
     var cx = function (n, tt, txt, acao) { return '<div class="crx"><b>' + fmtN.format(n) + '</b><span class="tt">' + tt + '</span><p>' + txt + '</p><button type="button" class="btn" data-cx="' + acao + '">Ver lista</button></div>'; };
     $('#c-corrigir').innerHTML =
       cx(preco, 'Preço fora do padrão', 'Consumos com preço unitário muito acima do normal do material (' + compacto(pv) + '). Ficam fora do custo total.', 'preco') +
       cx(semcons, 'Troca sem consumo', 'OMs fechadas em que o serviço executado diz que trocou a peça, mas não há consumo lançado.', 'semcons') +
-      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada.', 'semtexto');
+      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada (nem com outras palavras: instalado, colocado, substituído…).', 'semtexto') +
+      cx(Object.keys(semexec).length, 'Sem serviço executado', 'OMs com peça consumida e o serviço executado em branco: não dá para conferir a troca.', 'semexec');
     $('#c-corrigir').onclick = function (e) {
       var b = e.target.closest('[data-cx]'); if (!b) return;
       var a = b.getAttribute('data-cx');
@@ -2020,10 +2024,16 @@ var DADOS = /*__DADOS__*/null;
     var h = '<section><h4>Conferência: troca descrita × consumo</h4>' + (se ? '<span class="selo ' + se.cls + '">' + se.ic + ' ' + se.rot + '</span><div style="font-size:.8rem;color:var(--fg-2);margin:4px 0 8px">' + esc(se.dica) + '</div>' : '');
     h += itens.length ? '<table class="mini"><thead><tr><th>Peça descrita no serviço executado</th><th>Situação</th></tr></thead><tbody>' + itens.map(function (it) {
       return '<tr><td>' + esc(D.componentes[it[0]]) + (it[1] ? ' <span style="color:var(--fg-2)">(' + esc(it[1]) + ')</span>' : '') + '</td><td>' + rot[it[2]] + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<div style="font-size:.84rem;color:var(--fg-2)">O serviço executado não descreve troca de peça.</div>';
+    }).join('') + '</tbody></table>' : '';
+    // peças consumidas que o texto confirma com outras palavras (instalado, colocado, "slip novo"…)
+    var okT = [];
+    if (consIni[i] >= 0) for (var k0 = consIni[i]; k0 < consFim[i]; k0++) if (D.C.cf[k0] === 0) okT.push(partesMaterial(D.materiais[D.C.m[k0]]).nome);
+    if (!itens.length) h += okT.length ? '<div style="font-size:.84rem"><b>Troca encontrada no serviço executado:</b> ' + esc(okT.join(' · ')) + '</div>'
+      : '<div style="font-size:.84rem;color:var(--fg-2)">O serviço executado não descreve troca de peça.</div>';
     var st = [];
     if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) st.push(partesMaterial(D.materiais[D.C.m[k]]).nome);
     if (st.length) h += '<div style="font-size:.82rem;margin-top:8px"><b>Consumida sem troca no texto:</b> ' + esc(st.join(' · ')) + '</div>';
+    if (!String(O.exec[i] || '').trim() && consIni[i] >= 0) h += '<div style="font-size:.82rem;margin-top:8px"><b>Serviço executado em branco:</b> não dá para conferir se as peças consumidas foram trocadas.</div>';
     return h + '</section>';
   }
   function g1(i) { return grupo[i] === 1; }
