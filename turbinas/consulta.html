@@ -77,7 +77,9 @@ header.top::after { content: ""; display: block; height: 3px; background: var(--
 .brand .logo-full { display: inline-flex; background: var(--logo-ground); border-radius: 6px; padding: 3px 8px; }
 .brand .logo-full img { width: auto; height: 34px; border-radius: 0; }
 .brand .brand-sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
-.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.35rem; margin: 0; letter-spacing: .01em; color: var(--label); }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 2rem; line-height: 1.05; margin: 0; letter-spacing: .01em; color: var(--label); }
+.brand small { display: none !important; }
+body.cel .brand h1 { font-size: 1.7rem; }
 .brand small { display: block; color: var(--fg-2); font-size: .78rem; }
 .search { flex: 1 1 340px; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; min-width: 0; }
 .search:focus-within { border-color: var(--accent); }
@@ -111,7 +113,75 @@ header.top::after { content: ""; display: block; height: 3px; background: var(--
 .pop .foot { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); }
 
 main { display: grid; gap: 14px; padding-block: 14px 40px; }
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+/* navegação por ícones: abaixo do cabeçalho no computador, barra fixa embaixo no celular */
+.nav { display: flex; gap: 4px; padding-block: 0 8px; overflow-x: auto; }
+.nav a { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 8px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: .86rem; white-space: nowrap; border: 1px solid transparent; }
+.nav a svg { width: 19px; height: 19px; flex: none; }
+.nav a:hover { color: var(--accent); background: var(--accent-soft); }
+.nav a[aria-current="page"] { color: var(--surface); background: var(--accent); }
+body.cel .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -2px 10px rgba(0, 0, 0, .08);
+  justify-content: space-around; gap: 0; padding: 4px max(4px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px)); }
+body.cel .nav a { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: .68rem; flex: 1; justify-content: center; border-radius: 6px; }
+body.cel .nav a svg { width: 22px; height: 22px; }
+body.cel .nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+body.cel .app-scroll { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+body:not([data-tela="inicio"]) .viz, body:not([data-tela="inicio"]) .viz2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+body:not([data-tela="inicio"]) .viz .p-mes { grid-column: auto; order: 0; }
+/* didático: botão "?" e leitura rápida */
+.ajuda { border: 1px solid var(--line); background: var(--surface); color: var(--accent); width: 22px; height: 22px; border-radius: 50%; font-weight: 700; font-size: .78rem; line-height: 1; padding: 0; display: inline-grid; place-items: center; vertical-align: 2px; margin-left: 6px; flex: none; }
+.ajuda:hover { background: var(--accent); color: var(--surface); }
+.brand .ajuda-geral { border: 1px solid var(--line); background: var(--surface); color: var(--accent); border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.aj h4 { margin: 0 0 4px; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--label); }
+.aj p, .aj li { margin: 0; font-size: .92rem; line-height: 1.55; max-width: 62ch; }
+.aj ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.leitura { display: flex; flex-direction: column; gap: 6px; }
+.lt { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-align: left; width: 100%; font-size: .9rem; }
+.lt:hover { border-color: var(--accent); }
+.lt .sem { width: 12px; height: 12px; border-radius: 50%; }
+.lt .sem.r { background: var(--bad); } .lt .sem.a { background: var(--s-aberta); } .lt .sem.v { background: var(--good); } .lt .sem.n { background: var(--fg-3); }
+.lt .ir { color: var(--accent); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.lt b { font-variant-numeric: tabular-nums; }
+.faixas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.faixa { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.faixa:hover, .faixa[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.faixa b { font-family: var(--f-display); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.faixa span { font-size: .78rem; color: var(--fg-2); }
+.faixa i { display: block; height: 5px; border-radius: 3px; margin-top: 4px; }
+.lista-g { display: flex; flex-direction: column; gap: 4px; }
+.lg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 8px; border-radius: 6px; border: 0; background: transparent; text-align: left; width: 100%; }
+.lg:hover { background: var(--surface-2); }
+.lg .t { font-weight: 600; font-size: .88rem; }
+.lg .v { font-family: var(--f-display); font-weight: 600; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.lg .s { grid-column: 1 / -1; font-size: .76rem; color: var(--fg-2); }
+.corrigir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.crx { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.crx b { font-family: var(--f-display); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.crx .tt { font-weight: 600; font-size: .9rem; }
+.crx p { margin: 0; font-size: .8rem; color: var(--fg-2); flex: 1; }
+.crx .btn { align-self: flex-start; }
+body.cel .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.cel .corrigir { grid-template-columns: minmax(0, 1fr); }
+body.cel .lt { grid-template-columns: 12px minmax(0, 1fr); font-size: .86rem; }
+body.cel .lt .ir { grid-column: 2; }
+.pg-titulo { display: flex; align-items: center; gap: 10px; }
+.pg-titulo h2 { font-family: var(--f-display); font-size: 1.5rem; margin: 0; color: var(--label); }
+.pg-titulo p { margin: 0; color: var(--fg-2); font-size: .85rem; }
+.top10 { display: flex; flex-direction: column; gap: 6px; }
+body.cel #seg-top { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+body.cel #seg-top button { padding: 7px 4px; font-size: .74rem; border-left: 0; border-top: 1px solid var(--line); }
+body.cel #seg-top button:nth-child(-n+3) { border-top: 0; }
+body.cel #seg-top button:not(:nth-child(3n+1)) { border-left: 1px solid var(--line); }
+.t10 { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-align: left; width: 100%; }
+.t10:hover { border-color: var(--accent); }
+.t10 .pos { font-family: var(--f-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); text-align: center; }
+.t10 .nm { font-weight: 700; font-size: .98rem; }
+.t10 .nm small { font-weight: 400; color: var(--fg-3); margin-left: 6px; font-size: .78rem; }
+.t10 .vl { font-family: var(--f-display); font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.t10 .bar { grid-column: 2 / -1; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.t10 .bar i { display: block; height: 100%; background: var(--accent); border-radius: 0 3px 3px 0; }
+.t10 .ex { grid-column: 2 / -1; display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: .76rem; color: var(--fg-2); }
+.t10 .ex b { color: var(--fg); font-variant-numeric: tabular-nums; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
 .kpi { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
 .kpi .k-lab { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--label); font-weight: 700; }
@@ -164,8 +234,11 @@ th[aria-sort="descending"]::after { content: " ▼"; font-size: .6rem; }
 td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tbody tr { cursor: pointer; }
 tbody tr:hover td { background: var(--surface-2); }
-td.desc { min-width: 240px; max-width: 420px; }
-td.desc .d1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* descrição inteira, numa coluna larga: a linha fica mais baixa */
+td.desc { min-width: 380px; max-width: 760px; }
+td.desc .d1 { display: block; overflow-wrap: anywhere; }
+.mini td.mdesc { min-width: 280px; max-width: 520px; }
+.mscroll { overflow-x: auto; }
 td.mat { min-width: 180px; max-width: 280px; color: var(--fg-2); font-size: .78rem; }
 td.mat .m1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: .72rem; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
@@ -267,6 +340,18 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 #btn-filtros, #ord-cel { display: none; }
 body.cel #btn-filtros, body.cel #ord-cel { display: inline-flex; }
 body.cel .filters.recolhido { display: none; }
+/* celular: filtros em duas colunas, nome em cima */
+body.cel .filters:not(.recolhido) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
+body.cel .filters .fgroup { width: auto !important; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+body.cel .filters .fg-full { grid-column: 1 / -1; }
+body.cel .filters .flabel { min-width: 0 !important; }
+body.cel .filters .chip.dd { width: 100%; justify-content: space-between; padding: 7px 12px; font-size: .88rem; }
+body.cel .filters .seg { display: flex; }
+body.cel .filters .seg button { flex: 1; padding: 8px 4px; font-size: .84rem; }
+body.cel .filters .dt-par { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+body.cel .top-1 > .btn { flex: 1 1 0; padding: 9px 6px; font-size: .84rem; }
+body.cel #seg-modo { display: flex; flex: 1 1 100%; }
+body.cel #seg-modo button { flex: 1; padding: 6px; }
 body.cel .filters { padding-top: 4px; }
 body.cel .filters .fgroup { width: 100%; }
 body.cel .filters .flabel { min-width: 104px; }
@@ -279,7 +364,10 @@ body.cel::before { display: none; }
 body.cel .top-1 { gap: 10px; }
 body.cel .tscroll table, body.cel .tscroll tbody { display: block; }
 body.cel .tscroll thead { display: none; }
-body.cel .tscroll tr { display: block; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+body.cel .tscroll tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 14px; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+body.cel .tscroll td.desc, body.cel .tscroll td.cl, body.cel .tscroll td.mat, body.cel .tscroll td[colspan] { grid-column: 1 / -1; }
+body.cel .tscroll td div { min-width: 0 !important; max-width: none !important; }
+body.cel .tscroll td { text-align: left !important; }
 body.cel .tscroll td { display: block; border: 0; padding: 3px 0; min-width: 0; max-width: none; white-space: normal !important; }
 body.cel .tscroll td::before { content: attr(data-l); display: block; color: var(--fg-3); font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; }
 body.cel .tscroll td:empty, body.cel .tscroll td .nada:only-child { color: var(--fg-3); }
@@ -293,6 +381,25 @@ body.pc #app { min-width: 1000px; }
 .skpis div { display: flex; flex-direction: column; }
 .skpis b { font-family: var(--f-display); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .skpis span { font-size: .72rem; color: var(--fg-2); }
+.dt-par { display: inline-flex; gap: 6px; align-items: center; }
+.dt-par .ate { font-size: .78rem; color: var(--fg-2); }
+.chip.dtb { font-variant-numeric: tabular-nums; min-width: 104px; }
+.cal { width: min(310px, calc(100vw - 32px)); padding: 10px 10px 0; max-height: none !important; }
+.cal-t { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--label); font-weight: 700; margin: 0 2px 6px; }
+.cal-h { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; margin-bottom: 8px; }
+.cal-h .btn { padding: 4px 10px; font-size: 1rem; line-height: 1; }
+.cal-h select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; background: var(--surface-2); font-size: .86rem; min-width: 0; }
+.cal-h .btn[data-n="1"] { order: 4; }
+.cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; margin-bottom: 8px; }
+.cal-g .cw { font-size: .72rem; color: var(--fg-3); font-weight: 600; padding: 4px 0; }
+.cal-g .cd { border: 0; background: transparent; border-radius: 6px; padding: 8px 0; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.cal-g .cd:hover:not(:disabled) { background: var(--accent-soft); }
+.cal-g .cd.entre { background: var(--accent-soft); border-radius: 0; }
+.cal-g .cd.borda { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-g .cd.hoje { font-weight: 700; color: var(--accent); }
+.cal-g .cd.on { background: var(--accent); color: var(--surface); font-weight: 700; }
+.cal-g .cd:disabled { opacity: .3; cursor: default; }
+.cal .foot { margin: 0 -10px; }
 .dt-in { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 6px; font-size: .8rem; }
 .toast { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--surface); padding: 9px 14px; border-radius: 8px; font-size: .85rem; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
@@ -311,6 +418,7 @@ body.pc #app { min-width: 1000px; }
     <div class="brand">
       <!--LOGO--><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M16 15 16 30"/><path d="M12 30h8"/></g><g fill="var(--accent)"><path d="M16 14 C15 9 15.4 5 16.6 2 C17.6 5.5 17.4 9.5 16 14Z"/><path d="M16 14 C20.5 15.6 24 17.8 26 20.6 C22.4 20.4 18.6 18.4 16 14Z"/><path d="M16 14 C12.6 17.4 9.2 19.4 5.8 20.2 C7.8 17.2 11.4 15 16 14Z"/></g><circle cx="16" cy="14" r="1.8" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.2"/></svg><!--/LOGO-->
       <div><h1>Consulta de OMs</h1><small id="periodo">Carregando…</small></div>
+      <button type="button" class="ajuda-geral" id="como-usar">Como usar</button>
     </div>
     <label class="search" for="q">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg-3)" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="var(--fg-3)" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -325,6 +433,13 @@ body.pc #app { min-width: 1000px; }
   </div>
   <div class="wrap filters" id="filtros"></div>
   <div class="wrap active-bar" id="ativos"></div>
+  <nav class="wrap nav" id="nav" aria-label="Telas do painel">
+    <a href="#inicio" data-pg="inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Início</a>
+    <a href="#oms" data-pg="oms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>OMs</a>
+    <a href="#consumo" data-pg="consumo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Consumo</a>
+    <a href="#pendencias" data-pg="pendencias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>Pendências</a>
+    <a href="#top10" data-pg="top10"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>Top 10</a>
+  </nav>
 </header>
 
 <div class="app-scroll"><main class="wrap" id="app"><div class="loading">Carregando as OMs…</div></main></div>
@@ -359,7 +474,7 @@ var DADOS = /*__DADOS__*/null;
 
   var D, N, grupo, ano, mes, hay, consIni, consFim, pendDe, matOMs, pAt, hayP;
   var F = { q: [], parque: {}, ativo: {}, ano: {}, mes: {}, status: {}, tipo: {}, falha: {}, material: null, de: '', ate: '' };
-  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms' };
+  var UI = { rank: 'todas', mat: 'oms', soPecas: true, sort: { col: 'dt', dir: -1 }, page: 0, porPag: 25, vista: 'consulta', qf: 'todas', mapa: 'oms', pBusca: '', pSit: 'abertas', pIdade: '', cBusca: '', cSit: 'todos', top: 'corr', tela: 'inicio' };
   var sel = null; // índices filtrados
 
   function lerModo() { try { return localStorage.getItem('consulta-oms-modo'); } catch (e) { return null; } }
@@ -429,6 +544,8 @@ var DADOS = /*__DADOS__*/null;
     lerHash();
     montarFiltros();
     montarApp();
+    botoesAjuda();
+    aplicarTela();
     atualizar();
   }
 
@@ -482,8 +599,8 @@ var DADOS = /*__DADOS__*/null;
     h += '<div class="fgroup"><span class="flabel">Turbina</span><button type="button" class="chip dd" id="dd-ativo">Todas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Ano</span><button type="button" class="chip dd" id="dd-ano">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Mês</span><button type="button" class="chip dd" id="dd-mes">Todos</button></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Data de abertura</span><input type="date" class="dt-in" id="f-de" aria-label="De" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"><span style="font-size:.78rem;color:var(--fg-2)">até</span><input type="date" class="dt-in" id="f-ate" aria-label="Até" min="' + D.periodo[0] + '" max="' + D.periodo[1] + '"></div><span class="sep"></span>';
-    h += '<div class="fgroup"><span class="flabel">Situação</span><div class="seg" id="seg-sit" role="group" aria-label="Situação da OM"><button type="button" data-v="todas">Todas</button><button type="button" data-v="abertas">Só abertas</button><button type="button" data-v="fechadas">Só fechadas</button></div></div>';
+    h += '<div class="fgroup fg-full fg-data"><span class="flabel">Data de abertura</span><span class="dt-par"><button type="button" class="chip dd dtb" id="f-de" aria-label="Data inicial"></button><span class="ate">até</span><button type="button" class="chip dd dtb" id="f-ate" aria-label="Data final"></button></span></div><span class="sep"></span>';
+    h += '<div class="fgroup fg-full"><span class="flabel">Situação</span><div class="seg" id="seg-sit" role="group" aria-label="Situação da OM"><button type="button" data-v="todas">Todas</button><button type="button" data-v="abertas">Só abertas</button><button type="button" data-v="fechadas">Só fechadas</button></div></div>';
     h += '<div class="fgroup"><span class="flabel">Status</span><button type="button" class="chip dd" id="dd-status">Sem canceladas</button></div><span class="sep"></span>';
     h += '<div class="fgroup"><span class="flabel">Tipo de serviço</span><button type="button" class="chip dd" id="dd-tipo">Todos</button></div>';
     h += '<div class="fgroup"><span class="flabel">Falha / alarme</span><button type="button" class="chip dd" id="dd-falha">Todas</button></div>';
@@ -500,8 +617,8 @@ var DADOS = /*__DADOS__*/null;
     $('#dd-status').onclick = function (e) { abrirPop(e.currentTarget, 'status', 'Buscar status', D.status, function (i) { return D.O.st[i]; }); };
     $('#dd-tipo').onclick = function (e) { abrirPop(e.currentTarget, 'tipo', 'Buscar tipo de serviço', D.tipos, function (i) { return D.O.tp[i]; }); };
     $('#dd-falha').onclick = function (e) { abrirPop(e.currentTarget, 'falha', 'Buscar alarme (ex.: pitch, battery, 120)', D.falhas, function (i) { return D.O.fl[i]; }); };
-    $('#f-de').onchange = function (e) { F.de = e.target.value || ''; UI.page = 0; atualizar(); };
-    $('#f-ate').onchange = function (e) { F.ate = e.target.value || ''; UI.page = 0; atualizar(); };
+    $('#f-de').onclick = function (e) { abrirCalendario(e.currentTarget, 'de'); };
+    $('#f-ate').onclick = function (e) { abrirCalendario(e.currentTarget, 'ate'); };
     $('#filtros').onclick = (function (e) {
       var b = e.target.closest('[data-f]'); if (!b) return;
       var f = b.getAttribute('data-f'), v = b.getAttribute('data-v');
@@ -529,6 +646,8 @@ var DADOS = /*__DADOS__*/null;
     var padrao = mesmoConj(F.status, statusPadrao()), todos = ks.length === D.status.length;
     bs.setAttribute('aria-pressed', padrao || todos ? 'false' : 'true');
     bs.textContent = padrao ? 'Sem canceladas' : todos ? 'Todos' : !ks.length ? 'Nenhum' : ks.length === 1 ? curto(D.status[ks[0]], 26) : ks.length + ' selecionados';
+    $('#f-de').textContent = F.de ? dataBR(F.de) : 'Início'; $('#f-de').setAttribute('aria-pressed', !!F.de);
+    $('#f-ate').textContent = F.ate ? dataBR(F.ate) : 'Hoje'; $('#f-ate').setAttribute('aria-pressed', !!F.ate);
     rotuloDD('ativo', 'Todas', D.ativos); rotuloDD('tipo', 'Todos', D.tipos); rotuloDD('falha', 'Todas', D.falhas);
   }
   function chip(f, v, txt, c, cTitle) {
@@ -603,6 +722,55 @@ var DADOS = /*__DADOS__*/null;
     setTimeout(function () { document.addEventListener('mousedown', foraPop, true); }, 0);
   }
 
+  // calendário em português (o campo de data do celular segue o idioma do aparelho: mm/dd/yyyy)
+  var SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  function isoDe(y, m, d) { return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  function abrirCalendario(btn, qual) {
+    if (popEl && popEl._f === 'cal-' + qual) { fecharPop(); return; }
+    fecharPop();
+    var atual = F[qual] || (qual === 'de' ? (F.ate || D.periodo[1]) : (F.de || D.periodo[1]));
+    var vy = +atual.slice(0, 4), vm = +atual.slice(5, 7) - 1;
+    var y0 = +D.periodo[0].slice(0, 4), y1 = Math.max(+D.periodo[1].slice(0, 4), new Date().getFullYear());
+    var el = document.createElement('div'); el.className = 'pop cal'; el._f = 'cal-' + qual;
+    function desenhar() {
+      var anos = ''; for (var y = y0; y <= y1; y++) anos += '<option value="' + y + '"' + (y === vy ? ' selected' : '') + '>' + y + '</option>';
+      var meses = MESES_NOME.map(function (n, k) { return '<option value="' + k + '"' + (k === vm ? ' selected' : '') + '>' + n + '</option>'; }).join('');
+      var ini = new Date(vy, vm, 1).getDay(), dias = new Date(vy, vm + 1, 0).getDate(), hoje = new Date(), hIso = isoDe(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+      var g = SEMANA.map(function (d) { return '<span class="cw">' + d + '</span>'; }).join('');
+      for (var b = 0; b < ini; b++) g += '<span></span>';
+      for (var d = 1; d <= dias; d++) {
+        var iso = isoDe(vy, vm, d), cls = 'cd';
+        if (iso === F[qual]) cls += ' on';
+        else if (F.de && F.ate && iso > F.de && iso < F.ate) cls += ' entre';
+        else if (iso === F.de || iso === F.ate) cls += ' borda';
+        if (iso === hIso) cls += ' hoje';
+        var fora = (qual === 'ate' && F.de && iso < F.de) || (qual === 'de' && F.ate && iso > F.ate);
+        g += '<button type="button" class="' + cls + '" data-d="' + iso + '"' + (fora ? ' disabled' : '') + '>' + d + '</button>';
+      }
+      el.innerHTML = '<div class="cal-t">' + (qual === 'de' ? 'Abertas a partir de' : 'Abertas até') + '</div>' +
+        '<div class="cal-h"><button type="button" class="btn" data-n="-1" aria-label="Mês anterior">‹</button>' +
+        '<select data-s="m" aria-label="Mês">' + meses + '</select><select data-s="y" aria-label="Ano">' + anos + '</select>' +
+        '<button type="button" class="btn" data-n="1" aria-label="Próximo mês">›</button></div>' +
+        '<div class="cal-g">' + g + '</div>' +
+        '<div class="foot"><button type="button" class="btn" data-a="limpa">' + (qual === 'de' ? 'Desde o início' : 'Até hoje') + '</button><button type="button" class="btn" data-a="ok">Fechar</button></div>';
+    }
+    desenhar();
+    el.onclick = function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.getAttribute('data-n')) { vm += +t.getAttribute('data-n'); if (vm < 0) { vm = 11; vy--; } if (vm > 11) { vm = 0; vy++; } vy = Math.min(y1, Math.max(y0, vy)); desenhar(); return; }
+      if (t.getAttribute('data-d')) { F[qual] = t.getAttribute('data-d'); UI.page = 0; fecharPop(); atualizar(); return; }
+      var a = t.getAttribute('data-a');
+      if (a === 'limpa') { F[qual] = ''; UI.page = 0; fecharPop(); atualizar(); }
+      if (a === 'ok') fecharPop();
+    };
+    el.onchange = function (e) { var s2 = e.target.getAttribute('data-s'); if (s2 === 'm') vm = +e.target.value; if (s2 === 'y') vy = +e.target.value; desenhar(); };
+    document.body.appendChild(el); popEl = el;
+    var r = btn.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    el.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - h - 8)) + 'px';
+    el.style.left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16)) + 'px';
+    setTimeout(function () { document.addEventListener('mousedown', foraPop, true); }, 0);
+  }
+
   function barraAtivos() {
     var t = [];
     if (F.q.length) t.push(['q', null, 'Pesquisa: ' + $('#q').value]);
@@ -624,7 +792,7 @@ var DADOS = /*__DADOS__*/null;
     var f = b.getAttribute('data-rf'), v = b.getAttribute('data-rv');
     if (f === 'q') { $('#q').value = ''; F.q = []; }
     else if (f === 'material') { F.material = null; matOMs = null; }
-    else if (f === 'data') { F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = ''; }
+    else if (f === 'data') { F.de = F.ate = ''; }
     else if (f === 'status') F.status = statusPadrao();
     else delete F[f][v];
     UI.page = 0; atualizar();
@@ -637,7 +805,7 @@ var DADOS = /*__DADOS__*/null;
   $('#limpar').onclick = function () {
     if (!D) return;
     $('#q').value = ''; F.q = []; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null;
-    F.de = F.ate = ''; $('#f-de').value = ''; $('#f-ate').value = '';
+    F.de = F.ate = '';
     F.status = {}; var ic = D.status.indexOf('Canceladas'); D.status.forEach(function (_, k) { if (k !== ic) F.status[k] = 1; });
     UI.page = 0; atualizar();
   };
@@ -651,39 +819,67 @@ var DADOS = /*__DADOS__*/null;
   }
 
   // hash: guarda só a pesquisa e a turbina, para o link abrir filtrado
+  // telas (ícones): o endereço guarda só a tela, ex.: #pendencias
+  var TELAS = {
+    inicio: { h: 'Painel completo', p: '', abas: ['consulta', 'conf', 'cons', 'pend'] },
+    oms: { h: 'OMs', p: 'Ordens de manutenção com os filtros do topo: indicadores, ranking, evolução mensal, Curva S e a tabela de consulta.', abas: ['consulta', 'conf'] },
+    consumo: { h: 'Consumo de material', p: 'Cada material consumido nas OMs filtradas, com custo, quantidade e conferência com o serviço executado.', abas: ['cons'] },
+    pendencias: { h: 'Pendências', p: 'Pendências do Manusis: quem tem mais abertas e a pesquisa só nas pendências.', abas: ['pend'] },
+    top10: { h: 'Top 10 mais impactadas', p: 'As turbinas que mais pedem atenção, pela medida escolhida.', abas: [] }
+  };
   function lerHash() {
-    var h = decodeURIComponent((location.hash || '').slice(1));
-    if (h && /^[\w-]+$/.test(h)) { var k = D.ativos.indexOf(h.replace(/_/g, ' ')); if (k >= 0) F.ativo[k] = 1; }
+    var h = (location.hash || '').slice(1);
+    UI.tela = TELAS[h] ? h : 'inicio';
   }
+  function aplicarTela() {
+    var t = TELAS[UI.tela];
+    document.body.setAttribute('data-tela', UI.tela);
+    [].forEach.call(document.querySelectorAll('[data-pg]'), function (el) {
+      if (el.tagName === 'A') { if (el.getAttribute('data-pg') === UI.tela) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); return; }
+      el.hidden = el.getAttribute('data-pg').split(' ').indexOf(UI.tela) < 0;
+    });
+    [].forEach.call(document.querySelectorAll('#tabs [data-v]'), function (b) { b.hidden = t.abas.indexOf(b.getAttribute('data-v')) < 0; });
+    $('#tabs').hidden = t.abas.length < 2;
+    if (t.abas.length && t.abas.indexOf(UI.vista) < 0) { UI.vista = t.abas[0]; UI.page = 0; UI.sort = { col: UI.vista === 'pend' ? 'pdt' : UI.vista === 'cons' ? 'cd' : 'dt', dir: -1 }; }
+    $('#pg-h').textContent = t.h; $('#pg-p').textContent = t.p;
+  }
+  window.addEventListener('hashchange', function () { if (!D) return; lerHash(); aplicarTela(); atualizar(); window.scrollTo(0, 0); });
 
   // ---------------- página ----------------
   function montarApp() {
     $('#app').innerHTML =
+      '<div class="pg-titulo" id="pg-titulo" data-pg="oms consumo pendencias top10"><div><h2 id="pg-h"></h2><p id="pg-p"></p></div></div>' +
+      '<section class="card panel" id="p-leitura" data-pg="inicio" aria-label="Leitura rápida"><div class="ph"><div><h2 data-aj="leitura">Leitura rápida</h2><p>O que pede atenção agora, com os filtros do topo · toque numa linha para ir ao detalhe</p></div></div><div class="leitura" id="c-leitura"></div></section>' +
       '<section class="kpis" aria-label="Indicadores">' +
-        '<div class="card kpi" id="k-om"></div><div class="card kpi" id="k-custo"></div><div class="card kpi" id="k-pend"></div><div class="card kpi" id="k-wtg"></div>' +
+        '<div class="card kpi" id="k-om" data-pg="inicio oms top10"></div><div class="card kpi" id="k-custo" data-pg="inicio consumo"></div><div class="card kpi" id="k-pend" data-pg="inicio pendencias"></div><div class="card kpi" id="k-wtg" data-pg="inicio oms top10"></div><div class="card kpi" id="k-tempo" data-pg="oms"></div>' +
       '</section>' +
-      '<section class="card panel" aria-label="Mapa das turbinas"><div class="ph"><div><h2>Mapa das turbinas</h2><p>Cada quadrado é um aerogerador, na sua posição no parque (esquema, não geográfico) · toque para filtrar a turbina</p></div>' +
+      '<section class="card panel" id="p-idade" data-pg="pendencias" aria-label="Idade das pendências abertas"><div class="ph"><div><h2 data-aj="idade">Há quanto tempo as pendências estão abertas</h2><p>Pendências abertas (pendente + em execução) por idade · toque numa faixa para ver a lista</p></div></div><div class="faixas" id="c-idade"></div><div id="c-hse" style="margin-top:8px"></div></section>' +
+      '<section class="card panel" id="p-atras" data-pg="oms" aria-label="Preventivas atrasadas"><div class="ph"><div><h2 data-aj="atras">Preventivas atrasadas por turbina</h2><p id="atras-sub"></p></div><button type="button" class="btn" id="atras-todas">Ver todas na tabela</button></div><div class="lista-g" id="c-atras"></div></section>' +
+      '<section class="card panel" id="p-corrigir" data-pg="consumo" aria-label="Corrigir no Manusis"><div class="ph"><div><h2 data-aj="corrigir">Corrigir no Manusis</h2><p>Lançamentos que deixam o custo e o estoque errados · com os filtros do topo</p></div></div><div class="corrigir" id="c-corrigir"></div></section>' +
+      '<section class="card panel" id="p-top" data-pg="top10" aria-label="Top 10 turbinas mais impactadas"><div class="ph"><div><h2 data-aj="top">Top 10 turbinas mais impactadas</h2><p>Com os filtros do topo · toque numa turbina para ver as OMs dela</p></div>' +
+        '<div class="seg" id="seg-top"></div></div><div class="top10" id="c-top"></div></section>' +
+      '<section class="card panel" data-pg="inicio top10" aria-label="Mapa das turbinas"><div class="ph"><div><h2 data-aj="mapa">Mapa das turbinas</h2><p>Cada quadrado é um aerogerador, na sua posição no parque (esquema, não geográfico) · toque para filtrar a turbina</p></div>' +
         '<select id="mapa-met" class="dt-in" aria-label="O que o mapa mostra"></select></div>' +
         '<div id="c-mapa"></div></section>' +
       '<section class="viz">' +
-        '<div class="card panel p-rank"><div class="ph"><div><h2>Ranking de turbinas</h2><p>Turbinas com mais OMs · toque para filtrar</p></div>' +
+        '<div class="card panel p-rank" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="rank">Ranking de turbinas</h2><p>Turbinas com mais OMs · toque para filtrar</p></div>' +
           '<div class="seg" id="seg-rank"><button type="button" data-v="todas">Todas</button><button type="button" data-v="corr">Só corretivas</button></div></div>' +
           '<div class="legend" id="leg-rank"></div><div class="chart" id="c-rank"></div></div>' +
-        '<div class="card panel p-mes"><div class="ph"><div><h2>Evolução mensal</h2><p>OMs por mês de abertura · toque num mês para filtrar</p></div></div>' +
+        '<div class="card panel p-mes" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="mes">Evolução mensal</h2><p>OMs por mês de abertura · toque num mês para filtrar</p></div></div>' +
           '<div class="legend" id="leg-mes"></div><div class="chart" id="c-mes"></div></div>' +
-        '<div class="card panel p-mat"><div class="ph"><div><h2>Materiais mais usados</h2><p>Consumo de materiais das OMs filtradas · toque para filtrar</p></div>' +
+        '<div class="card panel p-mat" data-pg="inicio consumo"><div class="ph"><div><h2 data-aj="mat">Materiais mais usados</h2><p>Consumo de materiais das OMs filtradas · toque para filtrar</p></div>' +
           '<div class="seg" id="seg-mat"><button type="button" data-v="oms">Nº de OMs</button><button type="button" data-v="custo">Custo</button></div></div>' +
           '<label class="chk"><input type="checkbox" id="so-pecas"> Só peças (sem graxa, óleo, trapo e frascos)</label>' +
           '<div class="mlist" id="c-mat"></div></div>' +
       '</section>' +
       '<section class="viz2">' +
-        '<div class="card panel"><div class="ph"><div><h2>Curva S das preventivas</h2><p id="s-sub"></p></div></div>' +
+        '<div class="card panel" data-pg="inicio oms"><div class="ph"><div><h2 data-aj="curva">Curva S das preventivas</h2><p id="s-sub"></p></div></div>' +
           '<div class="skpis" id="s-kpis"></div><div class="legend" id="leg-s"></div><div class="chart" id="c-s"></div></div>' +
-        '<div class="card panel"><div class="ph"><div><h2>Pendências abertas por pessoa</h2><p>Pendente + Em execução, por quem registrou (coluna "Usuário") · toque para ver a lista</p></div></div>' +
+        '<div class="card panel" data-pg="inicio pendencias"><div class="ph"><div><h2 data-aj="pessoas">Pendências abertas por pessoa</h2><p>Pendente + Em execução, por quem registrou (coluna "Usuário") · toque para ver a lista</p></div></div>' +
           '<div class="skpis" id="p-kpis"></div><div class="legend" id="leg-p"></div><div class="chart" id="c-p"></div></div>' +
       '</section>' +
-      '<section class="card tpanel" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
-          '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button></div>' +
+      '<section class="card tpanel" data-pg="inicio oms consumo pendencias" aria-label="Tabelas de consulta"><div class="tabs" role="tablist" id="tabs">' +
+          '<button type="button" role="tab" data-v="consulta">Consulta rápida</button><button type="button" role="tab" data-v="conf">Materiais e pendências</button><button type="button" role="tab" data-v="cons">Consumo</button><button type="button" role="tab" data-v="pend">Pendências</button></div>' +
         '<div class="ph"><div><p id="t-sub"></p></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ord-cel" class="dt-in" aria-label="Ordenar"></select>' +
         '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div>' +
@@ -705,7 +901,7 @@ var DADOS = /*__DADOS__*/null;
     $('#mapa-met').value = UI.mapa;
     $('#mapa-met').onchange = function (e) { UI.mapa = e.target.value; desenharMapa(); };
     $('#ord-cel').onchange = function (e) { var v = e.target.value.split('|'); UI.sort = { col: v[0], dir: +v[1] }; UI.page = 0; desenharTabela(); };
-    $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: 'dt', dir: -1 }; desenharTabela(); } };
+    $('#tabs').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v && v !== UI.vista) { UI.vista = v; UI.page = 0; UI.sort = { col: v === 'pend' ? 'pdt' : v === 'cons' ? 'cd' : 'dt', dir: -1 }; desenharTabela(); } };
     $('#qf').onclick = function (e) { var b = e.target.closest('[data-q]'); if (b) { var v = b.getAttribute('data-q'); UI.qf = UI.qf === v ? 'todas' : v; UI.page = 0; desenharTabela(); } };
     document.querySelector('.tpanel thead').onclick = function (e) {
       var th = e.target.closest('th'); if (!th) return;
@@ -713,18 +909,21 @@ var DADOS = /*__DADOS__*/null;
       UI.sort = { col: c, dir: UI.sort.col === c ? -UI.sort.dir : (/^(dt|om|mat|pend|cons|nc|pp|np)$/.test(c) ? -1 : 1) };
       UI.page = 0; desenharTabela();
     };
-    $('#tb').onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); };
+    $('#tb').onclick = function (e) {
+      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om')); return; }
+      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'));
+    };
     $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
     if (montarApp.feito) return; montarApp.feito = true;
-    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
+    var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
 
   function atualizar(semFecharPop) {
     if (!semFecharPop) fecharPop();
     filtrar();
     chipsFiltro(); barraAtivos();
-    desenharKPIs(); desenharMapa(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
-    try { history.replaceState(null, '', Object.keys(F.ativo).length === 1 ? '#' + D.ativos[Object.keys(F.ativo)[0]].replace(/[^\w-]/g, '_') : location.pathname + location.search); } catch (e) {}
+    desenharKPIs(); desenharLeitura(); desenharIdade(); desenharAtrasadas(); desenharCorrigir(); desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharMat(); desenharCurva(); desenharPessoas(); desenharTabela();
+
   }
 
   function custoOM(i) {
@@ -745,21 +944,33 @@ var DADOS = /*__DADOS__*/null;
     });
     var tot = sel.length;
     var sp = function (n, cor) { return tot ? '<i style="width:' + (100 * n / tot) + '%;background:var(' + cor + ')"></i>' : ''; };
-    $('#k-om').innerHTML = '<span class="k-lab">OMs filtradas</span><span class="k-val">' + fmtN.format(tot) + '</span>' +
+    $('#k-om').innerHTML = '<span class="k-lab">OMs filtradas<button type="button" class="ajuda" data-ajk="om" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(tot) + '</span>' +
       '<span class="k-sub"><button type="button" class="k-sit" data-sit="fechadas" title="Ver só as fechadas"><span class="dot" style="background:var(--s-fechada)"></span><b class="num">' + fmtN.format(g[0]) + '</b> fechadas</button>' +
       '<button type="button" class="k-sit" data-sit="abertas" title="Ver só as abertas"><span class="dot" style="background:var(--s-aberta)"></span><b class="num">' + fmtN.format(g[1]) + '</b> em aberto</button>' +
       (g[2] ? '<span><span class="dot" style="background:var(--s-cancel)"></span><b class="num">' + fmtN.format(g[2]) + '</b> canceladas</span>' : '') + '</span>' +
       '<div class="split" title="Fechadas × em aberto">' + sp(g[0], '--s-fechada') + sp(g[1], '--s-aberta') + sp(g[2], '--s-cancel') + '</div>';
-    $('#k-custo').innerHTML = '<span class="k-lab">Custo total de materiais</span><span class="k-val" title="' + fmtR2.format(custo) + '">' + compacto(custo) + '</span>' +
+    $('#k-custo').innerHTML = '<span class="k-lab">Custo total de materiais<button type="button" class="ajuda" data-ajk="custo" aria-label="O que é isso?">?</button></span><span class="k-val" title="' + fmtR2.format(custo) + '">' + compacto(custo) + '</span>' +
       '<span class="k-sub"><span><b class="num">' + fmtN.format(comMat) + '</b> OMs com material</span><span><b class="num">' + fmtN.format(itens) + '</b> consumos</span></span>' +
       (susN ? '<span class="warn" title="Ex.: óleo cadastrado por litro com o preço do tambor. Corrija o cadastro no Manusis para entrar no total.">' + fmtN.format(susN) + ' consumo(s) com preço unitário fora do padrão ficaram fora do total (' + compacto(susV) + ')</span>' : '');
     var pk = Object.keys(pend), ps = {};
     pk.forEach(function (p) { var s = D.statusPend[D.P.st[p]]; ps[s] = (ps[s] || 0) + 1; });
-    $('#k-pend').innerHTML = '<span class="k-lab">Pendências registradas</span><span class="k-val">' + fmtN.format(pk.length) + '</span>' +
+    $('#k-pend').innerHTML = '<span class="k-lab">Pendências registradas<button type="button" class="ajuda" data-ajk="pend" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(pk.length) + '</span>' +
       '<span class="k-sub">' + Object.keys(ps).sort(function (a, b) { return ps[b] - ps[a]; }).map(function (s) { return '<span><b class="num">' + fmtN.format(ps[s]) + '</b> ' + esc(s.toLowerCase()) + '</span>'; }).join('') + '</span>' +
       '<span class="k-sub" style="font-size:.74rem;color:var(--fg-3)">Ligadas às OMs filtradas (OM de origem ou de execução) · ' + fmtN.format(D.P.n.length) + ' na planilha</span>';
+    var tf = { n: 0, s: 0, c: [0, 0], p: [0, 0] };
+    sel.forEach(function (i) {
+      if (grupo[i] !== 0 || !D.O.dt[i] || !D.O.df[i]) return;
+      var d = (Date.parse(D.O.df[i]) - Date.parse(D.O.dt[i])) / 864e5; if (d < 0) return;
+      tf.n++; tf.s += d;
+      var tp = D.tipos[D.O.tp[i]];
+      if (/corre(c)?ti/i.test(tp)) { tf.c[0] += d; tf.c[1]++; } else if (/prevent/i.test(tp)) { tf.p[0] += d; tf.p[1]++; }
+    });
+    var md = function (a) { return a[1] ? fmtN.format(Math.round(a[0] / a[1])) + ' dias' : '—'; };
+    $('#k-tempo').innerHTML = '<span class="k-lab">Tempo médio para fechar<button type="button" class="ajuda" data-ajk="tempo" aria-label="O que é isso?">?</button></span><span class="k-val">' + (tf.n ? fmtN.format(Math.round(tf.s / tf.n)) : '—') + ' <span style="font-size:1rem;font-weight:500">dias</span></span>' +
+      '<span class="k-sub"><span>Corretivas: <b>' + md(tf.c) + '</b></span><span>Preventivas: <b>' + md(tf.p) + '</b></span></span>' +
+      '<span class="k-sub" style="font-size:.74rem;color:var(--fg-3)">Da abertura ao fechamento, nas ' + fmtN.format(tf.n) + ' OMs fechadas filtradas</span>';
     var wk = Object.keys(wtg), top = wk.sort(function (a, b) { return wtg[b] - wtg[a]; })[0];
-    $('#k-wtg').innerHTML = '<span class="k-lab">Turbinas com OM</span><span class="k-val">' + fmtN.format(wk.length) + '</span>' +
+    $('#k-wtg').innerHTML = '<span class="k-lab">Turbinas com OM<button type="button" class="ajuda" data-ajk="wtg" aria-label="O que é isso?">?</button></span><span class="k-val">' + fmtN.format(wk.length) + '</span>' +
       '<span class="k-sub">' + (top !== undefined ? '<span>Mais OMs: <b>' + esc(D.ativos[top]) + '</b> (' + fmtN.format(wtg[top]) + ')</span>' : '<span>—</span>') + '</span>' +
       '<span class="k-sub"><span>Média de <b class="num">' + (wk.length ? fmtQ.format(tot / wk.length) : 0) + '</b> OMs por turbina</span></span>';
   }
@@ -784,7 +995,7 @@ var DADOS = /*__DADOS__*/null;
     var segs = $('#seg-rank').children; for (var s = 0; s < segs.length; s++) segs[s].setAttribute('aria-pressed', segs[s].getAttribute('data-v') === UI.rank);
     var c = {}, tem = [0, 0, 0];
     sel.forEach(function (i) {
-      if (UI.rank === 'corr' && !/corret/i.test(D.tipos[D.O.tp[i]])) return;
+      if (UI.rank === 'corr' && !/corre(c)?ti/i.test(D.tipos[D.O.tp[i]])) return;
       var a = D.O.at[i]; var r = c[a] || (c[a] = [0, 0, 0, 0]); r[grupo[i]]++; r[3]++; tem[grupo[i]] = 1;
     });
     var top = Object.keys(c).sort(function (a, b) { return c[b][3] - c[a][3]; }).slice(0, 15);
@@ -936,6 +1147,8 @@ var DADOS = /*__DADOS__*/null;
     }
   }
   var COLS = {
+    cons: [['cd', 'Usado em'], ['com', 'OM'], ['cat', 'Ativo (WTG)'], ['cmat', 'Material'], ['cq', 'Quantidade'], ['cv', 'Custo'], ['ccf', 'Conferência']],
+    pend: [['pom', 'OM'], ['pst', 'Status'], ['pdt', 'Abertura'], ['pdias', 'Dias em aberto'], ['pat', 'Ativo (WTG)'], ['pdesc', 'Descrição da pendência'], ['pus', 'Registrada por']],
     consulta: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Data de abertura'], ['st', 'Status'], ['tp', 'Tipo de serviço'], ['desc', 'Descrição'], ['mat', 'Materiais usados'], ['pend', 'Pendências']],
     conf: [['om', 'Nº de ordem'], ['at', 'Ativo (WTG)'], ['dt', 'Abertura'], ['st', 'Status'], ['cons', 'Consumido'], ['nc', 'Não consumido'], ['pp', 'Pendente'], ['np', 'Não pendente'], ['se', 'Conferência']]
   };
@@ -982,12 +1195,155 @@ var DADOS = /*__DADOS__*/null;
       '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
       '<td style="white-space:nowrap;font-weight:500">' + esc(D.ativos[O.at[i]]) + '</td>' +
       '<td class="num" style="white-space:nowrap">' + dataBR(O.dt[i]) + '</td>' +
-      '<td><span class="pill ' + ['f', 'a', 'c'][g] + '">' + esc(D.status[O.st[i]]) + '</span><div class="d1" style="margin-top:4px;font-size:.74rem;color:var(--fg-2);max-width:220px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + realce(O.desc[i]) + '</div></td>' +
+      '<td><span class="pill ' + ['f', 'a', 'c'][g] + '">' + esc(D.status[O.st[i]]) + '</span><div style="margin-top:4px;font-size:.74rem;color:var(--fg-2);min-width:260px;max-width:420px">' + realce(O.desc[i]) + '</div></td>' +
       '<td class="cl">' + lista(cons, 4) + (cons.length ? '<div class="num" style="font-size:.76rem;margin-top:2px">' + fmtR.format(custoOM(i).v) + '</div>' : '') + '</td>' +
       '<td class="cl">' + lista(nc, 4) + '</td>' +
       '<td class="cl">' + lista(ps[0].map(pl), 3) + '</td>' +
       '<td class="cl">' + lista(ps[1].map(pl), 3) + '</td>' +
       '<td>' + (se ? '<span class="selo ' + se.cls + '" title="' + esc(se.dica) + '">' + se.ic + ' ' + se.rot + '</span>' : '<span class="nada" title="Sem troca de peça descrita e sem peça consumida">—</span>') + '</td></tr>';
+  }
+  // ---- aba Consumo: uma linha por material consumido ----
+  var CSIT = [['todos', 'Todos'], ['pecas', 'Só peças'], ['consum', 'Material de consumo'], ['semtexto', 'Peça sem troca no texto'], ['preco', 'Preço fora do padrão']];
+  var CF_ROT = ['Bate com a troca descrita', 'Peça sem troca no texto', 'Material de consumo', 'Tipo não reconhecido'];
+  var hayC = null;
+  function filtroSitCons(v) {
+    var C = D.C;
+    return v === 'pecas' ? function (k) { return C.cf[k] !== 2; } : v === 'consum' ? function (k) { return C.cf[k] === 2; } :
+      v === 'semtexto' ? function (k) { return C.cf[k] === 1; } : v === 'preco' ? function (k) { return C.s[k] === 1; } : function () { return true; };
+  }
+  function consDaAba() {
+    var C = D.C, tq = termos(UI.cBusca), out = [];
+    if (!hayC) hayC = C.m.map(function (m, k) { return norm(D.materiais[m] + ' ' + omLabel(D.O.om[C.o[k]]) + ' ' + D.ativos[D.O.at[C.o[k]]]); });
+    sel.forEach(function (i) {
+      if (consIni[i] < 0) return;
+      for (var k = consIni[i]; k < consFim[i]; k++) {
+        var ok = true; for (var t = 0; t < tq.length; t++) if (hayC[k].indexOf(tq[t]) < 0) { ok = false; break; }
+        if (ok) out.push(k);
+      }
+    });
+    return out;
+  }
+  function chaveCons(k, c) {
+    var C = D.C;
+    switch (c) {
+      case 'cd': return C.d[k] || '';
+      case 'com': return D.O.om[C.o[k]];
+      case 'cat': return D.ativos[D.O.at[C.o[k]]];
+      case 'cmat': return partesMaterial(D.materiais[C.m[k]]).nome;
+      case 'cq': return C.q[k];
+      case 'cv': return C.v[k];
+      case 'ccf': return C.s[k] ? 9 : C.cf[k];
+    }
+  }
+  function linhaCons(k) {
+    var C = D.C, i = C.o[k], pm = partesMaterial(D.materiais[C.m[k]]), tq = termos(UI.cBusca);
+    var cf = C.cf[k], cls = cf === 0 ? 'f' : cf === 1 ? 'a' : 'c';
+    return '<tr data-i="' + i + '" tabindex="0">' +
+      '<td class="num" style="white-space:nowrap">' + dataBR(C.d[k]) + '</td>' +
+      '<td class="mono" style="white-space:nowrap">' + realce(omLabel(D.O.om[i]), tq) + '</td>' +
+      '<td style="white-space:nowrap;font-weight:500">' + realce(D.ativos[D.O.at[i]], tq) + '</td>' +
+      '<td class="desc">' + realce(pm.nome, tq) + (pm.cod ? ' <span class="mono" style="color:var(--fg-3);font-size:.72rem">' + realce(pm.cod, tq) + '</span>' : '') + '</td>' +
+      '<td class="num" style="white-space:nowrap;text-align:right">' + fmtQ.format(C.q[k]) + ' ' + esc(C.u[k]) + '</td>' +
+      '<td class="num" style="white-space:nowrap;text-align:right">' + fmtR2.format(C.v[k]) + (C.s[k] ? '<div><span class="flag">fora do total</span></div>' : '') + '</td>' +
+      '<td><span class="pill ' + cls + '">' + CF_ROT[cf] + '</span></td></tr>';
+  }
+  function barraCons() {
+    if (!$('#pq-cons')) {
+      $('#qf').innerHTML = '<label class="search" for="pq-cons" style="flex:1 1 320px;max-width:520px"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg-3)" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="var(--fg-3)" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+        '<input id="pq-cons" type="search" autocomplete="off" placeholder="Pesquisar material: bateria, escova, MOM_0012669, OM 15412…" aria-label="Pesquisar no consumo de material"></label><span id="cons-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>';
+      $('#pq-cons').value = UI.cBusca;
+      var tc;
+      $('#pq-cons').oninput = function (e) { clearTimeout(tc); tc = setTimeout(function () { UI.cBusca = e.target.value; UI.page = 0; desenharTabela(); }, 180); };
+      $('#cons-chips').onclick = function (e) { var b = e.target.closest('[data-cs]'); if (b) { UI.cSit = b.getAttribute('data-cs'); UI.page = 0; desenharTabela(); } };
+    }
+    var base = consDaAba();
+    $('#cons-chips').innerHTML = CSIT.map(function (o) {
+      var f = filtroSitCons(o[0]), n = 0, v = 0; base.forEach(function (k) { if (f(k)) { n++; if (!D.C.s[k]) v += D.C.v[k]; } });
+      return '<button type="button" class="chip sm" data-cs="' + o[0] + '" aria-pressed="' + (UI.cSit === o[0]) + '" title="' + compacto(v) + '">' + esc(o[1]) + '<span class="c num">' + fmtN.format(n) + '</span></button>';
+    }).join('');
+    var f = filtroSitCons(UI.cSit);
+    return base.filter(function (k) { return f(k); });
+  }
+
+  // ---- aba Pendências: pesquisa só nas pendências ----
+  var PSIT = [['abertas', 'Abertas (pendente + em execução)'], ['todas', 'Todas']];
+  function diasPend(k) {
+    var d = D.P.dt[k]; if (!d) return '';
+    if (!PEND_ABERTA(k) && !D.P.dc[k]) return '';
+    var fim = PEND_ABERTA(k) ? (D.gerado || D.periodo[1]) : D.P.dc[k];
+    return Math.max(0, Math.round((Date.parse(fim) - Date.parse(d)) / 864e5));
+  }
+  function omDaPend(k) { return D.P.exe[k] >= 0 ? D.P.exe[k] : D.P.ori[k]; }
+  function chavePend(k, c) {
+    var P = D.P;
+    switch (c) {
+      case 'pn': return +P.n[k] || 0;
+      case 'pst': return D.statusPend[P.st[k]];
+      case 'pdt': return P.dt[k] || '';
+      case 'pdias': var x = diasPend(k); return x === '' ? -1 : x;
+      case 'pat': return P.at[k];
+      case 'pdesc': return P.desc[k].toLowerCase();
+      case 'pus': return P.us[k];
+      case 'pom': var o = omDaPend(k); return o >= 0 ? D.O.om[o] : 0;
+    }
+  }
+  // com pesquisa, mostra o trecho onde a palavra aparece (o texto da pendência costuma ser longo)
+  function trechoBusca(txt, tq) {
+    if (!tq.length) return txt;
+    var n = norm(txt), pos = -1;
+    tq.forEach(function (t) { var k = n.indexOf(t); if (k >= 0 && (pos < 0 || k < pos)) pos = k; });
+    if (pos < 90) return txt;
+    var ini = txt.lastIndexOf(' ', pos - 40); ini = ini < 0 ? pos - 40 : ini + 1;
+    return '…' + txt.slice(ini);
+  }
+  function pendDaAba() {
+    var tq = termos(UI.pBusca), base = pendFiltradas(false, true);
+    if (tq.length) base = base.filter(function (k) { for (var t = 0; t < tq.length; t++) if (hayP[k].indexOf(tq[t]) < 0) return false; return true; });
+    return base;
+  }
+  function filtroSitPend(v) {
+    if (v === 'todas') return function () { return true; };
+    if (v === 'abertas') return PEND_ABERTA;
+    return function (k) { return String(D.P.st[k]) === String(v); };
+  }
+  function linhaPend(k) {
+    var P = D.P, o = omDaPend(k), aberta = PEND_ABERTA(k), dias = diasPend(k), tq = termos(UI.pBusca);
+    var oms = [];
+    if (P.ori[k] >= 0) oms.push('<button type="button" class="btn" data-om="' + P.ori[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de origem">' + omLabel(D.O.om[P.ori[k]]) + '</button>');
+    if (P.exe[k] >= 0 && P.exe[k] !== P.ori[k]) oms.push('<button type="button" class="btn" data-om="' + P.exe[k] + '" style="padding:1px 6px;font-size:.72rem;white-space:nowrap" title="OM de execução">' + omLabel(D.O.om[P.exe[k]]) + ' <span class="nada">exec.</span></button>');
+    return '<tr' + (o >= 0 ? ' data-i="' + o + '" tabindex="0"' : '') + '>' +
+      '<td style="white-space:nowrap">' + (oms.length ? oms.join('<br>') : '<span class="nada">sem OM</span>') + '<div class="nada mono" style="font-size:.7rem;margin-top:3px">pend. ' + realce(P.n[k], tq) + '</div></td>' +
+      '<td><span class="pill ' + (aberta ? 'a' : /conclu/i.test(D.statusPend[P.st[k]]) ? 'f' : 'c') + '">' + esc(D.statusPend[P.st[k]]) + '</span></td>' +
+      '<td class="num" style="white-space:nowrap">' + dataBR(P.dt[k]) + '</td>' +
+      '<td class="num" style="white-space:nowrap' + (aberta && dias > 90 ? ';color:var(--bad);font-weight:600' : '') + '">' + (dias === '' ? '<span class="nada">—</span>' : dias) + (aberta || !P.dc[k] ? '' : ' <span class="nada">(fechou ' + dataBR(P.dc[k]) + ')</span>') + '</td>' +
+      '<td style="white-space:nowrap;font-weight:500">' + realce(P.at[k], tq) + '</td>' +
+      '<td class="desc"><div class="d1">' + realce(P.desc[k], tq) + '</div></td>' +
+      '<td style="color:var(--fg-2);white-space:nowrap" title="' + esc(P.us[k]) + '">' + realce(nomeCurto(P.us[k]), tq) + '</td></tr>';
+  }
+  function barraPend() {
+    if (!$('#pq-pend')) {
+      $('#qf').innerHTML = '<label class="search" for="pq-pend" style="flex:1 1 320px;max-width:520px"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg-3)" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="var(--fg-3)" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+        '<input id="pq-pend" type="search" autocomplete="off" placeholder="Pesquisar só nas pendências: escada, HSE, iluminação, 3665…" aria-label="Pesquisar só nas pendências"></label><span id="pend-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>';
+      $('#pq-pend').value = UI.pBusca;
+      var tp;
+      $('#pq-pend').oninput = function (e) { clearTimeout(tp); tp = setTimeout(function () { UI.pBusca = e.target.value; UI.page = 0; desenharTabela(); }, 180); };
+      $('#pend-chips').onclick = function (e) { var b = e.target.closest('[data-ps]'); if (b) { UI.pSit = b.getAttribute('data-ps'); UI.page = 0; desenharTabela(); } };
+    }
+    var base = pendDaAba(), opc = PSIT.slice();
+    D.statusPend.forEach(function (sn, j) { opc.push([String(j), sn]); });
+    $('#pend-chips').innerHTML = opc.map(function (o) {
+      var f = filtroSitPend(o[0]), n = 0; base.forEach(function (k) { if (f(k)) n++; });
+      return '<button type="button" class="chip sm" data-ps="' + o[0] + '" aria-pressed="' + (UI.pSit === o[0]) + '">' + esc(o[1]) + '<span class="c num">' + fmtN.format(n) + '</span></button>';
+    }).join('');
+    var f = filtroSitPend(UI.pSit);
+    var lista = base.filter(function (k) { return f(k); });
+    if (UI.pIdade) {
+      lista = lista.filter(function (k) { var d = idadeDias(D.P.dt[k]); return d !== null && faixaDe(d) === UI.pIdade; });
+      var fx = FAIXAS.filter(function (x) { return x[0] === UI.pIdade; })[0];
+      $('#pend-chips').insertAdjacentHTML('beforeend', '<span class="tag">Idade: ' + fx[1].toLowerCase() + '<button type="button" aria-label="Tirar filtro de idade" data-pidade="1">×</button></span>');
+      $('#pend-chips').querySelector('[data-pidade]').onclick = function (e) { e.stopPropagation(); UI.pIdade = ''; UI.page = 0; desenharIdade(); desenharTabela(); };
+    }
+    return lista;
   }
   function desenharTabela() {
     var cols = COLS[UI.vista];
@@ -1002,11 +1358,14 @@ var DADOS = /*__DADOS__*/null;
         return '<button type="button" class="chip sm" data-q="' + q[0] + '" aria-pressed="' + (UI.qf === q[0]) + '">' + q[1] + '<span class="c num">' + fmtN.format(n) + '</span></button>';
       }).join('');
       base = sel.filter(function (i) { return f[2](i); });
-    } else $('#qf').hidden = true;
+    } else if (UI.vista === 'pend') { $('#qf').hidden = false; base = barraPend(); }
+    else if (UI.vista === 'cons') { $('#qf').hidden = false; base = barraCons(); }
+    else $('#qf').hidden = true;
     var s = UI.sort, ths = document.querySelectorAll('.tpanel th');
     ths.forEach(function (th) { th.setAttribute('aria-sort', th.getAttribute('data-s') === s.col ? (s.dir > 0 ? 'ascending' : 'descending') : 'none'); });
     var pp = $('#seg-pp').children; for (var j = 0; j < pp.length; j++) pp[j].setAttribute('aria-pressed', +pp[j].getAttribute('data-v') === UI.porPag);
-    var chaves = new Map(); base.forEach(function (i) { chaves.set(i, chaveSort(i, s.col)); });
+    var chaves = new Map(), chaveDe = UI.vista === 'pend' ? chavePend : UI.vista === 'cons' ? chaveCons : chaveSort;
+    base.forEach(function (i) { chaves.set(i, chaveDe(i, s.col)); });
     var ord = base.slice().sort(function (a, b) {
       var x = chaves.get(a), y = chaves.get(b);
       return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true })) * s.dir;
@@ -1017,11 +1376,13 @@ var DADOS = /*__DADOS__*/null;
     oc.value = ov;
     var pags = Math.max(1, Math.ceil(ord.length / UI.porPag)); UI.page = Math.min(UI.page, pags - 1);
     var pag = ord.slice(UI.page * UI.porPag, (UI.page + 1) * UI.porPag), O = D.O;
-    $('#t-sub').textContent = fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
+    $('#t-sub').textContent = UI.vista === 'cons' ? (function () { var v = 0; ord.forEach(function (k) { if (!D.C.s[k]) v += D.C.v[k]; }); return fmtN.format(ord.length) + ' materiais consumidos · ' + fmtR.format(v) + ' · a pesquisa desta aba procura no material, no código, na OM e na turbina; os filtros do topo também valem · toque numa linha para ver a OM'; })() :
+      UI.vista === 'pend' ? fmtN.format(ord.length) + ' pendências · a pesquisa desta aba procura só nas pendências (número, descrição, turbina e quem registrou); parque, turbina e datas do topo também valem · toque numa linha para ver a OM'
+      : fmtN.format(ord.length) + ' OMs · ' + (UI.vista === 'conf'
       ? '"Não consumido" = peça que o serviço executado diz que trocou e não tem consumo do mesmo tipo · "Pendente" = pendência pendente ou em execução · toque numa linha para ver a OM'
       : 'toque numa linha para ler o serviço executado completo');
     if (UI.vista === 'conf') $('#t-sub').innerHTML = esc($('#t-sub').textContent) + '<br><span class="ic ok">✓</span>bate com a troca descrita · <span class="ic no">✕</span>sem consumo (OM fechada) · <span class="ic pe">…</span>sem consumo ainda (OM em aberto) · <span class="ic pe">?</span>consumida sem troca no texto · <span class="ic ch">?</span>conferir';
-    $('#tb').innerHTML = !pag.length ? '<tr><td colspan="9"><div class="empty">Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.</div></td></tr>' : UI.vista === 'conf' ? pag.map(linhaConf).join('') : pag.map(function (i) {
+    $('#tb').innerHTML = !pag.length ? '<tr><td colspan="9"><div class="empty">' + (UI.vista === 'pend' ? 'Nenhuma pendência com esta pesquisa e filtros.' : UI.vista === 'cons' ? 'Nenhum material consumido com esta pesquisa e filtros.' : 'Nenhuma OM com estes filtros. Tente limpar a pesquisa ou incluir outros status.') + '</div></td></tr>' : UI.vista === 'pend' ? pag.map(linhaPend).join('') : UI.vista === 'cons' ? pag.map(linhaCons).join('') : UI.vista === 'conf' ? pag.map(linhaConf).join('') : pag.map(function (i) {
       var g = grupo[i], m = resumoMat(i), pn = pendDe[i] ? pendDe[i].length : 0;
       return '<tr data-i="' + i + '" tabindex="0">' +
         '<td class="mono" style="white-space:nowrap">' + omLabel(O.om[i]) + '</td>' +
@@ -1041,12 +1402,12 @@ var DADOS = /*__DADOS__*/null;
     $('#pager').onclick = function (e) { var b = e.target.closest('[data-p]'); if (b && !b.disabled) { UI.page = +b.getAttribute('data-p'); desenharTabela(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' }); } };
   }
 
-  function realce(txt) {
-    var h = esc(txt);
-    if (!F.q.length) return h;
+  function realce(txt, termosR) {
+    var h = esc(txt), tq = termosR || F.q;
+    if (!tq.length) return h;
     // realce sem acento: casa cada termo na versão normalizada e marca as mesmas posições no texto original
     var n = norm(txt), marcas = [];
-    F.q.forEach(function (t) { if (!t || /^om$/.test(t)) return; var p = 0, k; while ((k = n.indexOf(t, p)) >= 0) { marcas.push([k, k + t.length]); p = k + t.length; } });
+    tq.forEach(function (t) { if (!t || /^om$/.test(t)) return; var p = 0, k; while ((k = n.indexOf(t, p)) >= 0) { marcas.push([k, k + t.length]); p = k + t.length; } });
     if (!marcas.length || n.length !== txt.length) return h;
     marcas.sort(function (a, b) { return a[0] - b[0]; });
     var out = '', pos = 0;
@@ -1066,7 +1427,38 @@ var DADOS = /*__DADOS__*/null;
   function exportar() {
     if (!window.XLSX) { aviso('O gerador de Excel não carregou. Verifique a internet e tente de novo.'); return; }
     var ord = UI.ultimaOrd || [], O = D.O;
-    if (!ord.length) { aviso('Nenhuma OM na tabela para exportar.'); return; }
+    if (!ord.length) { aviso(UI.vista === 'pend' ? 'Nenhuma pendência na tabela para exportar.' : UI.vista === 'cons' ? 'Nenhum material na tabela para exportar.' : 'Nenhuma OM na tabela para exportar.'); return; }
+    if (UI.vista === 'cons') {
+      var C = D.C, lc = [['Usado em', 'Nº de ordem', 'Ativo (WTG)', 'Parque', 'Status da OM', 'Código', 'Material', 'Quantidade', 'Unidade', 'Custo total (R$)', 'Preço fora do padrão', 'Conferência', 'Descrição da OM']];
+      ord.forEach(function (k) {
+        var i = C.o[k], pm = partesMaterial(D.materiais[C.m[k]]);
+        lc.push([dataXL(C.d[k]), omLabel(O.om[i]), D.ativos[O.at[i]], D.parques[O.pq[i]], D.status[O.st[i]], pm.cod, pm.nome, C.q[k], C.u[k], C.v[k], C.s[k] ? 'Sim (fora do total)' : 'Não', CF_ROT[C.cf[k]], O.desc[i]]);
+      });
+      var fc = [['Consulta de OMs: consumo exportado em ' + new Date().toLocaleString('pt-BR')], ['Materiais', ord.length], ['Pesquisa', UI.cBusca || '(nenhuma)'], ['Mostrando', (CSIT.filter(function (o) { return o[0] === UI.cSit; })[0] || ['', ''])[1]]];
+      [].slice.call(document.querySelectorAll('#ativos .tag')).forEach(function (t) { fc.push(['Filtro', t.firstChild.textContent]); });
+      var wbc = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wbc, planilha(lc, [12, 11, 12, 16, 18, 14, 50, 10, 8, 14, 18, 24, 45]), 'Consumo');
+      XLSX.utils.book_append_sheet(wbc, planilha(fc, [20, 80]), 'Filtros');
+      var hc = new Date(), dc2 = function (n) { return String(n).padStart(2, '0'); };
+      salvarArquivo('Consumo_material_' + hc.getFullYear() + dc2(hc.getMonth() + 1) + dc2(hc.getDate()) + '.xlsx', XLSX.write(wbc, { bookType: 'xlsx', type: 'array', compression: true }));
+      return;
+    }
+    if (UI.vista === 'pend') {
+      var P = D.P, lp = [['Nº pendência', 'Situação', 'Status', 'Descrição', 'Data de abertura', 'Dias em aberto', 'Data de conclusão', 'Registrada por', 'Ativo', 'Parque', 'OM de origem', 'OM de execução', 'Status da OM de execução']];
+      ord.forEach(function (k) {
+        lp.push([+P.n[k] || P.n[k], PEND_ABERTA(k) ? 'Pendente' : 'Não pendente', D.statusPend[P.st[k]], P.desc[k], dataXL(P.dt[k]), diasPend(k), dataXL(P.dc[k]), P.us[k], P.at[k], D.parques[P.pq[k]],
+          P.ori[k] >= 0 ? omLabel(O.om[P.ori[k]]) : '', P.exe[k] >= 0 ? omLabel(O.om[P.exe[k]]) : '', P.exe[k] >= 0 ? D.status[O.st[P.exe[k]]] : '']);
+      });
+      var sitRot = (PSIT.concat(D.statusPend.map(function (sn, j) { return [String(j), sn]; })).filter(function (o) { return o[0] === UI.pSit; })[0] || ['', ''])[1];
+      var fp = [['Consulta de OMs: pendências exportadas em ' + new Date().toLocaleString('pt-BR')], ['Pendências', ord.length], ['Pesquisa', UI.pBusca || '(nenhuma)'], ['Situação', sitRot]];
+      [].slice.call(document.querySelectorAll('#ativos .tag')).forEach(function (t) { fp.push(['Filtro', t.firstChild.textContent]); });
+      var wbp = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wbp, planilha(lp, [12, 13, 13, 70, 12, 10, 12, 28, 12, 16, 12, 12, 20]), 'Pendências');
+      XLSX.utils.book_append_sheet(wbp, planilha(fp, [20, 80]), 'Filtros');
+      var hj = new Date(), dd = function (n) { return String(n).padStart(2, '0'); };
+      salvarArquivo('Pendencias_' + hj.getFullYear() + dd(hj.getMonth() + 1) + dd(hj.getDate()) + '.xlsx', XLSX.write(wbp, { bookType: 'xlsx', type: 'array', compression: true }));
+      return;
+    }
     var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)'];
     var NC = ['Consumida', 'Sem consumo', 'Conferir'];
     var linhas, larg;
@@ -1196,11 +1588,211 @@ var DADOS = /*__DADOS__*/null;
     });
   }
 
+  // ---------------- ajuda (didático) ----------------
+  var AJUDA = {
+    geral: ['Como usar o painel', [
+      ['O que é', 'Um painel das ordens de manutenção (OMs) do Manusis, cruzadas pelo número da OM com o consumo de materiais e as pendências.'],
+      ['Telas', '<ul><li><b>Início</b>: tudo junto, com a Leitura rápida no topo.</li><li><b>OMs</b>: quantidade, tempo para fechar, preventivas atrasadas e a tabela.</li><li><b>Consumo</b>: custo, materiais e o que corrigir no Manusis.</li><li><b>Pendências</b>: idade, quem tem mais abertas e a pesquisa.</li><li><b>Top 10</b>: as turbinas que mais pedem atenção.</li></ul>'],
+      ['Filtros', 'Os filtros do topo (parque, turbina, ano, mês, data, situação, status) valem para todas as telas. Tocar numa barra, num mês ou numa turbina também filtra. As etiquetas embaixo dos filtros mostram o que está ligado; o × tira cada um e "Limpar filtros" volta tudo.'],
+      ['Botão ?', 'Cada quadro tem um <b>?</b> que explica o que ele mostra, como ler e o que fazer.'],
+      ['Atualizar', 'Use "Atualizar base" para carregar as planilhas novas do Manusis (OMs, consumo e pendências). A leitura é feita só no aparelho.']]],
+    leitura: ['Leitura rápida', [
+      ['O que é', 'Frases prontas com os pontos que mais pedem atenção, calculadas com os filtros do topo.'],
+      ['Cores', '<ul><li><b style="color:var(--bad)">Vermelho</b>: fora da referência, agir.</li><li><b style="color:var(--s-aberta)">Laranja</b>: atenção.</li><li><b style="color:var(--good)">Verde</b>: dentro da referência.</li><li>Cinza: só informação.</li></ul>'],
+      ['O que fazer', 'Toque numa linha para abrir a tela com o detalhe.']]],
+    om: ['OMs filtradas', [['O que é', 'Quantas ordens de manutenção entram nos filtros. Fechadas = status Fechadas; em aberto = tudo que ainda não fechou (Abertas, Em espera, Programadas, Apontamentos concluídos, Revisão Liderança). Canceladas ficam de fora, a não ser que você marque.'], ['Como ler', 'A barra mostra a proporção fechadas × em aberto. Toque em "fechadas" ou "em aberto" para filtrar.']]],
+    custo: ['Custo total de materiais', [['O que é', 'Soma do custo dos materiais consumidos nas OMs filtradas (planilha de consumo do Manusis).'], ['Atenção', 'Lançamentos com preço unitário fora do padrão (ex.: óleo cadastrado por litro com o preço do tambor) ficam fora da soma e aparecem no aviso amarelo. Corrija no Manusis para entrarem no total.']]],
+    pend: ['Pendências registradas', [['O que é', 'Pendências do Manusis ligadas às OMs filtradas (como OM de origem ou de execução), separadas por status.'], ['Onde ver mais', 'Na tela Pendências: idade, quem tem mais abertas e a pesquisa só nas pendências.']]],
+    wtg: ['Turbinas com OM', [['O que é', 'Quantas turbinas têm ao menos uma OM nos filtros, a que tem mais OMs e a média por turbina.']]],
+    tempo: ['Tempo médio para fechar', [['O que é', 'Dias, em média, entre a data de abertura e a data de fechamento das OMs fechadas que entram nos filtros.'], ['Como ler', 'Quanto menor, mais rápido a equipe resolve. Compare corretivas e preventivas, e um parque com o outro (filtro Parque).'], ['O que fazer', 'Se subir de um mês para o outro, olhe as OMs em espera e os motivos (falta de peça, acesso, clima).']]],
+    mapa: ['Mapa das turbinas', [['O que é', 'Cada quadrado é um aerogerador, na sua posição no parque (é um esquema, não um mapa geográfico).'], ['Como ler', 'Quanto mais escuro, maior o valor da medida escolhida na caixa do canto (OMs, em aberto, corretivas, custo, trocas sem consumo, pendências).'], ['O que fazer', 'Toque numa turbina para filtrar o painel por ela. Turbinas escuras no meio de claras merecem uma olhada.']]],
+    rank: ['Ranking de turbinas', [['O que é', 'As 15 turbinas com mais OMs nos filtros, divididas em fechadas e em aberto.'], ['Dica', 'Use "Só corretivas" para ver as que mais quebram, sem as preventivas programadas.']]],
+    mes: ['Evolução mensal', [['O que é', 'Quantas OMs foram abertas em cada mês, divididas em fechadas e em aberto (situação de hoje).'], ['Como ler', 'Picos mostram meses com muita demanda (campanhas de preventiva ou muitas falhas). Laranja alto nos meses antigos = OMs esquecidas abertas.'], ['O que fazer', 'Toque num mês para filtrar o painel por ele.']]],
+    mat: ['Materiais mais usados', [['O que é', 'Os materiais que mais aparecem no consumo das OMs filtradas, por número de OMs ou por custo.'], ['Dica', 'Deixe marcado "Só peças" para tirar graxa, óleo, trapo e frascos. Toque num material para ver só as OMs que o usaram.']]],
+    curva: ['Curva S das preventivas', [['O que é', 'Programado acumulado (pela data de início da programação) × realizado acumulado (OMs preventivas fechadas), mês a mês.'], ['Como ler', 'As linhas juntas = o plano está sendo cumprido. Linha cheia abaixo da tracejada = atraso acumulado. Aderência = das programadas no período, quantas já fecharam. Referência: 90% ou mais.'], ['O que fazer', 'Veja na tela OMs a lista de preventivas atrasadas por turbina.']]],
+    pessoas: ['Pendências abertas por pessoa', [['O que é', 'Pendências pendentes ou em execução, por quem registrou no Manusis (coluna "Usuário").'], ['Atenção', 'Quem registra nem sempre é quem resolve. Muitas pendências com uma pessoa só pode indicar que ela registra pela equipe toda.'], ['O que fazer', 'Toque no nome para ver a lista, das mais antigas para as mais novas.']]],
+    idade: ['Há quanto tempo as pendências estão abertas', [['O que é', 'As pendências ainda abertas, separadas pelo tempo desde a abertura.'], ['Referência', 'Pendência deve ser resolvida na próxima ida à turbina. Mais de 90 dias é atraso; de segurança (HSE), mais de 30 dias já é crítico.'], ['O que fazer', 'Toque numa faixa para ver a lista na tabela e combine prazo com cada equipe, começando pelas de segurança.']]],
+    atras: ['Preventivas atrasadas', [['O que é', 'OMs de tipo preventivo programadas há mais de 30 dias e ainda não fechadas (sem as canceladas), por turbina.'], ['Por que importa', 'Preventiva atrasada vira corretiva: a falha aparece antes da manutenção.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela, ou em "Ver todas na tabela".']]],
+    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
+    top: ['Top 10 mais impactadas', [['O que é', 'As 10 turbinas com o maior valor na medida escolhida, com as outras medidas embaixo.'], ['Falhas repetidas', 'Corretivas em que o mesmo código de falha voltou na mesma turbina em até 30 dias. Indica que o conserto não resolveu a causa.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela. Turbinas que aparecem em várias medidas pedem análise de causa raiz.']]],
+    tabela: ['Tabelas', [['Como usar', 'Toque no título de uma coluna para ordenar. Toque numa linha para abrir a ficha completa da OM. "Exportar Excel" leva tudo que está filtrado, não só a página.']]]
+  };
+  function abrirAjuda(k) {
+    var a = AJUDA[k]; if (!a) return;
+    gaveta(a[0], 'Ajuda', '<div class="aj" style="display:flex;flex-direction:column;gap:14px">' + a[1].map(function (x) { return '<section><h4>' + esc(x[0]) + '</h4>' + (/^</.test(x[1]) ? x[1] : '<p>' + x[1] + '</p>') + '</section>'; }).join('') + '</div>');
+  }
+  function botoesAjuda() {
+    [].forEach.call(document.querySelectorAll('#app h2[data-aj]'), function (h) {
+      if (h.querySelector('.ajuda')) return;
+      h.insertAdjacentHTML('beforeend', '<button type="button" class="ajuda" data-ajk="' + h.getAttribute('data-aj') + '" aria-label="O que é isso?">?</button>');
+    });
+    var tp = $('#tabs'); if (tp && !tp.querySelector('.ajuda')) tp.insertAdjacentHTML('beforeend', '<button type="button" class="ajuda" data-ajk="tabela" aria-label="Como usar a tabela" style="align-self:center;margin-left:auto">?</button>');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ajk]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation(); abrirAjuda(b.getAttribute('data-ajk'));
+  }, true);
+  $('#como-usar').onclick = function () { abrirAjuda('geral'); };
+
+  // ---------------- leitura rápida ----------------
+  function idadeDias(iso) { return iso ? (Date.parse(D.gerado || D.periodo[1]) - Date.parse(iso)) / 864e5 : null; }
+  function prevResumo() {
+    var y = (D.gerado || D.periodo[1]).slice(0, 4), ini = y + '-01-01', fim = y + '-12-31', lim = new Date(Date.parse(D.gerado || D.periodo[1]) - 30 * 864e5).toISOString().slice(0, 10);
+    var r = { ano: y, prog: 0, fech: 0, atras: 0, porAt: {} };
+    for (var i = 0; i < N; i++) {
+      if (grupo[i] === 2 || !/prevent/i.test(D.tipos[D.O.tp[i]])) continue;
+      if (!vazio(F.parque) && !F.parque[D.O.pq[i]]) continue;
+      if (!vazio(F.ativo) && !F.ativo[D.O.at[i]]) continue;
+      var ok = true; for (var t = 0; t < F.q.length; t++) if (hay[i].indexOf(F.q[t]) < 0) { ok = false; break; }
+      if (!ok) continue;
+      var dp = D.O.dp[i];
+      if (dp && dp >= ini && dp <= fim) { r.prog++; if (grupo[i] === 0) r.fech++; }
+      if (dp && grupo[i] !== 0 && dp < lim) { r.atras++; var a = D.O.at[i], o = r.porAt[a] || (r.porAt[a] = { n: 0, mais: dp }); o.n++; if (dp < o.mais) o.mais = dp; }
+    }
+    return r;
+  }
+  function desenharLeitura() {
+    if (UI.tela !== 'inicio') return;
+    var itens = [], P = D.P;
+    // pendências velhas
+    var ab = pendFiltradas().filter(PEND_ABERTA), velhas = ab.filter(function (k) { return idadeDias(P.dt[k]) > 90; }).length;
+    var hse = ab.filter(function (k) { return /\bHSE\b|seguran/i.test(P.desc[k]) && idadeDias(P.dt[k]) > 30; }).length;
+    if (ab.length) itens.push([velhas / ab.length > .3 ? 'r' : velhas ? 'a' : 'v', '<b>' + fmtN.format(velhas) + '</b> de ' + fmtN.format(ab.length) + ' pendências abertas têm <b>mais de 90 dias</b> (' + Math.round(100 * velhas / ab.length) + '%).' + (hse ? ' <b>' + hse + '</b> são de segurança (HSE) com mais de 30 dias.' : ''), 'pendencias', 'Ver pendências']);
+    // preventivas
+    var pr = prevResumo();
+    if (pr.prog) { var ad = Math.round(100 * pr.fech / pr.prog); itens.push([ad >= 90 ? 'v' : ad >= 75 ? 'a' : 'r', 'Aderência das preventivas em ' + pr.ano + ': <b>' + ad + '%</b> (referência: 90%). <b>' + fmtN.format(pr.atras) + '</b> preventivas, de todos os anos, programadas há mais de 30 dias ainda estão abertas.', 'oms', 'Ver atrasadas']); }
+    // turbina com mais corretivas
+    var c = {}; sel.forEach(function (i) { if (/corre(c)?ti/i.test(D.tipos[D.O.tp[i]])) c[D.O.at[i]] = (c[D.O.at[i]] || 0) + 1; });
+    var tk = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+    if (tk !== undefined) itens.push(['a', 'Turbina com mais corretivas: <b>' + esc(D.ativos[tk]) + '</b> (' + c[tk] + ' OMs). Veja o Top 10 para as falhas que se repetem.', 'top10', 'Ver Top 10']);
+    // dados a corrigir
+    var susp = 0, sv = 0; sel.forEach(function (i) { if (consIni[i] < 0) return; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.s[k]) { susp++; sv += D.C.v[k]; } });
+    if (susp) itens.push(['r', '<b>' + fmtN.format(susp) + '</b> consumos com preço fora do padrão estão fora do custo (' + compacto(sv) + '). Corrija no Manusis.', 'consumo', 'Ver lista']);
+    // tendência do último mês completo
+    var ult = (D.periodo[1] || '').slice(0, 7), m1 = addMes(ult, -1), m0 = addMes(ult, -2), n1 = 0, n0 = 0;
+    for (var i = 0; i < N; i++) { if (!passa(i, 'mes') || !D.O.dt[i]) continue; var ym = D.O.dt[i].slice(0, 7); if (ym === m1) n1++; else if (ym === m0) n0++; }
+    if (n0) { var vr = Math.round(100 * (n1 - n0) / n0); itens.push(['n', 'OMs abertas em ' + MESES_NOME[+m1.slice(5) - 1].toLowerCase() + ': <b>' + fmtN.format(n1) + '</b> (' + (vr >= 0 ? '+' : '') + vr + '% em relação a ' + MESES_NOME[+m0.slice(5) - 1].toLowerCase() + ').', 'oms', 'Ver OMs']); }
+    $('#c-leitura').innerHTML = itens.length ? itens.map(function (x) { return '<button type="button" class="lt" data-ir="' + x[2] + '"><span class="sem ' + x[0] + '"></span><span>' + x[1] + '</span><span class="ir">' + x[3] + ' ›</span></button>'; }).join('') : '<div class="empty">Nada a destacar com estes filtros.</div>';
+    $('#c-leitura').onclick = function (e) { var b = e.target.closest('[data-ir]'); if (b) location.hash = b.getAttribute('data-ir'); };
+  }
+
+  // ---------------- idade das pendências ----------------
+  var FAIXAS = [['0-30', 'Até 30 dias', 0, 30, 'var(--good)'], ['31-90', '31 a 90 dias', 30, 90, 'var(--s-aberta)'], ['91-180', '91 a 180 dias', 90, 180, 'var(--bad)'], ['180+', 'Mais de 180 dias', 180, 1e9, 'var(--bad)']];
+  function faixaDe(dias) { for (var j = 0; j < FAIXAS.length; j++) if (dias > FAIXAS[j][2] - (j ? 0 : 1) && dias <= FAIXAS[j][3]) return FAIXAS[j][0]; return '180+'; }
+  function desenharIdade() {
+    if (UI.tela !== 'pendencias') return;
+    var P = D.P, ab = pendFiltradas(false, true).filter(PEND_ABERTA), cont = {}, hse = [0, 0];
+    ab.forEach(function (k) { var d = idadeDias(P.dt[k]); if (d === null) return; var f = faixaDe(d); cont[f] = (cont[f] || 0) + 1; if (/\bHSE\b|seguran/i.test(P.desc[k])) { hse[0]++; if (d > 30) hse[1]++; } });
+    var tot = ab.length || 1;
+    $('#c-idade').innerHTML = FAIXAS.map(function (f) {
+      var n = cont[f[0]] || 0;
+      return '<button type="button" class="faixa" data-fx="' + f[0] + '" aria-pressed="' + (UI.pIdade === f[0]) + '"><span>' + f[1] + '</span><b>' + fmtN.format(n) + '</b><span>' + Math.round(100 * n / tot) + '% das abertas</span><i style="background:' + f[4] + ';width:' + Math.max(4, 100 * n / tot) + '%"></i></button>';
+    }).join('');
+    $('#c-hse').innerHTML = hse[0] ? '<div class="lt" style="cursor:default"><span class="sem ' + (hse[1] ? 'r' : 'v') + '"></span><span>Segurança (HSE): <b>' + hse[0] + '</b> pendências abertas, <b>' + hse[1] + '</b> com mais de 30 dias.</span><span></span></div>' : '';
+    $('#c-idade').onclick = function (e) {
+      var b = e.target.closest('[data-fx]'); if (!b) return;
+      var f = b.getAttribute('data-fx'); UI.pIdade = UI.pIdade === f ? '' : f; UI.pSit = 'abertas'; UI.page = 0;
+      desenharIdade(); desenharTabela(); if (UI.pIdade) document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+  }
+
+  // ---------------- preventivas atrasadas ----------------
+  function desenharAtrasadas() {
+    if (UI.tela !== 'oms') return;
+    var r = prevResumo(), ks = Object.keys(r.porAt).sort(function (a, b) { return r.porAt[b].n - r.porAt[a].n || r.porAt[a].mais.localeCompare(r.porAt[b].mais); });
+    $('#atras-sub').textContent = fmtN.format(r.atras) + ' preventivas programadas há mais de 30 dias e ainda não fechadas, em ' + fmtN.format(ks.length) + ' turbinas · toque para ver as OMs';
+    $('#c-atras').innerHTML = ks.length ? ks.slice(0, 12).map(function (a) {
+      var o = r.porAt[a], dias = Math.round(idadeDias(o.mais));
+      return '<button type="button" class="lg" data-a="' + a + '"><span class="t">' + esc(D.ativos[a]) + '</span><span class="v">' + o.n + '</span><span class="s">mais antiga programada para ' + dataBR(o.mais) + ' (' + fmtN.format(dias) + ' dias)</span></button>';
+    }).join('') + (ks.length > 12 ? '<div class="nada" style="font-size:.78rem;padding:4px 8px">+ ' + (ks.length - 12) + ' turbinas</div>' : '') : '<div class="empty">Nenhuma preventiva atrasada com estes filtros.</div>';
+    var irTabela = function (a) {
+      F.status = statusSituacao('abertas'); F.tipo = {}; D.tipos.forEach(function (t, j) { if (/prevent/i.test(t)) F.tipo[j] = 1; });
+      if (a !== undefined) { F.ativo = {}; F.ativo[a] = 1; }
+      UI.vista = 'consulta'; UI.page = 0; atualizar(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+    $('#c-atras').onclick = function (e) { var b = e.target.closest('[data-a]'); if (b) irTabela(b.getAttribute('data-a')); };
+    $('#atras-todas').onclick = function () { irTabela(); };
+  }
+
+  // ---------------- corrigir no Manusis ----------------
+  function desenharCorrigir() {
+    if (UI.tela !== 'consumo') return;
+    var preco = 0, pv = 0, semtexto = 0, semcons = 0;
+    sel.forEach(function (i) {
+      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; }
+      if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) semcons++;
+    });
+    var cx = function (n, tt, txt, acao) { return '<div class="crx"><b>' + fmtN.format(n) + '</b><span class="tt">' + tt + '</span><p>' + txt + '</p><button type="button" class="btn" data-cx="' + acao + '">Ver lista</button></div>'; };
+    $('#c-corrigir').innerHTML =
+      cx(preco, 'Preço fora do padrão', 'Consumos com preço unitário muito acima do normal do material (' + compacto(pv) + '). Ficam fora do custo total.', 'preco') +
+      cx(semcons, 'Troca sem consumo', 'OMs fechadas em que o serviço executado diz que trocou a peça, mas não há consumo lançado.', 'semcons') +
+      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada.', 'semtexto');
+    $('#c-corrigir').onclick = function (e) {
+      var b = e.target.closest('[data-cx]'); if (!b) return;
+      var a = b.getAttribute('data-cx');
+      if (a === 'semcons') { UI.vista = 'conf'; UI.qf = 'nc'; F.status = statusSituacao('fechadas'); UI.page = 0; location.hash = 'oms'; return; }
+      UI.vista = 'cons'; UI.cSit = a; UI.page = 0; desenharTabela(); document.querySelector('.tpanel').scrollIntoView({ block: 'start' });
+    };
+  }
+
+  // ---------------- Top 10 turbinas mais impactadas ----------------
+  var MET_TOP = [
+    ['corr', 'OMs corretivas'], ['reinc', 'Falhas repetidas'], ['oms', 'Total de OMs'], ['abertas', 'OMs em aberto'], ['custo', 'Custo de materiais'], ['pend', 'Pendências abertas'], ['semcons', 'Trocas sem consumo']
+  ];
+  function desenharTop() {
+    if (UI.tela !== 'top10') return;
+    var n = D.ativos.length, m = {};
+    MET_TOP.forEach(function (x) { m[x[0]] = new Float64Array(n); });
+    for (var i = 0; i < N; i++) {
+      if (!passa(i, 'ativo')) continue;
+      var a = D.O.at[i];
+      m.oms[a]++; if (grupo[i] === 1) m.abertas[a]++;
+      if (/corre(c)?ti/i.test(D.tipos[D.O.tp[i]])) m.corr[a]++;
+      m.custo[a] += custoOM(i).v;
+      if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) m.semcons[a]++;
+    }
+    pendFiltradas(true).forEach(function (k) { if (PEND_ABERTA(k) && pAt[k] >= 0) m.pend[pAt[k]]++; });
+    // falha repetida: corretiva cujo código de falha já apareceu na mesma turbina nos 30 dias anteriores
+    var porT = {};
+    for (var i2 = 0; i2 < N; i2++) if (passa(i2, 'ativo') && D.O.dt[i2] && D.O.fl[i2].length && /corre(c)?ti/i.test(D.tipos[D.O.tp[i2]])) (porT[D.O.at[i2]] = porT[D.O.at[i2]] || []).push(i2);
+    Object.keys(porT).forEach(function (a) {
+      var l = porT[a].sort(function (x, y) { return D.O.dt[x] < D.O.dt[y] ? -1 : 1; }), ult = {};
+      l.forEach(function (i3) {
+        var t = Date.parse(D.O.dt[i3]), rep2 = false;
+        D.O.fl[i3].forEach(function (f) { if (ult[f] !== undefined && t - ult[f] <= 30 * 864e5) rep2 = true; ult[f] = t; });
+        if (rep2) m.reinc[a]++;
+      });
+    });
+    $('#seg-top').innerHTML = MET_TOP.map(function (x) { return '<button type="button" data-v="' + x[0] + '" aria-pressed="' + (UI.top === x[0]) + '">' + x[1] + '</button>'; }).join('');
+    $('#seg-top').onclick = function (e) { var v = e.target.getAttribute('data-v'); if (v) { UI.top = v; desenharTop(); } };
+    var v = m[UI.top], ks = [];
+    for (var k = 0; k < n; k++) if (v[k] > 0 && /^(AB-|[A-Z]{2,4} [IVXL]+-)/.test(D.ativos[k])) ks.push(k);
+    ks.sort(function (a, b) { return v[b] - v[a] || m.oms[b] - m.oms[a]; });
+    ks = ks.slice(0, 10);
+    var fmtV = function (x, chave) { return chave === 'custo' ? compacto(x) : fmtN.format(x); };
+    var pqDe = {}; D.O.at.forEach(function (a, i) { if (!(a in pqDe)) pqDe[a] = D.O.pq[i]; });
+    var el = $('#c-top');
+    if (!ks.length) { el.innerHTML = '<div class="empty">Nenhuma turbina com esta medida e estes filtros</div>'; return; }
+    var max = v[ks[0]] || 1;
+    el.innerHTML = ks.map(function (a, j) {
+      var ex = MET_TOP.filter(function (x) { return x[0] !== UI.top; }).map(function (x) { return '<span>' + x[1] + ': <b>' + fmtV(m[x[0]][a], x[0]) + '</b></span>'; }).join('');
+      return '<button type="button" class="t10" data-a="' + a + '"><span class="pos">' + (j + 1) + '</span>' +
+        '<span class="nm">' + esc(D.ativos[a]) + '<small>' + esc(D.parques[pqDe[a]] || '') + '</small></span>' +
+        '<span class="vl">' + fmtV(v[a], UI.top) + '</span>' +
+        '<span class="bar"><i style="width:' + (100 * v[a] / max) + '%"></i></span><span class="ex">' + ex + '</span></button>';
+    }).join('');
+    el.onclick = function (e) {
+      var b = e.target.closest('[data-a]'); if (!b) return;
+      F.ativo = {}; F.ativo[b.getAttribute('data-a')] = 1; UI.page = 0;
+      location.hash = 'oms';
+    };
+  }
+
   // ---------------- mapa das turbinas ----------------
   var MET_MAPA = {
     oms: { rot: 'Total de OMs', om: function () { return 1; } },
     abertas: { rot: 'OMs em aberto', om: function (i) { return grupo[i] === 1 ? 1 : 0; } },
-    corr: { rot: 'OMs corretivas', om: function (i) { return /corret/i.test(D.tipos[D.O.tp[i]]) ? 1 : 0; } },
+    corr: { rot: 'OMs corretivas', om: function (i) { return /corre(c)?ti/i.test(D.tipos[D.O.tp[i]]) ? 1 : 0; } },
     custo: { rot: 'Custo de materiais', om: function (i) { return custoOM(i).v; }, moeda: true },
     semcons: { rot: 'Trocas sem consumo (OM fechada)', om: function (i) { return grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; }) ? 1 : 0; } },
     pend: { rot: 'Pendências abertas', pend: true }
@@ -1285,7 +1877,7 @@ var DADOS = /*__DADOS__*/null;
   }
 
   // ---------------- pendências abertas por pessoa ----------------
-  function pendFiltradas(semAtivo) {
+  function pendFiltradas(semAtivo, semBusca) {
     var out = [], P = D.P;
     for (var k = 0; k < P.n.length; k++) {
       if (!vazio(F.parque) && !F.parque[P.pq[k]]) continue;
@@ -1294,7 +1886,7 @@ var DADOS = /*__DADOS__*/null;
       if ((F.de || F.ate) && (!d || (F.de && d < F.de) || (F.ate && d > F.ate))) continue;
       if (!vazio(F.ano) && !F.ano[+String(d).slice(0, 4)]) continue;
       if (!vazio(F.mes) && !F.mes[+String(d).slice(5, 7)]) continue;
-      var ok = true; for (var t = 0; t < F.q.length; t++) if (hayP[k].indexOf(F.q[t]) < 0) { ok = false; break; }
+      var ok = true; if (!semBusca) for (var t = 0; t < F.q.length; t++) if (hayP[k].indexOf(F.q[t]) < 0) { ok = false; break; }
       if (ok) out.push(k);
     }
     return out;
@@ -1396,11 +1988,9 @@ var DADOS = /*__DADOS__*/null;
       }
       mats += '</tbody></table><div style="margin-top:6px;font-size:.82rem">Total no custo: <b class="num">' + fmtR2.format(c.v) + '</b></div>';
     } else mats = '<div style="color:var(--fg-3);font-size:.85rem">' + (O.cmCol[i] ? 'Custo de material na OM: ' + fmtR2.format(O.cmCol[i]) + ' (sem linhas na planilha de consumo)' : 'Nenhum material consumido nesta OM.') + '</div>';
-    var pends = pend.length ? '<table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Papel</th></tr></thead><tbody>' + pend.map(function (k) {
-      var papel = D.P.ori[k] === i && D.P.exe[k] === i ? 'origem e execução' : D.P.ori[k] === i ? 'aberta nesta OM' : 'executada nesta OM';
-      var outra = D.P.ori[k] === i && D.P.exe[k] >= 0 && D.P.exe[k] !== i ? ' · execução: ' + omLabel(O.om[D.P.exe[k]]) : D.P.exe[k] === i && D.P.ori[k] >= 0 && D.P.ori[k] !== i ? ' · origem: ' + omLabel(O.om[D.P.ori[k]]) : '';
-      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td>' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2);font-size:.74rem">' + papel + outra + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<div style="color:var(--fg-3);font-size:.85rem">Nenhuma pendência ligada a esta OM.</div>';
+    var pends = pend.length ? '<div class="mscroll"><table class="mini"><thead><tr><th>Nº</th><th>Status</th><th>Descrição</th><th>Abertura</th><th>Aberta por</th></tr></thead><tbody>' + pend.map(function (k) {
+      return '<tr><td class="mono">' + esc(D.P.n[k]) + '</td><td style="white-space:nowrap">' + esc(D.statusPend[D.P.st[k]]) + '</td><td class="mdesc">' + esc(D.P.desc[k]) + '</td><td class="num" style="white-space:nowrap">' + dataBR(D.P.dt[k]) + '</td><td style="color:var(--fg-2);white-space:nowrap" title="' + esc(D.P.us[k]) + '">' + esc(nomeCurto(D.P.us[k])) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div style="color:var(--fg-3);font-size:.85rem">Nenhuma pendência ligada a esta OM.</div>';
     var ents = entradas(O.exec[i]);
     var execH = ents.length ? ents.map(function (e) { return '<div class="entry">' + (e.h ? '<div class="eh">' + esc(e.h) + '</div>' : '') + '<p>' + realce(e.txt) + '</p></div>'; }).join('') : '<div style="color:var(--fg-3)">Sem serviço executado registrado.</div>';
     var fl = O.fl[i].map(function (k) { return '<span class="chip sm" style="cursor:default">' + esc(D.falhas[k]) + '</span>'; }).join(' ');
@@ -1421,6 +2011,8 @@ var DADOS = /*__DADOS__*/null;
     scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
     var m = dr.querySelector('.db mark'); if (m) setTimeout(function () { m.scrollIntoView({ block: 'center' }); }, 30);
   }
+  // "Ewerton Francinaldo do Nascimento Silva" -> "Ewerton Silva"
+  function nomeCurto(n) { var p = String(n || '').trim().split(/\s+/); return p.length > 2 ? p[0] + ' ' + p[p.length - 1] : p.join(' '); }
   function fichaConf(i) {
     var O = D.O, se = SELOS[O.se[i]], itens = O.pi[i];
     if (!itens.length && !se) return '';
@@ -1590,7 +2182,7 @@ var DADOS = /*__DADOS__*/null;
   function reiniciar(nd) {
     fecharFicha(); fecharPop();
     F.q = []; $('#q').value = ''; F.parque = {}; F.ativo = {}; F.ano = {}; F.mes = {}; F.status = {}; F.tipo = {}; F.falha = {}; F.material = null; matOMs = null; F.de = F.ate = '';
-    UI.page = 0; UI.qf = 'todas'; MAPA = null; chaveTurb = {};
+    UI.page = 0; UI.qf = 'todas'; MAPA = null; chaveTurb = {}; UI.pBusca = ''; UI.cBusca = ''; hayC = null; if ($('#pq-pend') || $('#pq-cons')) $('#qf').innerHTML = '';
     iniciar(nd);
   }
 
