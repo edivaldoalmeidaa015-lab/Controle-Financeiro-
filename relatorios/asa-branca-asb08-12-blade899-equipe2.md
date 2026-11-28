@@ -84,3 +84,30 @@ MegaWind – Cliente: Invenergy/Essentia
 - Mobilização para a base
 
 **Standby:** ( ) Sim (X) Não
+
+---
+
+## 4º dia – 26/11/2026
+
+**Chegada no parque:** 07:00
+**Saída do parque:** 17:00
+
+**Resumo da atividade:**
+- DDS Invenergy
+- Mobilização para a torre ASB08-12
+- Liberação dos documentos Invenergy e time MegaWind
+- Subida dos materiais
+- Subida dos técnicos
+- Descida dos técnicos
+- Posicionamento no reparo
+- Remoção dos consumíveis
+- Ajuste do núcleo
+- Lixamento
+- Traçado
+- Laminação
+- Descida dos técnicos da torre
+- Limpeza e organização
+- Mobilização para a base
+
+**Próxima atividade:** Pós-cura, acabamento e pintura
+**Standby:** ( ) Sim (X) Não
