@@ -154,7 +154,8 @@ body:not([data-tela="inicio"]) .viz .p-mes { grid-column: auto; order: 0; }
 .lg .t { font-weight: 600; font-size: .88rem; }
 .lg .v { font-family: var(--f-display); font-weight: 600; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .lg .s { grid-column: 1 / -1; font-size: .76rem; color: var(--fg-2); }
-.corrigir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.corrigir { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1180px) { .corrigir { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .crx { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .crx b { font-family: var(--f-display); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
 .crx .tt { font-weight: 600; font-size: .9rem; }
@@ -305,6 +306,20 @@ td.cl { min-width: 190px; max-width: 280px; }
 
 /* ficha da OM */
 .scrim { position: fixed; inset: 0; background: rgba(10, 15, 20, .45); z-index: 50; }
+/* barra da ficha: anterior / próxima / imprimir (embaixo, ao alcance do polegar no celular) */
+.drawer .db { flex: 1 1 auto; min-height: 0; }
+.fnav { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--surface); }
+.fnav .pos { flex: 1; text-align: center; font-size: .82rem; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.fnav .btn { padding: 8px 14px; font-weight: 600; }
+.fnav .btn:disabled { opacity: .35; cursor: default; }
+body.cel .fnav { padding: 8px 12px; gap: 6px; }
+body.cel .fnav .btn { padding: 10px 10px; font-size: .86rem; }
+#imp { display: none; }
+@media print {
+  body.imprimindo > *:not(#imp) { display: none !important; }
+  body.imprimindo #imp { display: block !important; }
+  body.imprimindo { background: #fff !important; }
+}
 .drawer { position: fixed; z-index: 51; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: var(--surface); box-shadow: -8px 0 30px rgba(0,0,0,.2); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .dh { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .dh h3 { margin: 0; font-family: var(--f-display); font-size: 1.4rem; font-weight: 700; }
@@ -883,6 +898,7 @@ var DADOS = /*__DADOS__*/null;
         '<div class="ph"><div><p id="t-sub"></p></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ord-cel" class="dt-in" aria-label="Ordenar"></select>' +
         '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div>' +
+        '<button type="button" class="btn" id="imp-tab" title="Imprimir ou salvar em PDF a tabela com os filtros">Imprimir</button>' +
         '<button type="button" class="btn primary" id="exp-xlsx" title="Exporta todas as OMs desta tabela (com os filtros), os materiais e as pendências">Exportar Excel</button></div></div>' +
         '<div class="qf" id="qf"></div>' +
         '<div class="tscroll"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div><div class="pager" id="pager"></div></section>';
@@ -892,6 +908,7 @@ var DADOS = /*__DADOS__*/null;
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
     $('#exp-xlsx').onclick = exportar;
+    $('#imp-tab').onclick = function () { imprimir('tabela'); };
     $('#k-om').onclick = function (e) {
       var b = e.target.closest('[data-sit]'); if (!b) return;
       var v = b.getAttribute('data-sit');
@@ -910,10 +927,10 @@ var DADOS = /*__DADOS__*/null;
       UI.page = 0; desenharTabela();
     };
     $('#tb').onclick = function (e) {
-      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om')); return; }
-      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'));
+      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om'), listaOMsDaTabela()); return; }
+      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'), listaOMsDaTabela());
     };
-    $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
+    $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'), listaOMsDaTabela()); } };
     if (montarApp.feito) return; montarApp.feito = true;
     var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
@@ -1154,12 +1171,13 @@ var DADOS = /*__DADOS__*/null;
   };
   // selo da conferência (mesmas regras do Painel de Turbinas)
   var SELOS = [null,
-    { rot: 'Troca confirmada', cls: 'ok', ic: '✓', dica: 'Cada peça que o serviço executado diz que trocou tem consumo do mesmo tipo.' },
+    { rot: 'Troca confirmada', cls: 'ok', ic: '✓', dica: 'As peças consumidas aparecem como trocadas ou instaladas no serviço executado.' },
     { rot: 'Confirmada em parte', cls: 'alerta', ic: '!', dica: 'Parte bate com o consumo; sobra peça descrita sem consumo ou peça consumida sem a troca descrita.' },
     { rot: 'Difere do consumo', cls: 'ruim', ic: '≠', dica: 'O texto cita um tipo de peça e o consumo é de outro: confira qual foi trocada.' },
     { rot: 'Troca sem consumo', cls: 'ruim', ic: '✕', dica: 'OM fechada: o texto diz que trocou, mas nenhuma peça foi consumida. Falta lançar o consumo ou a troca não aconteceu.' },
-    { rot: 'Consumo sem troca no texto', cls: 'alerta', ic: '?', dica: 'Saiu peça para a OM, mas o serviço executado não diz que ela foi trocada.' }];
-  var SELO_ORD = [0, 1, 3, 5, 6, 4];
+    { rot: 'Consumo sem troca no texto', cls: 'alerta', ic: '?', dica: 'Saiu peça para a OM, mas o serviço executado não diz que ela foi trocada.' },
+    { rot: 'Sem serviço executado', cls: 'alerta', ic: '∅', dica: 'Saiu peça para a OM, mas o serviço executado está em branco: não dá para conferir se a peça foi trocada. Peça ao técnico para escrever o que foi feito.' }];
+  var SELO_ORD = [0, 1, 3, 5, 6, 4, 7];
   var PEND_ABERTA = function (k) { return !/conclu|cancel|fechad|finaliz/i.test(D.statusPend[D.P.st[k]]); };
   function pendSplit(i) {
     var a = [], b = []; (pendDe[i] || []).forEach(function (k) { (PEND_ABERTA(k) ? a : b).push(k); }); return [a, b];
@@ -1174,7 +1192,8 @@ var DADOS = /*__DADOS__*/null;
     ['cst', 'Consumo sem troca no texto', function (i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) return true; return false; }],
     ['pp', 'Com pendência pendente', function (i) { return pendSplit(i)[0].length > 0; }],
     ['np', 'Sem pendência pendente', function (i) { return !pendSplit(i)[0].length; }],
-    ['ok', 'Troca confirmada', function (i) { return D.O.se[i] === 1; }]
+    ['ok', 'Troca confirmada', function (i) { return D.O.se[i] === 1; }],
+    ['semexec', 'Sem serviço executado', function (i) { if (consIni[i] < 0) return false; for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 4) return true; return false; }]
   ];
   function lista(itens, max) {
     if (!itens.length) return '<span class="nada">—</span>';
@@ -1183,7 +1202,7 @@ var DADOS = /*__DADOS__*/null;
   function linhaConf(i) {
     var O = D.O, g = grupo[i], cons = [], ps = pendSplit(i), se = SELOS[O.se[i]];
     if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) {
-      var cf = D.C.cf[k], ic = cf === 1 ? '<span class="ic pe" title="Consumida sem troca descrita no texto">?</span>' : cf === 0 && O.pi[i].length ? '<span class="ic ok" title="Bate com a troca descrita">✓</span>' : '';
+      var cf = D.C.cf[k], ic = cf === 4 ? '<span class="ic ch" title="OM sem serviço executado: não dá para conferir">∅</span>' : cf === 1 ? '<span class="ic pe" title="Consumida sem troca descrita no texto">?</span>' : cf === 0 && O.pi[i].length ? '<span class="ic ok" title="Bate com a troca descrita">✓</span>' : '';
       cons.push('<li title="' + esc(D.materiais[D.C.m[k]]) + '">' + ic + '<span class="q">' + fmtQ.format(D.C.q[k]) + ' ' + esc(D.C.u[k]) + '</span> ' + esc(partesMaterial(D.materiais[D.C.m[k]]).nome) + '</li>');
     }
     var nc = naoConsumido(i).map(function (it) {
@@ -1203,13 +1222,13 @@ var DADOS = /*__DADOS__*/null;
       '<td>' + (se ? '<span class="selo ' + se.cls + '" title="' + esc(se.dica) + '">' + se.ic + ' ' + se.rot + '</span>' : '<span class="nada" title="Sem troca de peça descrita e sem peça consumida">—</span>') + '</td></tr>';
   }
   // ---- aba Consumo: uma linha por material consumido ----
-  var CSIT = [['todos', 'Todos'], ['pecas', 'Só peças'], ['consum', 'Material de consumo'], ['semtexto', 'Peça sem troca no texto'], ['preco', 'Preço fora do padrão']];
-  var CF_ROT = ['Bate com a troca descrita', 'Peça sem troca no texto', 'Material de consumo', 'Tipo não reconhecido'];
+  var CSIT = [['todos', 'Todos'], ['pecas', 'Só peças'], ['consum', 'Material de consumo'], ['semtexto', 'Peça sem troca no texto'], ['semexec', 'OM sem serviço executado'], ['preco', 'Preço fora do padrão']];
+  var CF_ROT = ['Bate com a troca descrita', 'Peça sem troca no texto', 'Material de consumo', 'Tipo não reconhecido', 'OM sem serviço executado'];
   var hayC = null;
   function filtroSitCons(v) {
     var C = D.C;
     return v === 'pecas' ? function (k) { return C.cf[k] !== 2; } : v === 'consum' ? function (k) { return C.cf[k] === 2; } :
-      v === 'semtexto' ? function (k) { return C.cf[k] === 1; } : v === 'preco' ? function (k) { return C.s[k] === 1; } : function () { return true; };
+      v === 'semtexto' ? function (k) { return C.cf[k] === 1; } : v === 'semexec' ? function (k) { return C.cf[k] === 4; } : v === 'preco' ? function (k) { return C.s[k] === 1; } : function () { return true; };
   }
   function consDaAba() {
     var C = D.C, tq = termos(UI.cBusca), out = [];
@@ -1237,7 +1256,7 @@ var DADOS = /*__DADOS__*/null;
   }
   function linhaCons(k) {
     var C = D.C, i = C.o[k], pm = partesMaterial(D.materiais[C.m[k]]), tq = termos(UI.cBusca);
-    var cf = C.cf[k], cls = cf === 0 ? 'f' : cf === 1 ? 'a' : 'c';
+    var cf = C.cf[k], cls = cf === 0 ? 'f' : cf === 1 || cf === 4 ? 'a' : 'c';
     return '<tr data-i="' + i + '" tabindex="0">' +
       '<td class="num" style="white-space:nowrap">' + dataBR(C.d[k]) + '</td>' +
       '<td class="mono" style="white-space:nowrap">' + realce(omLabel(D.O.om[i]), tq) + '</td>' +
@@ -1459,7 +1478,7 @@ var DADOS = /*__DADOS__*/null;
       salvarArquivo('Pendencias_' + hj.getFullYear() + dd(hj.getMonth() + 1) + dd(hj.getDate()) + '.xlsx', XLSX.write(wbp, { bookType: 'xlsx', type: 'array', compression: true }));
       return;
     }
-    var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)'];
+    var CF = ['Confirmada pela troca descrita', 'Peça consumida sem troca no texto', 'Material de consumo / acessório', 'Tipo não reconhecido (conferir)', 'OM sem serviço executado'];
     var NC = ['Consumida', 'Sem consumo', 'Conferir'];
     var linhas, larg;
     if (UI.vista === 'conf') {
@@ -1595,6 +1614,8 @@ var DADOS = /*__DADOS__*/null;
       ['Telas', '<ul><li><b>Início</b>: tudo junto, com a Leitura rápida no topo.</li><li><b>OMs</b>: quantidade, tempo para fechar, preventivas atrasadas e a tabela.</li><li><b>Consumo</b>: custo, materiais e o que corrigir no Manusis.</li><li><b>Pendências</b>: idade, quem tem mais abertas e a pesquisa.</li><li><b>Top 10</b>: as turbinas que mais pedem atenção.</li></ul>'],
       ['Filtros', 'Os filtros do topo (parque, turbina, ano, mês, data, situação, status) valem para todas as telas. Tocar numa barra, num mês ou numa turbina também filtra. As etiquetas embaixo dos filtros mostram o que está ligado; o × tira cada um e "Limpar filtros" volta tudo.'],
       ['Botão ?', 'Cada quadro tem um <b>?</b> que explica o que ele mostra, como ler e o que fazer.'],
+      ['Ficha da OM', 'Toque numa linha da tabela para abrir a ficha. Embaixo dela, <b>Próxima ›</b> e <b>‹ Anterior</b> passam para a OM seguinte da mesma lista, sem fechar (no computador, as setas ← → do teclado também). <b>Imprimir</b> imprime ou salva em PDF só a ficha.'],
+      ['Imprimir', 'O botão <b>Imprimir</b> da tabela imprime a lista filtrada da aba aberta (até 1.500 linhas). No link do Claude, ele salva um arquivo que abre já pronto para imprimir; no app Android, abre o Compartilhar para mandar ao Chrome ou à impressora.'],
       ['Atualizar', 'Use "Atualizar base" para carregar as planilhas novas do Manusis (OMs, consumo e pendências). A leitura é feita só no aparelho.']]],
     leitura: ['Leitura rápida', [
       ['O que é', 'Frases prontas com os pontos que mais pedem atenção, calculadas com os filtros do topo.'],
@@ -1613,7 +1634,7 @@ var DADOS = /*__DADOS__*/null;
     pessoas: ['Pendências abertas por pessoa', [['O que é', 'Pendências pendentes ou em execução, por quem registrou no Manusis (coluna "Usuário").'], ['Atenção', 'Quem registra nem sempre é quem resolve. Muitas pendências com uma pessoa só pode indicar que ela registra pela equipe toda.'], ['O que fazer', 'Toque no nome para ver a lista, das mais antigas para as mais novas.']]],
     idade: ['Há quanto tempo as pendências estão abertas', [['O que é', 'As pendências ainda abertas, separadas pelo tempo desde a abertura.'], ['Referência', 'Pendência deve ser resolvida na próxima ida à turbina. Mais de 90 dias é atraso; de segurança (HSE), mais de 30 dias já é crítico.'], ['O que fazer', 'Toque numa faixa para ver a lista na tabela e combine prazo com cada equipe, começando pelas de segurança.']]],
     atras: ['Preventivas atrasadas', [['O que é', 'OMs de tipo preventivo programadas há mais de 30 dias e ainda não fechadas (sem as canceladas), por turbina.'], ['Por que importa', 'Preventiva atrasada vira corretiva: a falha aparece antes da manutenção.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela, ou em "Ver todas na tabela".']]],
-    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
+    corrigir: ['Corrigir no Manusis', [['O que é', 'Três tipos de lançamento que deixam o custo e o estoque errados.'], ['Os três', '<ul><li><b>Preço fora do padrão</b>: preço unitário muito acima do normal do material (ex.: óleo por litro com preço do tambor). Fica fora do custo.</li><li><b>Troca sem consumo</b>: OM fechada em que o texto diz que trocou a peça, mas não há consumo lançado.</li><li><b>Consumo sem troca no texto</b>: saiu peça para a OM, mas o serviço executado não diz que trocou. O painel aceita outras palavras: substituído, trocado, instalado, colocado, "swap", e apelidos da peça (ex.: anel coletor = slip).</li><li><b>Sem serviço executado</b>: saiu peça, mas o texto está em branco.</li></ul>'], ['O que fazer', 'Toque em "Ver lista", corrija no Manusis e atualize a base.']]],
     top: ['Top 10 mais impactadas', [['O que é', 'As 10 turbinas com o maior valor na medida escolhida, com as outras medidas embaixo.'], ['Falhas repetidas', 'Corretivas em que o mesmo código de falha voltou na mesma turbina em até 30 dias. Indica que o conserto não resolveu a causa.'], ['O que fazer', 'Toque numa turbina para ver as OMs dela. Turbinas que aparecem em várias medidas pedem análise de causa raiz.']]],
     tabela: ['Tabelas', [['Como usar', 'Toque no título de uma coluna para ordenar. Toque numa linha para abrir a ficha completa da OM. "Exportar Excel" leva tudo que está filtrado, não só a página.']]]
   };
@@ -1717,16 +1738,17 @@ var DADOS = /*__DADOS__*/null;
   // ---------------- corrigir no Manusis ----------------
   function desenharCorrigir() {
     if (UI.tela !== 'consumo') return;
-    var preco = 0, pv = 0, semtexto = 0, semcons = 0;
+    var preco = 0, pv = 0, semtexto = 0, semcons = 0, semexec = {};
     sel.forEach(function (i) {
-      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; }
+      if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) { if (D.C.s[k]) { preco++; pv += D.C.v[k]; } if (D.C.cf[k] === 1) semtexto++; if (D.C.cf[k] === 4) semexec[i] = 1; }
       if (grupo[i] === 0 && D.O.pi[i].some(function (it) { return it[2] === 1; })) semcons++;
     });
     var cx = function (n, tt, txt, acao) { return '<div class="crx"><b>' + fmtN.format(n) + '</b><span class="tt">' + tt + '</span><p>' + txt + '</p><button type="button" class="btn" data-cx="' + acao + '">Ver lista</button></div>'; };
     $('#c-corrigir').innerHTML =
       cx(preco, 'Preço fora do padrão', 'Consumos com preço unitário muito acima do normal do material (' + compacto(pv) + '). Ficam fora do custo total.', 'preco') +
       cx(semcons, 'Troca sem consumo', 'OMs fechadas em que o serviço executado diz que trocou a peça, mas não há consumo lançado.', 'semcons') +
-      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada.', 'semtexto');
+      cx(semtexto, 'Consumo sem troca no texto', 'Peças consumidas em OMs cujo serviço executado não diz que a peça foi trocada (nem com outras palavras: instalado, colocado, substituído…).', 'semtexto') +
+      cx(Object.keys(semexec).length, 'Sem serviço executado', 'OMs com peça consumida e o serviço executado em branco: não dá para conferir a troca.', 'semexec');
     $('#c-corrigir').onclick = function (e) {
       var b = e.target.closest('[data-cx]'); if (!b) return;
       var a = b.getAttribute('data-cx');
@@ -1973,8 +1995,22 @@ var DADOS = /*__DADOS__*/null;
     return out;
   }
   var ultimoFoco = null;
-  function abrirFicha(i) {
-    fecharFicha(); ultimoFoco = document.activeElement;
+  // OMs na ordem da tabela de onde a ficha foi aberta (Próxima / Anterior)
+  var FICHA = { lista: null, i: -1 };
+  function listaOMsDaTabela() {
+    var ord = UI.ultimaOrd || [], out = [], visto = {};
+    ord.forEach(function (x) {
+      var i = UI.vista === 'pend' ? omDaPend(x) : UI.vista === 'cons' ? D.C.o[x] : x;
+      if (i >= 0 && !visto[i]) { visto[i] = 1; out.push(i); }
+    });
+    return out;
+  }
+  function abrirFicha(i, lista) {
+    if (lista !== undefined) FICHA.lista = lista;
+    else if (FICHA.lista && FICHA.lista.indexOf(i) < 0) FICHA.lista = null;
+    FICHA.i = i;
+    var foco = ultimoFoco && $('#ficha') ? ultimoFoco : null;
+    fecharFicha(); ultimoFoco = foco || document.activeElement;
     var O = D.O, g = grupo[i], c = custoOM(i), pend = pendDe[i] || [];
     var scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.id = 'scrim';
     var dr = document.createElement('aside'); dr.className = 'drawer'; dr.id = 'ficha'; dr.setAttribute('role', 'dialog'); dr.setAttribute('aria-modal', 'true'); dr.setAttribute('aria-label', omLabel(O.om[i]));
@@ -2007,7 +2043,19 @@ var DADOS = /*__DADOS__*/null;
         '<section><h4>Materiais usados</h4>' + mats + '</section>' + fichaConf(i) +
         '<section><h4>Pendências (' + pend.length + ')</h4>' + pends + '</section>' +
       '</div>';
+    var L = FICHA.lista, pos = L ? L.indexOf(i) : -1;
+    dr.insertAdjacentHTML('beforeend', '<div class="fnav">' +
+      '<button type="button" class="btn" data-fn="-1"' + (pos > 0 ? '' : ' disabled') + ' aria-label="OM anterior">‹ Anterior</button>' +
+      '<span class="pos">' + (pos >= 0 ? fmtN.format(pos + 1) + ' de ' + fmtN.format(L.length) : '') + '</span>' +
+      '<button type="button" class="btn" data-fn="imp" aria-label="Imprimir esta OM">Imprimir</button>' +
+      '<button type="button" class="btn primary" data-fn="1"' + (pos >= 0 && pos < L.length - 1 ? '' : ' disabled') + ' aria-label="Próxima OM">Próxima ›</button></div>');
     document.body.appendChild(scrim); document.body.appendChild(dr);
+    dr.querySelector('.fnav').onclick = function (e) {
+      var b = e.target.closest('[data-fn]'); if (!b || b.disabled) return;
+      var a = b.getAttribute('data-fn');
+      if (a === 'imp') { imprimir('om'); return; }
+      irFicha(+a);
+    };
     scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
     var m = dr.querySelector('.db mark'); if (m) setTimeout(function () { m.scrollIntoView({ block: 'center' }); }, 30);
   }
@@ -2020,15 +2068,98 @@ var DADOS = /*__DADOS__*/null;
     var h = '<section><h4>Conferência: troca descrita × consumo</h4>' + (se ? '<span class="selo ' + se.cls + '">' + se.ic + ' ' + se.rot + '</span><div style="font-size:.8rem;color:var(--fg-2);margin:4px 0 8px">' + esc(se.dica) + '</div>' : '');
     h += itens.length ? '<table class="mini"><thead><tr><th>Peça descrita no serviço executado</th><th>Situação</th></tr></thead><tbody>' + itens.map(function (it) {
       return '<tr><td>' + esc(D.componentes[it[0]]) + (it[1] ? ' <span style="color:var(--fg-2)">(' + esc(it[1]) + ')</span>' : '') + '</td><td>' + rot[it[2]] + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<div style="font-size:.84rem;color:var(--fg-2)">O serviço executado não descreve troca de peça.</div>';
+    }).join('') + '</tbody></table>' : '';
+    // peças consumidas que o texto confirma com outras palavras (instalado, colocado, "slip novo"…)
+    var okT = [];
+    if (consIni[i] >= 0) for (var k0 = consIni[i]; k0 < consFim[i]; k0++) if (D.C.cf[k0] === 0) okT.push(partesMaterial(D.materiais[D.C.m[k0]]).nome);
+    if (!itens.length) h += okT.length ? '<div style="font-size:.84rem"><b>Troca encontrada no serviço executado:</b> ' + esc(okT.join(' · ')) + '</div>'
+      : '<div style="font-size:.84rem;color:var(--fg-2)">O serviço executado não descreve troca de peça.</div>';
     var st = [];
     if (consIni[i] >= 0) for (var k = consIni[i]; k < consFim[i]; k++) if (D.C.cf[k] === 1) st.push(partesMaterial(D.materiais[D.C.m[k]]).nome);
     if (st.length) h += '<div style="font-size:.82rem;margin-top:8px"><b>Consumida sem troca no texto:</b> ' + esc(st.join(' · ')) + '</div>';
+    if (!String(O.exec[i] || '').trim() && consIni[i] >= 0) h += '<div style="font-size:.82rem;margin-top:8px"><b>Serviço executado em branco:</b> não dá para conferir se as peças consumidas foram trocadas.</div>';
     return h + '</section>';
   }
   function g1(i) { return grupo[i] === 1; }
   function fecharFicha() { var a = $('#ficha'), b = $('#scrim'); if (a) a.remove(); if (b) b.remove(); if (ultimoFoco && ultimoFoco.focus) { try { ultimoFoco.focus(); } catch (e) {} } ultimoFoco = null; }
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); } });
+  function irFicha(passo) {
+    var L = FICHA.lista; if (!L || !$('#ficha')) return;
+    var pos = L.indexOf(FICHA.i) + passo; if (pos < 0 || pos >= L.length) return;
+    abrirFicha(L[pos]);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); return; }
+    if ($('#ficha .fnav') && !/INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) {
+      if (e.key === 'ArrowRight') { irFicha(1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { irFicha(-1); e.preventDefault(); }
+    }
+  });
+
+  // ---------------- imprimir ----------------
+  var CSS_IMP = 'body{font:12px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#111;margin:0}' +
+    'h1{font-size:18px;margin:0 0 2px}h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#004a6b;margin:14px 0 4px}' +
+    '.meta,.sub{color:#555;font-size:11px;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:4px}' +
+    'th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top;font-size:11px}th{background:#eef3f5}' +
+    '.kv{display:flex;flex-wrap:wrap;gap:6px 18px}.kv span{display:block;color:#666;font-size:10px}' +
+    '.entry{border-left:3px solid #ccc;padding-left:8px;margin-bottom:8px}.entry .eh{font-weight:600;color:#333;font-size:11px}' +
+    'p{margin:0;white-space:pre-wrap}button,.ajuda,.fnav{display:none!important}mark{background:none;font-weight:700}' +
+    '.pill,.selo{border:1px solid #999;border-radius:3px;padding:0 4px}tr{page-break-inside:avoid}@page{margin:12mm}';
+  function conteudoImpressao(tipo) {
+    var hoje = new Date().toLocaleString('pt-BR');
+    if (tipo === 'om') {
+      var f = $('#ficha'); if (!f) return null;
+      var tit = f.querySelector('.dh h3').textContent, meta = f.querySelector('.dh .meta').textContent;
+      return { nome: tit.split(' · ')[0].replace(/\s+/g, '_'), titulo: tit, html: '<h1>' + esc(tit) + '</h1><div class="meta">' + esc(meta) + ' · impresso em ' + hoje + '</div>' + f.querySelector('.db').innerHTML };
+    }
+    // tabela: todas as linhas filtradas (até 1.500), com as colunas da aba aberta
+    var cols = COLS[UI.vista], ord = (UI.ultimaOrd || []).slice(0, 1500);
+    var linha = UI.vista === 'pend' ? linhaPend : UI.vista === 'cons' ? linhaCons : UI.vista === 'conf' ? linhaConf : null;
+    var corpo = ord.map(function (x) {
+      if (linha) return linha(x);
+      var O = D.O, i = x, m = resumoMat(i);
+      return '<tr><td>' + omLabel(O.om[i]) + '</td><td>' + esc(D.ativos[O.at[i]]) + '</td><td>' + dataBR(O.dt[i]) + '</td><td>' + esc(D.status[O.st[i]]) + '</td><td>' + esc(D.tipos[O.tp[i]]) + '</td><td>' + esc(O.desc[i]) + '</td><td>' + esc(m.txt) + (m.n ? ' (' + fmtR.format(m.v) + ')' : '') + '</td><td>' + (pendDe[i] ? pendDe[i].length : 0) + '</td></tr>';
+    }).join('');
+    var aba = ($('#tabs [aria-selected="true"]') || {}).textContent || 'Consulta';
+    var filtros = [].slice.call(document.querySelectorAll('#ativos .tag')).map(function (t) { return t.firstChild.textContent; }).join(' · ');
+    return { nome: 'Tabela_' + aba.replace(/\s+/g, '_'), titulo: 'Consulta de OMs · ' + aba,
+      html: '<h1>Consulta de OMs · ' + esc(aba) + '</h1><div class="sub">' + fmtN.format((UI.ultimaOrd || []).length) + ' linhas' + ((UI.ultimaOrd || []).length > 1500 ? ' (impressas as 1.500 primeiras)' : '') + (filtros ? ' · Filtros: ' + esc(filtros) : '') + ' · impresso em ' + hoje + '</div>' +
+        '<table><thead><tr>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + corpo + '</tbody></table>' };
+  }
+  function appAndroid() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
+  function imprimir(tipo) {
+    var c = conteudoImpressao(tipo); if (!c) return;
+    var doc = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(c.titulo) + '</title><style>' + CSS_IMP + '</style></head><body>' + c.html +
+      '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
+    var nome = c.nome + '_imprimir.html';
+    // app Android: o WebView não imprime; vai para o Compartilhar (Chrome, impressora, Drive)
+    if (appAndroid()) {
+      var Pl = window.Capacitor.Plugins || {}, FS = Pl.Filesystem, SH = Pl.Share;
+      if (!FS || !SH) { aviso('Não foi possível imprimir neste aparelho. Abra o painel no Chrome.'); return; }
+      FS.writeFile({ path: nome, data: doc, directory: 'CACHE', encoding: 'utf8' })
+        .then(function (r) { return SH.share({ title: nome, files: [r.uri], dialogTitle: 'Imprimir: abra no Chrome ou escolha a impressora' }); })
+        .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) aviso('Não foi possível imprimir: ' + (e && e.message || e)); });
+      return;
+    }
+    // link do Claude: o visualizador não abre a impressão; salva a página pronta para imprimir
+    if (window.claude) {
+      if (!dlNS) { aviso('Para imprimir, abra o painel no app ou no arquivo offline (Chrome).'); return; }
+      dlNS.save({ filename: nome, data: new Blob([doc], { type: 'text/html' }) }).then(function () {
+        aviso('Arquivo salvo: abra "' + nome + '" e a impressão começa sozinha.');
+      }, function (e) { if (!e || e.code !== 'declined') aviso('Não foi possível salvar para imprimir aqui.'); });
+      return;
+    }
+    // navegador (Chrome, computador): imprime só o conteúdo, sem o painel atrás
+    var imp = $('#imp'); if (!imp) { imp = document.createElement('div'); imp.id = 'imp'; document.body.appendChild(imp); }
+    // o estilo da impressão vale só dentro de #imp (não mexe no painel)
+    var css = CSS_IMP.split('}').filter(function (r) { return r.trim(); }).map(function (r) {
+      var p2 = r.split('{'); if (/^@page/.test(p2[0].trim())) return r + '}';
+      return p2[0].split(',').map(function (sel) { sel = sel.trim(); return sel === 'body' ? '#imp' : '#imp ' + sel; }).join(',') + '{' + p2[1] + '}';
+    }).join('');
+    imp.innerHTML = '<style>' + css + '</style>' + c.html;
+    var fim = function () { document.body.classList.remove('imprimindo'); window.removeEventListener('afterprint', fim); };
+    document.body.classList.add('imprimindo'); window.addEventListener('afterprint', fim);
+    setTimeout(function () { window.print(); }, 50);
+  }
 
   // ---------------- base: carregar planilhas e guardar no aparelho ----------------
   var BASE = null; // { D, arquivos: [{ nome, buf }] } guardada neste aparelho

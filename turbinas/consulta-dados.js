@@ -10,6 +10,96 @@
 })(this, function () {
   'use strict';
 
+  // ---- segunda leitura do serviço executado -----------------------------------------
+  // A conferência do Painel de Turbinas lê "substituído / trocado". Aqui, para cada peça consumida que
+  // ficou sem troca no texto, procura a peça (pelo nome ou apelido: anel coletor = slip) com um verbo
+  // de troca ou instalação na mesma frase ("instalar um slip novo", "instalado botoeiras").
+  // Segunda leitura do serviço executado: a peça consumida aparece no texto junto de um verbo de troca/instalação?
+  function semAc(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  // apelidos: o nome do almoxarifado × como o técnico escreve
+  var APELIDOS = [
+    [/ANEL COLETOR|SLIP/, ['slip', 'anel coletor', 'coletor']],
+    [/ESCOVA/, ['escova']],
+    [/BATERIA/, ['bateria', 'banco de bateria', 'baterias']],
+    [/ENCODER|CODIFICADOR/, ['encoder', 'enconder', 'encorder', 'encode', 'codificador']],
+    [/MANG/, ['mangueira', 'mangote']],
+    [/ACELEROMETRO|ACCLRM/, ['acelerometro', 'sensor de vibracao']],
+    [/BOTOEIRA/, ['botoeira', 'botoeiras', 'controle da talha']],
+    [/FUSIVEL/, ['fusivel', 'fusiveis']],
+    [/DISJUNTOR/, ['disjuntor']],
+    [/CONTATOR/, ['contator', 'contatora']],
+    [/RELE\b/, ['rele']],
+    [/FILTRO|ELEMENTO FILTRANTE/, ['filtro', 'elemento filtrante']],
+    [/ROLAMENTO/, ['rolamento']],
+    [/MOTOR/, ['motor']],
+    [/PASTILHA|PUCK|LONA/, ['pastilha', 'pucks', 'puck', 'lona']],
+    [/FREIO/, ['freio']],
+    [/RESPIRADOR|DESSECANTE/, ['respirador', 'dessecante', 'silica']],
+    [/CARREGADOR/, ['carregador']],
+    [/FONTE/, ['fonte']],
+    [/ANEMOMETRO|ULTRASS/, ['anemometro', 'sensor de vento', 'ultrassonico']],
+    [/BIRUTA|WIND VANE/, ['biruta', 'wind vane']],
+    [/LAMPADA|LUMINARIA|REFLETOR|AVIATION|BALIZAMENTO/, ['lampada', 'luminaria', 'refletor', 'aviation', 'balizamento', 'iluminacao']],
+    [/VALVULA/, ['valvula']],
+    [/BOMBA/, ['bomba']],
+    [/VENTILADOR|VENTOINHA|EXAUSTOR/, ['ventilador', 'ventoinha', 'exaustor', 'cooler']],
+    [/TERMOSTATO/, ['termostato']], [/PRESSOSTATO/, ['pressostato']], [/RESISTENCIA|AQUECEDOR/, ['resistencia', 'aquecedor']],
+    [/UPS|NOBREAK/, ['ups', 'nobreak']], [/TOMADA/, ['tomada']], [/CABO/, ['cabo', 'chicote']], [/CONECTOR/, ['conector']],
+    [/PLACA|CARTAO|\bW[A-Z]{3}\b|\bAE[A-Z]{2}\b/, ['placa', 'cartao']],
+    [/SHUNT/, ['shunt']], [/TIRISTOR|THYRISTOR/, ['tiristor', 'thyristor']], [/IGBT/, ['igbt']],
+    [/ACUMULADOR/, ['acumulador']], [/HIDRAUL|UNIDADE POTENCIA HID|HPU/, ['hpu', 'unidade hidraulica']],
+    [/TRAVA/, ['trava']], [/PARAFUSO/, ['parafuso']], [/VEDA|O RING|ORING|RETENTOR|GAXETA/, ['vedacao', 'o-ring', 'oring', 'retentor', 'gaxeta', 'anel de vedacao']],
+    [/SENSOR/, ['sensor']], [/CHAVE FIM|FIM DE CURSO|LIMIT SWITCH/, ['fim de curso', 'limit switch', 'chave fim']],
+    [/TRANSFORMADOR/, ['transformador', 'trafo']], [/ESCOTILHA/, ['escotilha']], [/TRAVA DISCO|ROTOR LOCK/, ['rotor lock', 'trava do rotor']]
+  ];
+  var GENERICAS = /^(motor|sensor|placa|cabos|rotor|disco|eixo|axis|blade|flange|gearbox|multiplicadora|conversor|motores|eletrico|eletrica|conjunto|conj|kit|para|com|sem|unidade|peca|pecas|material|modulo|tipo|modelo|ref|cod|novo|nova|preto|branco|vermelho|azul|base|alta|baixa|media|pol|mm|metro|metros|gerador|pitch|sistema)$/;
+  // verbos e marcas de troca/instalação (com erros comuns de digitação)
+  var VERBO = /substitu|subistitu|sustitu|troc|instal|(?<!re)colocad|coloquei|colocamos|(?<!re)colocac|aplicad|aplicamos|repost|reposic|inserid|swap|efetuad[oa] a troca|feit[oa] a troca|realizad[oa] a troca/;
+  // apelidos genéricos só valem quando são o nome principal da peça (as 2 primeiras palavras):
+  // "ENCODER CODIFICADOR MOTOR PITCH" não é motor
+  var CABECA = /^(MOTOR|SENSOR|CABO|CONECTOR|FREIO|VALVULA|BOMBA|FONTE|FILTRO|FUSIVEL|PARAFUSO|TRAVA|RELE)/;
+  function apelidosDe(nome) {
+    var N = String(nome || '').toUpperCase(), desc = N.replace(/^[A-Z0-9_.]+(?:-\d{3,5}[A-Z]?)?-/, '').trim();
+    var cab = desc.split(/\s+/).slice(0, 2).join(' '), out = [];
+    var add = function (w) { if (out.indexOf(w) < 0) out.push(w); };
+    // placa com código (AEPS, WEPA, WECA…): só o código identifica a peça certa
+    var cod = desc.match(/\b(W[A-Z]{3}|AE[A-Z]{2})\b/g);
+    if (cod && /PLACA|MODULO|CARTAO|CONJUNTO PLACA/.test(desc)) { cod.forEach(function (c) { add(c.toLowerCase()); }); return out; }
+    APELIDOS.forEach(function (a) {
+      if (!a[0].test(desc)) return;
+      var src = a[0].source.replace(/\\b/g, '');
+      if (CABECA.test(src) && !a[0].test(cab)) return;
+      a[1].forEach(add);
+    });
+    semAc(desc).split(/[^a-z]+/).forEach(function (w) { if (w.length >= 5 && !GENERICAS.test(w)) add(w); });
+    return out;
+  }
+  // o texto cita a peça (apelido) num trecho que também tem verbo de troca/instalação?
+  function trocaNoTexto(exec, nome) {
+    var t = semAc(exec);
+    if (!t.trim()) return null;
+    // frases de rotina que citam a peça sem trocar: "teste de baterias", "sem necessidade de troca"
+    t = t.replace(/(realizad[oa]s? )?(o |os )?testes? (de|das|nas|com as) bateria\w*/g, ' ').replace(/(sem|nao|n[aã]o houve|nao foi) (necessidade de )?(substitu|troc)\w*/g, ' ');
+    var ap = apelidosDe(nome); if (!ap.length) return false;
+    // palavras genéricas (placa, cabo, sensor…) pedem o verbo bem colado; negações anulam o trecho
+    var GENERICO = /^(placa|cartao|cabo|sensor|motor|fusivel|fusiveis|conector|parafuso|freio|valvula|bomba|fonte|filtro)$/;
+    var NEGA = /nao (foi|temos|tem|ha|havia|houve|possui)|sem (estoque|disponibilidade|peca)|aguardando|falta de|faltando|nao disponivel/;
+    // o verbo precisa estar na mesma frase e a até 70 letras da peça
+    var frases = t.split(/[.;!?\n|]|(?=usuario:)/);
+    for (var f = 0; f < frases.length; f++) {
+      var fr = frases[f];
+      for (var j = 0; j < ap.length; j++) {
+        var p = -1;
+        var r = GENERICO.test(ap[j]) ? 35 : 70;
+        while ((p = fr.indexOf(ap[j], p + 1)) >= 0) {
+          var jan = fr.slice(Math.max(0, p - r), p + ap[j].length + r);
+          if (VERBO.test(jan) && !NEGA.test(jan)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /** livros: planilhas já abertas com XLSX.read. Devolve { D, resumo }. */
   function montar(livros, XLSX, Modelo) {
   function numOM(v) {
@@ -168,6 +258,24 @@
       (!batem && !baixaOk && semTexto) ? 'diverge' : (semTexto || (fechada && cod.indexOf(1) >= 0)) ? 'parcial' : 'ok';
     O.pi.push(itens.map(function (it, j) { return [it[0], it[1], cod[j]]; }));
     O.se.push(SELOS.indexOf(selo));
+  });
+  // segunda leitura: peça consumida "sem troca no texto" que o texto cita com verbo de troca vira confirmada;
+  // OM sem serviço executado ganha aviso próprio (4) — não dá para conferir
+  SELOS.push('semExec');
+  var mudou = {};
+  C.cf.forEach(function (v, k) {
+    if (v !== 1) return;
+    var i = C.o[k], r = trocaNoTexto(O.exec[i], dMat.lista[C.m[k]]);
+    if (r === null) { C.cf[k] = 4; mudou[i] = 1; } else if (r) { C.cf[k] = 0; mudou[i] = 1; }
+  });
+  Object.keys(mudou).forEach(function (i) {
+    i = +i;
+    var sem = 0, vazio = 0;
+    (porOMc[i] || []).forEach(function (k) { if (C.cf[k] === 1) sem++; if (C.cf[k] === 4) vazio++; });
+    if (sem) return;
+    var se = SELOS[O.se[i]], fechada = O.st[i] === idxFech, nc = O.pi[i].some(function (it) { return it[2] === 1; });
+    if (vazio && !O.pi[i].length) O.se[i] = SELOS.indexOf('semExec');
+    else if (se === 'soBaixa' || se === 'diverge' || se === 'parcial') O.se[i] = SELOS.indexOf(fechada && nc ? 'parcial' : 'ok');
   });
 
   // ---- pendências ----------------------------------------------------------------------
