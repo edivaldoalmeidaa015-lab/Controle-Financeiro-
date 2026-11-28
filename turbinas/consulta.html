@@ -306,6 +306,20 @@ td.cl { min-width: 190px; max-width: 280px; }
 
 /* ficha da OM */
 .scrim { position: fixed; inset: 0; background: rgba(10, 15, 20, .45); z-index: 50; }
+/* barra da ficha: anterior / próxima / imprimir (embaixo, ao alcance do polegar no celular) */
+.drawer .db { flex: 1 1 auto; min-height: 0; }
+.fnav { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--surface); }
+.fnav .pos { flex: 1; text-align: center; font-size: .82rem; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.fnav .btn { padding: 8px 14px; font-weight: 600; }
+.fnav .btn:disabled { opacity: .35; cursor: default; }
+body.cel .fnav { padding: 8px 12px; gap: 6px; }
+body.cel .fnav .btn { padding: 10px 10px; font-size: .86rem; }
+#imp { display: none; }
+@media print {
+  body.imprimindo > *:not(#imp) { display: none !important; }
+  body.imprimindo #imp { display: block !important; }
+  body.imprimindo { background: #fff !important; }
+}
 .drawer { position: fixed; z-index: 51; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: var(--surface); box-shadow: -8px 0 30px rgba(0,0,0,.2); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .dh { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .dh h3 { margin: 0; font-family: var(--f-display); font-size: 1.4rem; font-weight: 700; }
@@ -884,6 +898,7 @@ var DADOS = /*__DADOS__*/null;
         '<div class="ph"><div><p id="t-sub"></p></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ord-cel" class="dt-in" aria-label="Ordenar"></select>' +
         '<div class="seg" id="seg-pp"><button type="button" data-v="25">25</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button></div>' +
+        '<button type="button" class="btn" id="imp-tab" title="Imprimir ou salvar em PDF a tabela com os filtros">Imprimir</button>' +
         '<button type="button" class="btn primary" id="exp-xlsx" title="Exporta todas as OMs desta tabela (com os filtros), os materiais e as pendências">Exportar Excel</button></div></div>' +
         '<div class="qf" id="qf"></div>' +
         '<div class="tscroll"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div><div class="pager" id="pager"></div></section>';
@@ -893,6 +908,7 @@ var DADOS = /*__DADOS__*/null;
     $('#so-pecas').checked = UI.soPecas;
     $('#so-pecas').onchange = function (e) { UI.soPecas = e.target.checked; desenharMat(); };
     $('#exp-xlsx').onclick = exportar;
+    $('#imp-tab').onclick = function () { imprimir('tabela'); };
     $('#k-om').onclick = function (e) {
       var b = e.target.closest('[data-sit]'); if (!b) return;
       var v = b.getAttribute('data-sit');
@@ -911,10 +927,10 @@ var DADOS = /*__DADOS__*/null;
       UI.page = 0; desenharTabela();
     };
     $('#tb').onclick = function (e) {
-      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om')); return; }
-      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'));
+      var b = e.target.closest('[data-om]'); if (b) { abrirFicha(+b.getAttribute('data-om'), listaOMsDaTabela()); return; }
+      var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'), listaOMsDaTabela());
     };
-    $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i')); } };
+    $('#tb').onkeydown = function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-i]'); if (tr) abrirFicha(+tr.getAttribute('data-i'), listaOMsDaTabela()); } };
     if (montarApp.feito) return; montarApp.feito = true;
     var tr; window.addEventListener('resize', function () { clearTimeout(tr); tr = setTimeout(function () { desenharTop(); desenharMapa(); desenharRank(); desenharMes(); desenharCurva(); desenharPessoas(); }, 150); });
   }
@@ -1598,6 +1614,8 @@ var DADOS = /*__DADOS__*/null;
       ['Telas', '<ul><li><b>Início</b>: tudo junto, com a Leitura rápida no topo.</li><li><b>OMs</b>: quantidade, tempo para fechar, preventivas atrasadas e a tabela.</li><li><b>Consumo</b>: custo, materiais e o que corrigir no Manusis.</li><li><b>Pendências</b>: idade, quem tem mais abertas e a pesquisa.</li><li><b>Top 10</b>: as turbinas que mais pedem atenção.</li></ul>'],
       ['Filtros', 'Os filtros do topo (parque, turbina, ano, mês, data, situação, status) valem para todas as telas. Tocar numa barra, num mês ou numa turbina também filtra. As etiquetas embaixo dos filtros mostram o que está ligado; o × tira cada um e "Limpar filtros" volta tudo.'],
       ['Botão ?', 'Cada quadro tem um <b>?</b> que explica o que ele mostra, como ler e o que fazer.'],
+      ['Ficha da OM', 'Toque numa linha da tabela para abrir a ficha. Embaixo dela, <b>Próxima ›</b> e <b>‹ Anterior</b> passam para a OM seguinte da mesma lista, sem fechar (no computador, as setas ← → do teclado também). <b>Imprimir</b> imprime ou salva em PDF só a ficha.'],
+      ['Imprimir', 'O botão <b>Imprimir</b> da tabela imprime a lista filtrada da aba aberta (até 1.500 linhas). No link do Claude, ele salva um arquivo que abre já pronto para imprimir; no app Android, abre o Compartilhar para mandar ao Chrome ou à impressora.'],
       ['Atualizar', 'Use "Atualizar base" para carregar as planilhas novas do Manusis (OMs, consumo e pendências). A leitura é feita só no aparelho.']]],
     leitura: ['Leitura rápida', [
       ['O que é', 'Frases prontas com os pontos que mais pedem atenção, calculadas com os filtros do topo.'],
@@ -1977,8 +1995,22 @@ var DADOS = /*__DADOS__*/null;
     return out;
   }
   var ultimoFoco = null;
-  function abrirFicha(i) {
-    fecharFicha(); ultimoFoco = document.activeElement;
+  // OMs na ordem da tabela de onde a ficha foi aberta (Próxima / Anterior)
+  var FICHA = { lista: null, i: -1 };
+  function listaOMsDaTabela() {
+    var ord = UI.ultimaOrd || [], out = [], visto = {};
+    ord.forEach(function (x) {
+      var i = UI.vista === 'pend' ? omDaPend(x) : UI.vista === 'cons' ? D.C.o[x] : x;
+      if (i >= 0 && !visto[i]) { visto[i] = 1; out.push(i); }
+    });
+    return out;
+  }
+  function abrirFicha(i, lista) {
+    if (lista !== undefined) FICHA.lista = lista;
+    else if (FICHA.lista && FICHA.lista.indexOf(i) < 0) FICHA.lista = null;
+    FICHA.i = i;
+    var foco = ultimoFoco && $('#ficha') ? ultimoFoco : null;
+    fecharFicha(); ultimoFoco = foco || document.activeElement;
     var O = D.O, g = grupo[i], c = custoOM(i), pend = pendDe[i] || [];
     var scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.id = 'scrim';
     var dr = document.createElement('aside'); dr.className = 'drawer'; dr.id = 'ficha'; dr.setAttribute('role', 'dialog'); dr.setAttribute('aria-modal', 'true'); dr.setAttribute('aria-label', omLabel(O.om[i]));
@@ -2011,7 +2043,19 @@ var DADOS = /*__DADOS__*/null;
         '<section><h4>Materiais usados</h4>' + mats + '</section>' + fichaConf(i) +
         '<section><h4>Pendências (' + pend.length + ')</h4>' + pends + '</section>' +
       '</div>';
+    var L = FICHA.lista, pos = L ? L.indexOf(i) : -1;
+    dr.insertAdjacentHTML('beforeend', '<div class="fnav">' +
+      '<button type="button" class="btn" data-fn="-1"' + (pos > 0 ? '' : ' disabled') + ' aria-label="OM anterior">‹ Anterior</button>' +
+      '<span class="pos">' + (pos >= 0 ? fmtN.format(pos + 1) + ' de ' + fmtN.format(L.length) : '') + '</span>' +
+      '<button type="button" class="btn" data-fn="imp" aria-label="Imprimir esta OM">Imprimir</button>' +
+      '<button type="button" class="btn primary" data-fn="1"' + (pos >= 0 && pos < L.length - 1 ? '' : ' disabled') + ' aria-label="Próxima OM">Próxima ›</button></div>');
     document.body.appendChild(scrim); document.body.appendChild(dr);
+    dr.querySelector('.fnav').onclick = function (e) {
+      var b = e.target.closest('[data-fn]'); if (!b || b.disabled) return;
+      var a = b.getAttribute('data-fn');
+      if (a === 'imp') { imprimir('om'); return; }
+      irFicha(+a);
+    };
     scrim.onclick = fecharFicha; $('#fechar-ficha').onclick = fecharFicha; $('#fechar-ficha').focus();
     var m = dr.querySelector('.db mark'); if (m) setTimeout(function () { m.scrollIntoView({ block: 'center' }); }, 30);
   }
@@ -2038,7 +2082,84 @@ var DADOS = /*__DADOS__*/null;
   }
   function g1(i) { return grupo[i] === 1; }
   function fecharFicha() { var a = $('#ficha'), b = $('#scrim'); if (a) a.remove(); if (b) b.remove(); if (ultimoFoco && ultimoFoco.focus) { try { ultimoFoco.focus(); } catch (e) {} } ultimoFoco = null; }
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); } });
+  function irFicha(passo) {
+    var L = FICHA.lista; if (!L || !$('#ficha')) return;
+    var pos = L.indexOf(FICHA.i) + passo; if (pos < 0 || pos >= L.length) return;
+    abrirFicha(L[pos]);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { if (popEl) fecharPop(); else fecharFicha(); return; }
+    if ($('#ficha .fnav') && !/INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) {
+      if (e.key === 'ArrowRight') { irFicha(1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { irFicha(-1); e.preventDefault(); }
+    }
+  });
+
+  // ---------------- imprimir ----------------
+  var CSS_IMP = 'body{font:12px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#111;margin:0}' +
+    'h1{font-size:18px;margin:0 0 2px}h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#004a6b;margin:14px 0 4px}' +
+    '.meta,.sub{color:#555;font-size:11px;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:4px}' +
+    'th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top;font-size:11px}th{background:#eef3f5}' +
+    '.kv{display:flex;flex-wrap:wrap;gap:6px 18px}.kv span{display:block;color:#666;font-size:10px}' +
+    '.entry{border-left:3px solid #ccc;padding-left:8px;margin-bottom:8px}.entry .eh{font-weight:600;color:#333;font-size:11px}' +
+    'p{margin:0;white-space:pre-wrap}button,.ajuda,.fnav{display:none!important}mark{background:none;font-weight:700}' +
+    '.pill,.selo{border:1px solid #999;border-radius:3px;padding:0 4px}tr{page-break-inside:avoid}@page{margin:12mm}';
+  function conteudoImpressao(tipo) {
+    var hoje = new Date().toLocaleString('pt-BR');
+    if (tipo === 'om') {
+      var f = $('#ficha'); if (!f) return null;
+      var tit = f.querySelector('.dh h3').textContent, meta = f.querySelector('.dh .meta').textContent;
+      return { nome: tit.split(' · ')[0].replace(/\s+/g, '_'), titulo: tit, html: '<h1>' + esc(tit) + '</h1><div class="meta">' + esc(meta) + ' · impresso em ' + hoje + '</div>' + f.querySelector('.db').innerHTML };
+    }
+    // tabela: todas as linhas filtradas (até 1.500), com as colunas da aba aberta
+    var cols = COLS[UI.vista], ord = (UI.ultimaOrd || []).slice(0, 1500);
+    var linha = UI.vista === 'pend' ? linhaPend : UI.vista === 'cons' ? linhaCons : UI.vista === 'conf' ? linhaConf : null;
+    var corpo = ord.map(function (x) {
+      if (linha) return linha(x);
+      var O = D.O, i = x, m = resumoMat(i);
+      return '<tr><td>' + omLabel(O.om[i]) + '</td><td>' + esc(D.ativos[O.at[i]]) + '</td><td>' + dataBR(O.dt[i]) + '</td><td>' + esc(D.status[O.st[i]]) + '</td><td>' + esc(D.tipos[O.tp[i]]) + '</td><td>' + esc(O.desc[i]) + '</td><td>' + esc(m.txt) + (m.n ? ' (' + fmtR.format(m.v) + ')' : '') + '</td><td>' + (pendDe[i] ? pendDe[i].length : 0) + '</td></tr>';
+    }).join('');
+    var aba = ($('#tabs [aria-selected="true"]') || {}).textContent || 'Consulta';
+    var filtros = [].slice.call(document.querySelectorAll('#ativos .tag')).map(function (t) { return t.firstChild.textContent; }).join(' · ');
+    return { nome: 'Tabela_' + aba.replace(/\s+/g, '_'), titulo: 'Consulta de OMs · ' + aba,
+      html: '<h1>Consulta de OMs · ' + esc(aba) + '</h1><div class="sub">' + fmtN.format((UI.ultimaOrd || []).length) + ' linhas' + ((UI.ultimaOrd || []).length > 1500 ? ' (impressas as 1.500 primeiras)' : '') + (filtros ? ' · Filtros: ' + esc(filtros) : '') + ' · impresso em ' + hoje + '</div>' +
+        '<table><thead><tr>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + corpo + '</tbody></table>' };
+  }
+  function appAndroid() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
+  function imprimir(tipo) {
+    var c = conteudoImpressao(tipo); if (!c) return;
+    var doc = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(c.titulo) + '</title><style>' + CSS_IMP + '</style></head><body>' + c.html +
+      '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
+    var nome = c.nome + '_imprimir.html';
+    // app Android: o WebView não imprime; vai para o Compartilhar (Chrome, impressora, Drive)
+    if (appAndroid()) {
+      var Pl = window.Capacitor.Plugins || {}, FS = Pl.Filesystem, SH = Pl.Share;
+      if (!FS || !SH) { aviso('Não foi possível imprimir neste aparelho. Abra o painel no Chrome.'); return; }
+      FS.writeFile({ path: nome, data: doc, directory: 'CACHE', encoding: 'utf8' })
+        .then(function (r) { return SH.share({ title: nome, files: [r.uri], dialogTitle: 'Imprimir: abra no Chrome ou escolha a impressora' }); })
+        .catch(function (e) { if (!/cancel/i.test(String(e && e.message))) aviso('Não foi possível imprimir: ' + (e && e.message || e)); });
+      return;
+    }
+    // link do Claude: o visualizador não abre a impressão; salva a página pronta para imprimir
+    if (window.claude) {
+      if (!dlNS) { aviso('Para imprimir, abra o painel no app ou no arquivo offline (Chrome).'); return; }
+      dlNS.save({ filename: nome, data: new Blob([doc], { type: 'text/html' }) }).then(function () {
+        aviso('Arquivo salvo: abra "' + nome + '" e a impressão começa sozinha.');
+      }, function (e) { if (!e || e.code !== 'declined') aviso('Não foi possível salvar para imprimir aqui.'); });
+      return;
+    }
+    // navegador (Chrome, computador): imprime só o conteúdo, sem o painel atrás
+    var imp = $('#imp'); if (!imp) { imp = document.createElement('div'); imp.id = 'imp'; document.body.appendChild(imp); }
+    // o estilo da impressão vale só dentro de #imp (não mexe no painel)
+    var css = CSS_IMP.split('}').filter(function (r) { return r.trim(); }).map(function (r) {
+      var p2 = r.split('{'); if (/^@page/.test(p2[0].trim())) return r + '}';
+      return p2[0].split(',').map(function (sel) { sel = sel.trim(); return sel === 'body' ? '#imp' : '#imp ' + sel; }).join(',') + '{' + p2[1] + '}';
+    }).join('');
+    imp.innerHTML = '<style>' + css + '</style>' + c.html;
+    var fim = function () { document.body.classList.remove('imprimindo'); window.removeEventListener('afterprint', fim); };
+    document.body.classList.add('imprimindo'); window.addEventListener('afterprint', fim);
+    setTimeout(function () { window.print(); }, 50);
+  }
 
   // ---------------- base: carregar planilhas e guardar no aparelho ----------------
   var BASE = null; // { D, arquivos: [{ nome, buf }] } guardada neste aparelho
