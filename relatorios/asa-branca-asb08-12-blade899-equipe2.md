@@ -13,7 +13,7 @@ MegaWind – Cliente: Invenergy/Essentia
 **BLADE:** A #899
 **Defeito:** Trinca
 **Início:** 23/11/2026
-**Final:**
+**Final:** 27/11/2026
 
 ---
 
@@ -111,3 +111,38 @@ MegaWind – Cliente: Invenergy/Essentia
 
 **Próxima atividade:** Pós-cura, acabamento e pintura
 **Standby:** ( ) Sim (X) Não
+
+---
+
+## 5º dia – 27/11/2026
+
+**Chegada no parque:** 06:00
+**Saída do parque:** 19:00
+
+**Resumo da atividade:**
+- DDS Invenergy
+- Mobilização para a torre ASB08-12
+- Liberação dos documentos Invenergy e time MegaWind
+- Subida dos materiais
+- Subida dos técnicos
+- Descida dos técnicos
+- Posicionamento no reparo
+- Remoção dos consumíveis
+- Pós-cura
+- Teste de dureza
+- Preparação da área
+- Aplicação do putty
+- Ajuste do putty
+- Preparação da área
+- Pintura
+- Reparo finalizado
+- Descida dos técnicos da torre
+- Limpeza e organização
+- Colocado máquina em operação
+- Mobilização para a base
+- Organização dos materiais no almoxarifado
+
+**Próxima atividade:** Limpeza na ASB08-17
+**Standby:** ( ) Sim (X) Não
+**Parada de máquina:** Turbina em operação ✅
+**Observação:** Reparo da Blade #899 finalizado.
